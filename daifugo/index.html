@@ -65,12 +65,15 @@
   /* Field */
   .fieldwrap {
     background: rgba(0,0,0,.22); border: 1px solid rgba(251,248,239,.12);
-    border-radius: 12px; padding: 12px; min-height: 148px; margin-bottom: 10px;
+    border-radius: 12px; padding: 12px; min-height: 190px; margin-bottom: 10px;
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
   }
   .field-label { font-size: 12px; color: var(--dim); letter-spacing: .08em; }
-  .field-cards { display: flex; }
-  .field-cards .card { margin-right: -14px; }
+  .field-cards { display: flex; align-items: flex-start; max-width: 100%; overflow-x: auto; padding: 2px 4px; }
+  .play-col { position: relative; width: 52px; margin-left: -28px; flex-shrink: 0; }
+  .play-col:first-child { margin-left: 0; }
+  .play-col .card { position: absolute; left: 0; }
+  .play-col.old .card { filter: brightness(.78) saturate(.85); }
   .field-empty { color: var(--dim); font-size: 14px; letter-spacing: .1em; }
 
   #log {
@@ -154,6 +157,7 @@
     .card .rk { font-size: 13px; }
     .card .st-b { font-size: 21px; padding-bottom: 6px; }
     #hand .card { margin-left: -18px; }
+    .play-col { width: 44px; margin-left: -26px; }
     header h1 { font-size: 21px; letter-spacing: .2em; }
     .cpu .name { font-size: 12px; }
   }
@@ -230,6 +234,7 @@ let CPU_DELAY = 700;
 
 /* ================= 状態 ================= */
 let players, field, rev, jback, passCount, turn, finishOrder, gameOver;
+let pile = [];                       // この場に出されたプレイの履歴(流れるまで)
 let logLines = [];
 
 function reversedNow() { return rev !== jback; }
@@ -324,7 +329,7 @@ function nextActive(i) {
   }
   return i;
 }
-function clearField() { field = null; jback = false; passCount = 0; }
+function clearField() { field = null; pile = []; jback = false; passCount = 0; }
 
 function log(msg, strong) {
   logLines.push({ msg, strong });
@@ -342,6 +347,7 @@ function doPlay(pi, play) {
   p.hand = p.hand.filter(c => !ids.has(c.id));
   passCount = 0;
   field = { play, owner: pi };
+  pile.push(play);
 
   const notes = [];
   if (play.cards.length >= 4) { rev = !rev; notes.push(rev ? "革命!!" : "革命返し!!"); }
@@ -497,13 +503,26 @@ function render() {
     cw.appendChild(d);
   }
 
-  // 場
+  // 場(パイル表示: 過去のプレイは左にずらし、同時出しは縦並び)
   const fl = document.getElementById("field-label");
   const fc = document.getElementById("field-cards");
   fc.innerHTML = "";
   if (field) {
     fl.textContent = `${players[field.owner].name} の ${field.play.type === "stairs" ? "階段" : field.play.count + "枚"}`;
-    for (const c of field.play.cards) fc.appendChild(cardEl(c));
+    const small = matchMedia("(max-width: 560px)").matches;
+    const cardH = small ? 63 : 74, step = small ? 18 : 22;
+    pile.forEach((pl, idx) => {
+      const col = document.createElement("div");
+      col.className = "play-col" + (idx < pile.length - 1 ? " old" : "");
+      col.style.height = (cardH + (pl.cards.length - 1) * step) + "px";
+      pl.cards.forEach((c, i) => {
+        const el = cardEl(c);
+        el.style.top = (i * step) + "px";
+        col.appendChild(el);
+      });
+      fc.appendChild(col);
+    });
+    fc.scrollLeft = fc.scrollWidth;
   } else {
     fl.textContent = "場";
     fc.innerHTML = `<span class="field-empty">場は空き — 好きな手を出せます</span>`;
@@ -560,7 +579,7 @@ function newGame() {
   players = NAMES.map(n => ({ name: n, hand: [], place: 0 }));
   deck.forEach((c, i) => players[i % 4].hand.push(c));
   players.forEach(p => sortHand(p.hand));
-  field = null; rev = false; jback = false; passCount = 0;
+  field = null; pile = []; rev = false; jback = false; passCount = 0;
   finishOrder = []; gameOver = false;
   logLines = []; selected.clear();
   turn = players.findIndex(p => p.hand.some(c => !c.joker && c.suit === 2 && c.rank === 3));
