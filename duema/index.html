@@ -216,7 +216,8 @@
       <b>攻撃と戦闘</b>: 相手プレイヤー(シールド)か、タップ中の敵クリーチャーを攻撃。相手はアンタップのクリーチャーでブロック可能。スート相性で守り側有利: ♠は♥に、♦は♠に、♣は♦に、♥は♣に <b>+0/+1</b><br><br>
       <b>シールドブレイク</b>: 割られたカードは手札へ。そのままコストなしで召喚してもよい(Sトリガー)<br>
       <b>JOKER</b>: 4色マナが出る土地、または「0マナ: 全クリーチャー破壊」の呪文<br>
-      <b>勝利条件</b>: シールド0の相手に攻撃を通す(ダイレクトアタック)。山札切れは敗北
+      <b>勝利条件</b>: シールド0の相手に攻撃を通す(ダイレクトアタック)。山札切れは敗北<br>
+      <b>後攻補正</b>: 後攻は1回だけフリーマリガン(手札5枚を山札に戻して引き直し)できる
     </div>
     <div class="start-row"><button id="btn-start">デュエル開始</button></div>
   </div>
@@ -274,7 +275,23 @@ function newDuel() {
   winner = null; busy = false; selAttacker = null;
   logLines = [];
   log("デュエル開始!あなたの先攻(先攻1ターン目はドローなし)");
+  // 後攻は1回フリーマリガンできる(CPUは序盤に動けない手札なら引き直す)
+  if (wantsMulligan(players[1].hand)) {
+    doMulligan(1);
+    log("後攻CPU: フリーマリガン — 手札5枚を引き直した");
+  }
   render();
+}
+
+/* 後攻フリーマリガン: 安いカード(4以下)とJOKERを「動ける札」と数え、2枚未満なら引き直す */
+function wantsMulligan(hand) {
+  return hand.filter(c => c.joker || c.rank <= 4).length < 2;
+}
+function doMulligan(pi) {
+  const p = players[pi];
+  p.deck.push(...p.hand);
+  shuffle(p.deck);
+  p.hand = p.deck.splice(0, 5);
 }
 
 /* ================= ログ・描画 ================= */
