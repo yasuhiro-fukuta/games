@@ -246,7 +246,7 @@
       ・戦闘ダメージは<b>ターン終了時まで蓄積</b>する(累計がタフネス以上で破壊。例: 6/6 が3点→4点と受けると2回目で破壊)<br><br>
       <b>シールドブレイク</b>: シールドは6つの固定位置に置かれ、<b>割る側がどの位置を割るか選ぶ</b>(割れた位置は歯抜けのまま)。割られたカードは手札へ。そのままコストなしで召喚してもよい(Sトリガー)<br>
       <b>JOKER</b>(すべて0マナ+追加コスト、2枚入り):<br>
-      ・4色どのマナも出せる土地としてセット<br>
+      ・4色どのマナも出せる土地としてセット(このターン土地をセット済みでも置ける・別枠)<br>
       ・♠スペードスピア: 自クリーチャー1体生贄 → クリーチャー1体破壊<br>
       ・♥ハートデザイア: シールドを見て、1枚を手札1枚と入れ替える<br>
       ・♦ダイヤクラック: 自シールド1枚生贄 → 相手シールド1枚破壊(両方Sトリガーあり)<br>
@@ -406,8 +406,8 @@ function playLand(pi, c) {
   const p = players[pi];
   removeFromHand(p, c);
   p.lands.push({ card: c, tapped: false });
-  landPlayedThisTurn = true;
-  log(`${p.name}: ${cardLabel(c)} を土地に置いた`);
+  if (!c.joker) landPlayedThisTurn = true;   // JOKER土地は1ターン1枚制限の別枠
+  log(`${p.name}: ${cardLabel(c)} を土地に置いた${c.joker ? "(土地セット権は消費しない)" : ""}`);
 }
 function summon(pi, c, free) {
   const p = players[pi];
@@ -872,7 +872,7 @@ async function onHandClick(c) {
   const opts = [];
   if (c.joker) {
     const others = p.hand.filter(x => x.id !== c.id);
-    opts.push({ label: "土地に置く(4色どのマナも出せる)", value: "land", disabled: landPlayedThisTurn });
+    opts.push({ label: "土地に置く(4色マナ・1ターン1枚制限とは別枠)", value: "land" });
     opts.push({ label: "♠スペードスピア: 自クリーチャー1体生贄 → 相手クリーチャー1体破壊", value: "spear",
                 disabled: atk || !p.field.length || !o.field.length });
     opts.push({ label: "♥ハートデザイア: シールドを見て、1枚を手札1枚と入れ替える", value: "desire",
