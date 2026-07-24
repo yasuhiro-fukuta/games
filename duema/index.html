@@ -128,7 +128,7 @@
   }
   .panel .body { font-size: 12.5px; line-height: 1.85; color: rgba(251,248,239,.9); }
   .panel .body b { color: var(--gold); }
-  .panel .cardrow { display: flex; justify-content: center; margin: 10px 0; }
+  .panel .cardrow { display: flex; justify-content: center; margin: 10px 0; gap: 4px; flex-wrap: wrap; }
   .opts { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
   .opts button { background: rgba(251,248,239,.16); color: var(--paper); text-align: left; }
   .opts button.primary { background: var(--gold); color: var(--ink); }
@@ -208,7 +208,7 @@
   <div class="panel">
     <h2>トランプデュエル</h2>
     <div class="body">
-      27枚デッキ(あなた: ♦13+♥13+JOKER / CPU: ♣13+♠13+JOKER)、シールド6枚の1対1。<br><br>
+      27枚デッキ(あなた: ♦13+♥13+JOKER / CPU: ♣13+♠13+JOKER)、シールド6枚の1対1。先攻後攻はランダム。<br><br>
       <b>手札は土地にもクリーチャーにもなる</b><br>
       ・土地は1ターンに1枚。タップでそのスートのマナ1を出す<br>
       ・クリーチャー召喚コスト = <b>自スート1マナ + 数字ぶんの無指定マナ</b>(例: ♠3 は合計4マナ)。パワー/タフネス = 数字<br>
@@ -217,7 +217,7 @@
       <b>シールドブレイク</b>: 割られたカードは手札へ。そのままコストなしで召喚してもよい(Sトリガー)<br>
       <b>JOKER</b>: 4色マナが出る土地、または「0マナ: 全クリーチャー破壊」の呪文<br>
       <b>勝利条件</b>: シールド0の相手に攻撃を通す(ダイレクトアタック)。山札切れは敗北<br>
-      <b>後攻補正</b>: 後攻は1回だけフリーマリガン(手札5枚を山札に戻して引き直し)できる
+      <b>後攻補正</b>: 後攻は1回だけフリーマリガン(手札5枚を山札に戻して引き直し)できる。先攻も1ターン目からドローあり
     </div>
     <div class="start-row"><button id="btn-start">デュエル開始</button></div>
   </div>
@@ -242,7 +242,7 @@ let CPU_DELAY = 550;
 let TEST_AUTO = false;      // テスト用: 人間側の選択を自動化
 
 /* ================= 状態 ================= */
-let players, turnP, turnNo, landPlayedThisTurn, winner, busy, selAttacker;
+let players, turnP, turnNo, landPlayedThisTurn, winner, busy, selAttacker, firstP;
 let logLines = [];
 
 function mkCard(id, suit, rank, joker) { return { id, suit, rank, joker: !!joker }; }
@@ -262,7 +262,7 @@ function shuffle(a) {
   return a;
 }
 
-function newDuel() {
+async function newDuel() {
   players = [
     { name: "あなた", deck: shuffle(buildDeck([2, 1], 0)), hand: [], shields: [], lands: [], field: [], grave: [] },
     { name: "CPU",   deck: shuffle(buildDeck([3, 0], 100)), hand: [], shields: [], lands: [], field: [], grave: [] },
@@ -271,16 +271,42 @@ function newDuel() {
     p.shields = p.deck.splice(0, 6);
     p.hand = p.deck.splice(0, 5);
   }
-  turnP = 0; turnNo = 1; landPlayedThisTurn = false;
+  firstP = Math.random() < 0.5 ? 0 : 1;
+  turnP = firstP; turnNo = 1; landPlayedThisTurn = false;
   winner = null; busy = false; selAttacker = null;
   logLines = [];
-  log("デュエル開始!あなたの先攻(先攻1ターン目はドローなし)");
-  // 後攻は1回フリーマリガンできる(CPUは序盤に動けない手札なら引き直す)
-  if (wantsMulligan(players[1].hand)) {
-    doMulligan(1);
-    log("後攻CPU: フリーマリガン — 手札5枚を引き直した");
+  log(`デュエル開始!先攻は ${players[firstP].name}`);
+  render();
+
+  // 後攻は1回フリーマリガンできる
+  const secondP = 1 - firstP;
+  if (secondP === 1) {
+    if (wantsMulligan(players[1].hand)) {
+      doMulligan(1);
+      log("後攻CPU: フリーマリガン — 手札5枚を引き直した");
+    }
+  } else {
+    let doIt;
+    if (TEST_AUTO) doIt = wantsMulligan(players[0].hand);
+    else doIt = await choose("後攻フリーマリガン", [
+      { label: "引き直す(手札5枚を山札に戻してシャッフルし、5枚引き直す)", value: true, primary: true },
+      { label: "このままでいく", value: false },
+    ], players[0].hand, "あなたは後攻です。1回だけ無料で手札を引き直せます");
+    if (doIt) { doMulligan(0); log("あなた: フリーマリガン — 手札5枚を引き直した"); }
   }
   render();
+
+  if (firstP === 0) {
+    startTurn(0);
+  } else {
+    busy = true; render();
+    if (!startTurn(1)) { busy = false; return; }
+    await wait(CPU_DELAY);
+    await aiTurn(1);
+    busy = false;
+    if (winner !== null) return;
+    startTurn(0);
+  }
 }
 
 /* 後攻フリーマリガン: 安いカード(4以下)とJOKERを「動ける札」と数え、2枚未満なら引き直す */
@@ -413,7 +439,7 @@ function choose(title, opts, card, bodyHtml) {
     const ov = document.getElementById("modal");
     document.getElementById("modal-title").textContent = title;
     const mc = document.getElementById("modal-card"); mc.innerHTML = "";
-    if (card) mc.appendChild(cardEl(card, { pt: !card.joker }));
+    if (card) (Array.isArray(card) ? card : [card]).forEach(c => mc.appendChild(cardEl(c, { pt: !c.joker })));
     document.getElementById("modal-body").innerHTML = bodyHtml || "";
     const mo = document.getElementById("modal-opts"); mo.innerHTML = "";
     for (const o of opts) {
@@ -636,11 +662,9 @@ function startTurn(pi) {
   p.field.forEach(f => { f.tapped = false; f.sick = false; });
   landPlayedThisTurn = false;
   selAttacker = null;
-  if (!(pi === 0 && turnNo === 1)) {
-    if (p.deck.length === 0) { win(1 - pi, `${p.name} は山札切れ`); return false; }
-    p.hand.push(p.deck.pop());
-    log(`── ${p.name} のターン${pi === 0 ? turnNo : ""} ── ドロー`);
-  }
+  if (p.deck.length === 0) { win(1 - pi, `${p.name} は山札切れ`); return false; }
+  p.hand.push(p.deck.pop());
+  log(`── ${p.name} のターン${pi === 0 ? turnNo : ""} ── ドロー`);
   render();
   return true;
 }
@@ -717,12 +741,13 @@ async function aiTurn(pi) {
 
 async function cpuTurn() {
   busy = true; render();
+  if (firstP === 1) turnNo++;          // CPUが先攻なら、CPUのターンから新ラウンド
   if (!startTurn(1)) { busy = false; return; }
   await wait(CPU_DELAY);
   await aiTurn(1);
   busy = false;
   if (winner !== null) return;
-  turnNo++;
+  if (firstP === 0) turnNo++;          // あなたが先攻なら、あなたのターンから新ラウンド
   startTurn(0);
 }
 
