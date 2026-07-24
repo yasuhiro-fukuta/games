@@ -111,6 +111,12 @@
   button:disabled { opacity: .35; cursor: default; }
   .controls .hint { font-size: 11px; color: var(--dim); }
 
+  input[type="text"] {
+    font-family: inherit; font-size: 14px; padding: 9px 12px; border-radius: 8px;
+    border: 1px solid rgba(251,248,239,.3); background: rgba(0,0,0,.3); color: var(--paper);
+    letter-spacing: .2em; text-transform: uppercase; width: 130px;
+  }
+
   /* Modal / overlay */
   .overlay {
     position: fixed; inset: 0; background: rgba(8,14,20,.82);
@@ -139,8 +145,15 @@
   .opts button { background: rgba(251,248,239,.16); color: var(--paper); text-align: left; }
   .opts button.primary { background: var(--gold); color: var(--ink); }
   .opts button.danger { background: var(--rust); color: var(--paper); }
-  .start-row { text-align: center; margin-top: 16px; }
-  #btn-start, #btn-again { background: var(--gold); color: var(--ink); font-size: 15px; }
+  .start-row { text-align: center; margin-top: 16px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+  .start-row .joinrow { display: flex; gap: 8px; align-items: center; }
+  #btn-cpu, #btn-host, #btn-again { background: var(--gold); color: var(--ink); font-size: 15px; }
+  #btn-join { background: rgba(251,248,239,.2); color: var(--paper); }
+  #online-note { font-size: 11px; color: var(--dim); }
+  #room-code-big {
+    font-family: "Helvetica Neue", monospace; font-size: 40px; letter-spacing: .3em;
+    color: var(--gold); text-align: center; margin: 14px 0;
+  }
 
   @media (max-width: 560px) {
     .card { width: 42px; height: 58px; }
@@ -157,10 +170,10 @@
     <span id="turn-ind"></span>
   </header>
 
-  <!-- 相手 -->
+  <!-- 相手(上段) -->
   <div class="side enemy" id="enemy-side">
     <div class="side-head">
-      <span class="pname">CPU</span>
+      <span class="pname" id="e-name">相手</span>
       <span class="stat">山札 <b id="e-deck">0</b></span>
       <span class="stat">手札 <b id="e-hand">0</b></span>
       <span class="stat">墓地 <b id="e-grave">0</b></span>
@@ -176,7 +189,7 @@
 
   <div id="log"></div>
 
-  <!-- 自分 -->
+  <!-- 自分(下段) -->
   <div class="side" id="my-side">
     <div class="side-head">
       <span class="pname">あなた</span>
@@ -193,7 +206,7 @@
     <div class="zone-label">手札</div>
     <div class="zone" id="hand-zone"></div>
     <div class="controls">
-      <button id="btn-end">ターン終了</button>
+      <button id="btn-end" disabled>ターン終了</button>
       <span class="hint" id="hint"></span>
     </div>
   </div>
@@ -230,9 +243,27 @@
       ・♣クローバーミル: 自土地1枚生贄 → 相手土地1枚破壊<br>
       <b>タイミング</b>: 召喚とJOKER呪文は、最初のクリーチャーが攻撃する前のみ<br>
       <b>勝利条件</b>: シールド0の相手に攻撃を通す(ダイレクトアタック)。山札切れは敗北<br>
-      <b>後攻補正</b>: 後攻は1回だけフリーマリガン(手札5枚を山札に戻して引き直し)できる。先攻も1ターン目からドローあり
+      <b>後攻補正</b>: 後攻は1回だけフリーマリガン(手札5枚を山札に戻して引き直し)できる
     </div>
-    <div class="start-row"><button id="btn-start">デュエル開始</button></div>
+    <div class="start-row">
+      <button id="btn-cpu">CPU対戦</button>
+      <button id="btn-host">オンライン対戦: 部屋を作る</button>
+      <div class="joinrow">
+        <input type="text" id="join-code" maxlength="5" placeholder="コード">
+        <button id="btn-join">部屋に入る</button>
+      </div>
+      <div id="online-note"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 部屋待機 -->
+<div class="overlay" id="wait-overlay">
+  <div class="panel">
+    <h2>部屋を作成した</h2>
+    <div class="body" style="text-align:center">このコードを相手に伝えてください</div>
+    <div id="room-code-big"></div>
+    <div class="body" style="text-align:center" id="wait-status">相手の参加を待っています…</div>
   </div>
 </div>
 
@@ -241,26 +272,54 @@
   <div class="panel">
     <h2 id="result-title"></h2>
     <div class="body" id="result-body" style="text-align:center"></div>
-    <div class="start-row"><button id="btn-again">もう一度デュエル</button></div>
+    <div class="start-row"><button id="btn-again">タイトルへ戻る</button></div>
   </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js" defer></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js" defer></script>
 <script>
 "use strict";
 
-/* ================= 定数 ================= */
+/* ============================================================
+   トランプデュエル — 決定論エンジン + アクションログ同期版
+   同じシードと同じアクション列から、両クライアントが同一の
+   盤面を再現する(ロックステップ)。オンラインはFirebaseに
+   アクションだけを流す。CPU対戦も同じ仕組みで動く。
+   ============================================================ */
+
+/* ▼▼ Firebase設定: ユーザーのFirebaseプロジェクトの設定に差し替える ▼▼ */
+const FIREBASE_CONFIG = null;
+/* ▲▲ null の間はオンライン対戦ボタンが無効(CPU対戦は動く) ▲▲ */
+
 const SUITS = ["♠", "♥", "♦", "♣"];
 const RANK_LABEL = { 1:"A",2:"2",3:"3",4:"4",5:"5",6:"6",7:"7",8:"8",9:"9",10:"10",11:"J",12:"Q",13:"K" };
-let CPU_DELAY = 550;
-let TEST_AUTO = false;      // テスト用: 人間側の選択を自動化
+let CPU_DELAY = 650;
+let TEST_AUTO = false;      // テスト: 自席もAIが指す
+
+/* ================= 乱数(シード決定論) ================= */
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+let rng = Math.random;
 
 /* ================= 状態 ================= */
-let players, turnP, turnNo, landPlayedThisTurn, winner, busy, selAttacker, firstP;
-let attackedThisTurn = false;   // 攻撃開始後は召喚・ジョーカー呪文不可
+let players, turnP, turnNo, landPlayedThisTurn, attackedThisTurn, winner, firstP;
+let myIdx = 0;              // 自分の席(0=部屋主/CPU戦の人間, 1=ゲスト)
+let mode = "cpu";           // 'cpu' | 'host' | 'guest'
+let uiMain = false;         // 自分のメインフェイズ入力を受付中か
+let selAttacker = null;
 let logLines = [];
+let transport = null;
+let gameToken = 0;          // ゲーム世代(古い非同期処理の無効化)
 
 function mkCard(id, suit, rank, joker) { return { id, suit, rank, joker: !!joker }; }
-
 function buildDeck(idBase) {
   const d = [];
   let id = idBase;
@@ -271,60 +330,11 @@ function buildDeck(idBase) {
 }
 function shuffle(a) {
   for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rng() * (i + 1));
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
 }
-
-async function newDuel() {
-  players = [
-    { name: "あなた", deck: shuffle(buildDeck(0)),   hand: [], shields: [], lands: [], field: [], grave: [] },
-    { name: "CPU",   deck: shuffle(buildDeck(200)), hand: [], shields: [], lands: [], field: [], grave: [] },
-  ];
-  for (const p of players) {
-    p.shields = p.deck.splice(0, 6);
-    p.hand = p.deck.splice(0, 5);
-  }
-  firstP = Math.random() < 0.5 ? 0 : 1;
-  turnP = firstP; turnNo = 1; landPlayedThisTurn = false;
-  winner = null; busy = false; selAttacker = null;
-  logLines = [];
-  log(`デュエル開始!先攻は ${players[firstP].name}`);
-  render();
-
-  // 後攻は1回フリーマリガンできる
-  const secondP = 1 - firstP;
-  if (secondP === 1) {
-    if (wantsMulligan(players[1].hand)) {
-      doMulligan(1);
-      log("後攻CPU: フリーマリガン — 手札5枚を引き直した");
-    }
-  } else {
-    let doIt;
-    if (TEST_AUTO) doIt = wantsMulligan(players[0].hand);
-    else doIt = await choose("後攻フリーマリガン", [
-      { label: "引き直す(手札5枚を山札に戻してシャッフルし、5枚引き直す)", value: true, primary: true },
-      { label: "このままでいく", value: false },
-    ], players[0].hand, "あなたは後攻です。1回だけ無料で手札を引き直せます");
-    if (doIt) { doMulligan(0); log("あなた: フリーマリガン — 手札5枚を引き直した"); }
-  }
-  render();
-
-  if (firstP === 0) {
-    startTurn(0);
-  } else {
-    busy = true; render();
-    if (!startTurn(1)) { busy = false; return; }
-    await wait(CPU_DELAY);
-    await aiTurn(1);
-    busy = false;
-    if (winner !== null) return;
-    startTurn(0);
-  }
-}
-
-/* 後攻フリーマリガン: 安いカード(4以下)とJOKERを「動ける札」と数え、2枚未満なら引き直す */
 function wantsMulligan(hand) {
   return hand.filter(c => c.joker || c.rank <= 4).length < 2;
 }
@@ -335,116 +345,608 @@ function doMulligan(pi) {
   p.hand = p.deck.splice(0, 5);
 }
 
-/* ================= ログ・描画 ================= */
+/* ================= 基本ユーティリティ ================= */
 function log(msg) {
   logLines.push(msg);
   if (logLines.length > 3) logLines.shift();
   document.getElementById("log").innerHTML =
     logLines.map((m, i) => `<div class="${i === logLines.length - 1 ? "latest" : ""}">${m}</div>`).join("");
 }
-
 function cardLabel(c) { return c.joker ? "JOKER" : SUITS[c.suit] + RANK_LABEL[c.rank]; }
 function costOf(c) { return c.rank + 1; }
+function untappedLands(p) { return p.lands.filter(l => !l.tapped); }
+function totalPower(pi) { return players[pi].field.reduce((a, f) => a + f.card.rank, 0); }
+function removeFromHand(p, c) { p.hand = p.hand.filter(x => x.id !== c.id); }
+function handById(pi, id) { return players[pi].hand.find(c => c.id === id); }
+function fieldById(pi, id) { return players[pi].field.find(f => f.card.id === id); }
+function landById(pi, id) { return players[pi].lands.find(l => l.card.id === id); }
 
-function cardEl(c, opts = {}) {
-  const el = document.createElement("div");
-  if (opts.back) { el.className = "card back" + (opts.sm ? " sm" : ""); return el; }
-  if (c.joker) {
-    el.className = "card joker" + (opts.sm ? " sm" : "");
-    el.innerHTML = `<span class="jk">JOKER</span>`;
-  } else {
-    el.className = "card" + (opts.sm ? " sm" : "") + (c.suit === 1 || c.suit === 2 ? " red" : "");
-    el.innerHTML = `<span class="rk">${RANK_LABEL[c.rank]}</span><span class="st-s">${SUITS[c.suit]}</span><span class="st-b">${SUITS[c.suit]}</span>`;
+function canPay(p, suit, total) {
+  const ls = untappedLands(p);
+  if (ls.length < total) return false;
+  return ls.some(l => l.card.joker || l.card.suit === suit);
+}
+function pay(p, suit, total) {
+  const ls = untappedLands(p);
+  const colored = ls.find(l => !l.card.joker && l.card.suit === suit) || ls.find(l => l.card.joker);
+  colored.tapped = true;
+  let need = total - 1;
+  for (const l of ls) {
+    if (need <= 0) break;
+    if (l.tapped || l.card.joker) continue;
+    l.tapped = true; need--;
   }
-  if (opts.pt) el.innerHTML += `<span class="pt">${c.rank}/${c.rank}</span>`;
-  return el;
+  for (const l of ls) {
+    if (need <= 0) break;
+    if (l.tapped) continue;
+    l.tapped = true; need--;
+  }
 }
 
-function untappedLands(p) { return p.lands.filter(l => !l.tapped); }
+/* ================= メカニクス ================= */
+function playLand(pi, c) {
+  const p = players[pi];
+  removeFromHand(p, c);
+  p.lands.push({ card: c, tapped: false });
+  landPlayedThisTurn = true;
+  log(`${p.name}: ${cardLabel(c)} を土地に置いた`);
+}
+function summon(pi, c, free) {
+  const p = players[pi];
+  removeFromHand(p, c);
+  if (!free) pay(p, c.suit, costOf(c));
+  p.field.push({ card: c, tapped: false, sick: true });
+  log(`${p.name}: ${cardLabel(c)} を召喚${free ? "(コストなし!)" : `(${costOf(c)}マナ)`} — ${c.rank}/${c.rank}`);
+}
+function spendJoker(pi, jk, spellName) {
+  const p = players[pi];
+  removeFromHand(p, jk);
+  p.grave.push(jk);
+  log(`${p.name}: JOKER — ${spellName}!`);
+}
+// suit のクリーチャーが oppSuit と戦闘するときのタフネス修正
+function bonus(suit, oppSuit) {
+  if (suit === 0 && oppSuit === 1) return 1;  // ♠ vs ♥ → ♠ +0/+1
+  if (suit === 2 && oppSuit === 0) return 1;  // ♦ vs ♠ → ♦ +0/+1
+  if (suit === 3 && oppSuit === 2) return 1;  // ♣ vs ♦ → ♣ +0/+1
+  if (suit === 1 && oppSuit === 3) return 1;  // ♥ vs ♣ → ♥ +0/+1
+  return 0;
+}
+function battle(aPi, aCre, bPi, bCre) {
+  const a = aCre.card, b = bCre.card;
+  const at = a.rank + bonus(a.suit, b.suit);
+  const bt = b.rank + bonus(b.suit, a.suit);
+  const aDies = b.rank >= at, bDies = a.rank >= bt;
+  log(`戦闘: ${cardLabel(a)}(${a.rank}/${at}) vs ${cardLabel(b)}(${b.rank}/${bt})`);
+  if (bDies) destroy(bPi, bCre);
+  if (aDies) destroy(aPi, aCre);
+  if (!aDies && !bDies) log("両者生き残った");
+}
+function destroy(pi, cre) {
+  const p = players[pi];
+  p.field = p.field.filter(f => f !== cre);
+  p.grave.push(cre.card);
+  log(`${cardLabel(cre.card)} は破壊された`);
+}
+function win(pi, reason) {
+  winner = pi;
+  render();
+  document.getElementById("result-title").textContent = pi === myIdx ? "勝利!" : "敗北…";
+  document.getElementById("result-body").innerHTML = `${reason}<br>${players[pi].name} の勝ち!`;
+  setTimeout(() => document.getElementById("result-overlay").classList.add("show"), 700);
+}
+function startTurn(pi) {
+  turnP = pi;
+  const p = players[pi];
+  p.lands.forEach(l => l.tapped = false);
+  p.field.forEach(f => { f.tapped = false; f.sick = false; });
+  landPlayedThisTurn = false;
+  attackedThisTurn = false;
+  selAttacker = null;
+  if (p.deck.length === 0) { win(1 - pi, `${p.name} は山札切れ`); return false; }
+  p.hand.push(p.deck.pop());
+  log(`── ${p.name} のターン${turnNo} ── ドロー`);
+  render();
+  return true;
+}
 
-function render() {
-  document.getElementById("turn-ind").textContent =
-    winner !== null ? "" : `ターン${turnNo} — ${players[turnP].name}の番`;
+/* ================= アクション同期層 =================
+   すべての意思決定(メイン行動・ブロック・Sトリガー・マリガン)は
+   アクションとしてトランスポートに流れ、受信順に両クライアントで
+   同一適用される。決定者が自分ならUI/AIがアクションを発行する。 */
+const inbox = [];
+let pendingResolve = null;
 
-  const e = players[1], m = players[0];
-  document.getElementById("e-deck").textContent = e.deck.length;
-  document.getElementById("e-hand").textContent = e.hand.length;
-  document.getElementById("e-grave").textContent = e.grave.length;
-  document.getElementById("e-mana").textContent = `マナ ${untappedLands(e).length}/${e.lands.length}`;
-  document.getElementById("m-deck").textContent = m.deck.length;
-  document.getElementById("m-grave").textContent = m.grave.length;
-  document.getElementById("m-mana").textContent = `マナ ${untappedLands(m).length}/${m.lands.length}`;
+function onActionArrived(a) { inbox.push(a); pump(); }
+function pump() {
+  if (pendingResolve && inbox.length) {
+    const a = inbox.shift();
+    const r = pendingResolve;
+    pendingResolve = null;
+    r(a);
+  }
+}
+function nextAction() { return new Promise(res => { pendingResolve = res; pump(); }); }
+function act(a) { transport.send(a); }
 
-  // シールド
-  const es = document.getElementById("e-shields"); es.innerHTML = "";
-  e.shields.forEach(() => es.appendChild(cardEl(null, { back: true, sm: true })));
-  if (!e.shields.length) es.innerHTML = `<span style="font-size:11px;color:var(--rust);font-weight:bold">シールドなし!</span>`;
-  const ms = document.getElementById("m-shields"); ms.innerHTML = "";
-  m.shields.forEach(() => ms.appendChild(cardEl(null, { back: true, sm: true })));
-  if (!m.shields.length) ms.innerHTML = `<span style="font-size:11px;color:var(--rust);font-weight:bold">シールドなし!</span>`;
+// 席 pi の操作者: 'human'(この画面) / 'ai'(CPU) / 'remote'(相手の画面)
+function controller(pi) {
+  if (TEST_AUTO) return pi === myIdx || mode === "cpu" ? "ai" : "remote";
+  if (mode === "cpu") return pi === 0 ? "human" : "ai";
+  return pi === myIdx ? "human" : "remote";
+}
 
-  // 土地
-  for (const [id, p] of [["e-lands", e], ["m-lands", m]]) {
-    const z = document.getElementById(id); z.innerHTML = "";
-    p.lands.forEach(l => {
-      const slot = document.createElement("div");
-      slot.className = "slot" + (l.tapped ? " tapped" : "");
-      const el = cardEl(l.card, { sm: true });
-      if (l.tapped) el.classList.add("tapped");
-      slot.appendChild(el); z.appendChild(slot);
+async function decision(pi, kind, ctx) {
+  const token = gameToken;
+  if (inbox.length === 0) promptFor(pi, kind, ctx, token);   // リプレイ中はプロンプト不要
+  const a = await nextAction();
+  if (a.k !== kind) console.warn(`desync? expected ${kind} got ${a.k}`);
+  uiMain = false;
+  render();
+  return a;
+}
+
+function promptFor(pi, kind, ctx, token) {
+  const who = controller(pi);
+  if (who === "remote") { setHint(`${players[pi].name} の操作を待っています…`); return; }
+  if (who === "ai") {
+    setTimeout(() => {
+      if (token !== gameToken || winner !== null) return;
+      act(aiDecide(pi, kind, ctx));
+    }, CPU_DELAY);
+    return;
+  }
+  humanPrompt(pi, kind, ctx);   // human: モーダル/盤面UIを開く(送信はハンドラ側)
+}
+function setHint(t) { document.getElementById("hint").textContent = t; }
+
+/* ================= ゲーム進行(両クライアント共通) ================= */
+async function runGame(seed) {
+  const token = ++gameToken;
+  rng = mulberry32(seed);
+  players = [
+    { name: myIdx === 0 ? "あなた" : (mode === "cpu" ? "CPU" : "相手"), deck: shuffle(buildDeck(0)),   hand: [], shields: [], lands: [], field: [], grave: [] },
+    { name: myIdx === 1 ? "あなた" : (mode === "cpu" ? "CPU" : "相手"), deck: shuffle(buildDeck(200)), hand: [], shields: [], lands: [], field: [], grave: [] },
+  ];
+  for (const p of players) {
+    p.shields = p.deck.splice(0, 6);
+    p.hand = p.deck.splice(0, 5);
+  }
+  firstP = rng() < 0.5 ? 0 : 1;
+  turnP = firstP; turnNo = 1;
+  landPlayedThisTurn = false; attackedThisTurn = false;
+  winner = null; uiMain = false; selAttacker = null;
+  logLines = [];
+  inbox.length = 0; pendingResolve = null;
+  document.getElementById("e-name").textContent = players[1 - myIdx].name;
+  log(`デュエル開始!先攻は ${players[firstP].name}`);
+  render();
+
+  // 後攻フリーマリガン
+  const secondP = 1 - firstP;
+  const m = await decision(secondP, "mull");
+  if (token !== gameToken) return;
+  if (m.v) { doMulligan(secondP); log(`${players[secondP].name}: フリーマリガン — 手札5枚を引き直した`); }
+  render();
+
+  // ターンループ
+  let cur = firstP;
+  while (winner === null) {
+    if (!startTurn(cur)) break;
+    for (;;) {
+      if (winner !== null || token !== gameToken) return;
+      const a = await decision(cur, "main");
+      if (token !== gameToken) return;
+      const done = await applyMainAction(cur, a);
+      render();
+      if (done || winner !== null) break;
+    }
+    if (winner !== null || token !== gameToken) break;
+    if (cur === secondP) turnNo++;
+    cur = 1 - cur;
+  }
+}
+
+/* メインフェイズのアクション適用。'end' なら true を返す */
+async function applyMainAction(pi, a) {
+  const p = players[pi], o = players[1 - pi];
+  switch (a.t) {
+    case "land": playLand(pi, handById(pi, a.card)); return false;
+    case "summon": summon(pi, handById(pi, a.card), false); return false;
+    case "spear": {
+      spendJoker(pi, handById(pi, a.jk), "スペードスピア");
+      destroy(pi, fieldById(pi, a.sac));
+      destroy(1 - pi, fieldById(1 - pi, a.tgt));
+      return false;
+    }
+    case "desire": {
+      spendJoker(pi, handById(pi, a.jk), "ハートデザイア");
+      const disc = handById(pi, a.disc);
+      removeFromHand(p, disc);
+      p.grave.push(disc);
+      const pick = p.deck.find(c => c.id === a.pick);
+      p.deck = p.deck.filter(c => c.id !== a.pick);
+      p.hand.push(pick);
+      shuffle(p.deck);
+      log(pi === myIdx ? `捨て札: ${cardLabel(disc)} / サーチ: ${cardLabel(pick)}(山札シャッフル)`
+                       : `${p.name}は手札を1枚捨て、山札からサーチした`);
+      return false;
+    }
+    case "crack": {
+      spendJoker(pi, handById(pi, a.jk), "ダイヤクラック");
+      await breakShieldFlow(pi);
+      if (winner === null) await breakShieldFlow(1 - pi);
+      return false;
+    }
+    case "mill": {
+      spendJoker(pi, handById(pi, a.jk), "クローバーミル");
+      const sac = landById(pi, a.sac), tgt = landById(1 - pi, a.tgt);
+      p.lands = p.lands.filter(l => l !== sac);
+      p.grave.push(sac.card);
+      o.lands = o.lands.filter(l => l !== tgt);
+      o.grave.push(tgt.card);
+      log(`土地破壊: ${p.name}は ${cardLabel(sac.card)} を生贄に、${o.name} の ${cardLabel(tgt.card)} を破壊`);
+      return false;
+    }
+    case "attack": await attackFlow(pi, a.cre, a.target); return false;
+    case "end": log(`${p.name}: ターン終了`); return true;
+    default: console.warn("unknown action", a); return false;
+  }
+}
+
+/* 攻撃解決(ブロック・Sトリガーの意思決定を挟む) */
+async function attackFlow(atkPi, creId, target) {
+  attackedThisTurn = true;
+  const creature = fieldById(atkPi, creId);
+  if (!creature) return;
+  const defPi = 1 - atkPi, def = players[defPi];
+  creature.tapped = true;
+  const targetCre = target === "player" ? null : fieldById(defPi, target);
+  const tName = targetCre ? cardLabel(targetCre.card)
+              : (def.shields.length ? "シールド" : "プレイヤー(とどめ!)");
+  log(`${players[atkPi].name}: ${cardLabel(creature.card)} で ${tName} に攻撃`);
+  render();
+
+  let blocker = null;
+  if (def.field.some(f => !f.tapped)) {
+    const bd = await decision(defPi, "block", { attacker: creature, target });
+    blocker = bd.blocker != null ? fieldById(defPi, bd.blocker) : null;
+  }
+  if (blocker) {
+    blocker.tapped = true;
+    log(`${def.name}: ${cardLabel(blocker.card)} でブロック!`);
+    battle(atkPi, creature, defPi, blocker);
+  } else if (target === "player") {
+    if (def.shields.length > 0) await breakShieldFlow(defPi);
+    else { win(atkPi, "ダイレクトアタック!"); return; }
+  } else if (targetCre && players[defPi].field.includes(targetCre)) {
+    battle(atkPi, creature, defPi, targetCre);
+  }
+  render();
+}
+
+/* シールドブレイク(Sトリガーの意思決定を挟む) */
+async function breakShieldFlow(defPi) {
+  const def = players[defPi];
+  if (!def.shields.length) return;
+  const c = def.shields.pop();
+  log(`${def.name} のシールドをブレイク! ${cardLabel(c)} が手札へ`);
+  def.hand.push(c);
+  render();
+  if (c.joker) return;   // JOKERは手札に加わるだけ
+  const d = await decision(defPi, "trigger", { card: c });
+  if (d.v === "summon") {
+    removeFromHand(def, c);
+    def.field.push({ card: c, tapped: false, sick: true });
+    log(`Sトリガー! ${def.name}: ${cardLabel(c)} をコストなしで召喚`);
+  }
+  render();
+}
+
+/* ================= AI(CPU席・テスト自動化) ================= */
+function aiDecide(pi, kind, ctx) {
+  if (kind === "mull") return { k: "mull", v: wantsMulligan(players[pi].hand) };
+  if (kind === "trigger") return { k: "trigger", v: "summon" };
+  if (kind === "block") {
+    const b = aiChooseBlock(pi, ctx.attacker);
+    return { k: "block", blocker: b ? b.card.id : null };
+  }
+  return { k: "main", ...aiMainAction(pi) };
+}
+
+function aiChooseBlock(defPi, attacker) {
+  const def = players[defPi];
+  const cands = def.field.filter(f => !f.tapped);
+  if (!cands.length) return null;
+  const a = attacker.card;
+  const kills = b => b.card.rank >= a.rank + bonus(a.suit, b.card.suit);
+  const survives = b => a.rank < b.card.rank + bonus(b.card.suit, a.suit);
+  let best = cands.filter(b => kills(b) && survives(b)).sort((x, y) => x.card.rank - y.card.rank)[0];
+  if (!best && def.shields.length === 0) best = cands.sort((x, y) => x.card.rank - y.card.rank)[0];
+  if (!best) {
+    const trade = cands.filter(kills).sort((x, y) => x.card.rank - y.card.rank)[0];
+    if (trade && a.rank >= trade.card.rank && def.shields.length <= 2) best = trade;
+  }
+  return best || null;
+}
+
+function aiPickLand(pi) {
+  const p = players[pi];
+  const hand = p.hand.filter(c => !c.joker);
+  if (!hand.length) {
+    const jk = p.hand.find(c => c.joker);
+    return p.lands.length < 3 ? jk || null : null;
+  }
+  const landSuits = new Set(p.lands.map(l => l.card.joker ? "*" : l.card.suit));
+  for (const c of [...hand].sort((a, b) => b.rank - a.rank)) {
+    const same = hand.filter(x => x.suit === c.suit);
+    if (!landSuits.has(c.suit) && !landSuits.has("*") && same.length >= 2) return c;
+  }
+  const sorted = [...hand].sort((a, b) => b.rank - a.rank);
+  return p.lands.length < 5 ? sorted[0] : sorted[sorted.length - 1];
+}
+
+function aiJokerAction(pi) {
+  const p = players[pi], o = players[1 - pi];
+  const jk = p.hand.find(c => c.joker);
+  if (!jk) return null;
+  const oppStrong = o.field.length ? Math.max(...o.field.map(f => f.card.rank)) : 0;
+  const mine = [...p.field].sort((a, b) => a.card.rank - b.card.rank);
+  if (p.field.length >= 2 && o.field.length >= 1 && oppStrong >= 7 && mine[0].card.rank <= oppStrong - 4) {
+    const tgt = [...o.field].sort((a, b) => b.card.rank - a.card.rank)[0];
+    return { t: "spear", jk: jk.id, sac: mine[0].card.id, tgt: tgt.card.id };
+  }
+  if (o.shields.length >= 1 && p.shields.length >= 2 && o.shields.length <= 3 &&
+      totalPower(pi) > totalPower(1 - pi)) return { t: "crack", jk: jk.id };
+  if (p.lands.length >= 6 && p.lands.length > o.lands.length + 1 && o.lands.length >= 3) {
+    const countBy = (lands, s) => lands.filter(l => !l.card.joker && l.card.suit === s).length;
+    const sac = [...p.lands].sort((a, b) => countBy(p.lands, b.card.suit) - countBy(p.lands, a.card.suit))[0];
+    const tgt = [...o.lands].filter(l => !l.card.joker)
+      .sort((a, b) => countBy(o.lands, a.card.suit) - countBy(o.lands, b.card.suit))[0] || o.lands[0];
+    if (sac && tgt) return { t: "mill", jk: jk.id, sac: sac.card.id, tgt: tgt.card.id };
+  }
+  if (p.hand.length >= 3 && p.deck.length > 0 && p.lands.length >= 3 &&
+      !p.hand.some(c => !c.joker && canPay(p, c.suit, costOf(c)))) {
+    const others = p.hand.filter(c => c.id !== jk.id);
+    const disc = [...others].filter(c => !c.joker).sort((a, b) => a.rank - b.rank)[0] || others[0];
+    const pick = [...p.deck].filter(c => !c.joker).sort((a, b) => b.rank - a.rank)
+      .find(c => costOf(c) <= p.lands.length + 2) || p.deck[0];
+    if (disc && pick) return { t: "desire", jk: jk.id, disc: disc.id, pick: pick.id };
+  }
+  return null;
+}
+
+function aiMainAction(pi) {
+  const p = players[pi], o = players[1 - pi];
+  if (!attackedThisTurn) {
+    const sp = aiJokerAction(pi);
+    if (sp) return sp;
+  }
+  if (!landPlayedThisTurn) {
+    const c = aiPickLand(pi);
+    if (c) return { t: "land", card: c.id };
+  }
+  if (!attackedThisTurn) {
+    const s = p.hand.filter(c => !c.joker && canPay(p, c.suit, costOf(c))).sort((a, b) => b.rank - a.rank)[0];
+    if (s) return { t: "summon", card: s.id };
+  }
+  const ready = p.field.filter(f => !f.tapped && !f.sick).sort((a, b) => b.card.rank - a.card.rank);
+  if (ready.length) {
+    const atk = ready[0];
+    let target = "player";
+    if (o.shields.length > 0) {
+      const t = o.field.find(t => t.tapped &&
+        atk.card.rank >= t.card.rank + bonus(t.card.suit, atk.card.suit) &&
+        t.card.rank < atk.card.rank + bonus(atk.card.suit, t.card.suit));
+      if (t) target = t.card.id;
+    }
+    return { t: "attack", cre: atk.card.id, target };
+  }
+  return { t: "end" };
+}
+
+/* ================= 人間のプロンプト ================= */
+function humanPrompt(pi, kind, ctx) {
+  if (kind === "main") {
+    uiMain = true;
+    setHint("手札クリック=土地/召喚/JOKER、クリーチャークリック=攻撃");
+    render();
+    return;
+  }
+  if (kind === "mull") {
+    choose("後攻フリーマリガン", [
+      { label: "引き直す(手札5枚を山札に戻してシャッフルし、5枚引き直す)", value: true, primary: true },
+      { label: "このままでいく", value: false },
+    ], players[pi].hand, "あなたは後攻です。1回だけ無料で手札を引き直せます")
+      .then(v => act({ k: "mull", v }));
+    return;
+  }
+  if (kind === "trigger") {
+    const c = ctx.card;
+    choose("シールドトリガー!", [
+      { label: `${cardLabel(c)} をコストなしで召喚する`, value: "summon", primary: true },
+      { label: "手札に加えるだけ", value: "keep" },
+    ], c).then(v => act({ k: "trigger", v }));
+    return;
+  }
+  if (kind === "block") {
+    const def = players[pi];
+    const attacker = ctx.attacker, target = ctx.target;
+    const cands = def.field.filter(f => !f.tapped);
+    const targetCre = target === "player" ? null : fieldById(pi, target);
+    const targetDesc = targetCre
+      ? `あなたの ${cardLabel(targetCre.card)}(タップ中)`
+      : (def.shields.length ? `あなたのシールド(残り${def.shields.length}枚)` : "あなた本体(とどめ!)");
+    const opts = cands.map(b => ({
+      label: `${cardLabel(b.card)}(${b.card.rank}/${b.card.rank})でブロック → ${blockOutcomeText(attacker, b)}`,
+      value: b.card.id,
+    }));
+    if (targetCre) {
+      opts.push({ label: `ブロックしない(${cardLabel(targetCre.card)} がそのまま戦闘: ${blockOutcomeText(attacker, targetCre)})`, value: null });
+    } else {
+      opts.push({ label: def.shields.length ? "ブロックしない(シールドで受ける)" : "ブロックしない(敗北!)", value: null, danger: !def.shields.length });
+    }
+    choose(`${cardLabel(attacker.card)} の攻撃!`, opts, attacker.card, `攻撃対象: <b>${targetDesc}</b>`)
+      .then(v => act({ k: "block", blocker: v }));
+  }
+}
+
+function blockOutcomeText(attacker, b) {
+  const a = attacker.card;
+  const aDies = b.card.rank >= a.rank + bonus(a.suit, b.card.suit);
+  const bDies = a.rank >= b.card.rank + bonus(b.card.suit, a.suit);
+  if (aDies && bDies) return "相討ち";
+  if (aDies) return "一方的に倒せる";
+  if (bDies) return "返り討ちにあう";
+  return "両者生存";
+}
+
+/* 手札クリック → アクション構築(自分のメインフェイズのみ) */
+async function onHandClick(c) {
+  if (!uiMain || winner !== null) return;
+  const p = players[myIdx], o = players[1 - myIdx];
+  const atk = attackedThisTurn;
+  const opts = [];
+  if (c.joker) {
+    const others = p.hand.filter(x => x.id !== c.id);
+    opts.push({ label: "土地に置く(4色どのマナも出せる)", value: "land", disabled: landPlayedThisTurn });
+    opts.push({ label: "♠スペードスピア: 自クリーチャー1体生贄 → 相手クリーチャー1体破壊", value: "spear",
+                disabled: atk || !p.field.length || !o.field.length });
+    opts.push({ label: "♥ハートデザイア: 手札1枚捨てる → 山札から好きな1枚をサーチ", value: "desire",
+                disabled: atk || !others.length || !p.deck.length });
+    opts.push({ label: "♦ダイヤクラック: 自シールド1枚生贄 → 相手シールド1枚破壊(両方Sトリガー)", value: "crack",
+                disabled: atk || !p.shields.length || !o.shields.length });
+    opts.push({ label: "♣クローバーミル: 自土地1枚生贄 → 相手土地1枚破壊", value: "mill",
+                disabled: atk || !p.lands.length || !o.lands.length });
+  } else {
+    opts.push({ label: `土地に置く(${SUITS[c.suit]}マナ)`, value: "land", disabled: landPlayedThisTurn });
+    opts.push({
+      label: `召喚する — コスト${costOf(c)}(${SUITS[c.suit]}1+無指定${c.rank}) ${c.rank}/${c.rank}`,
+      value: "summon", primary: true, disabled: atk || !canPay(p, c.suit, costOf(c)),
     });
   }
-
-  // バトルゾーン
-  const ef = document.getElementById("e-field"); ef.innerHTML = "";
-  e.field.forEach((f, idx) => {
-    const slot = document.createElement("div");
-    slot.className = "slot" + (f.tapped ? " tapped" : "");
-    const el = cardEl(f.card, { pt: true });
-    if (f.tapped) el.classList.add("tapped");
-    if (f.sick) el.classList.add("sick");
-    if (selAttacker !== null && f.tapped) {
-      el.classList.add("targetable");
-      el.addEventListener("click", () => humanAttack(idx));
-    }
-    slot.appendChild(el); ef.appendChild(slot);
-  });
-  const mf = document.getElementById("m-field"); mf.innerHTML = "";
-  m.field.forEach((f, idx) => {
-    const slot = document.createElement("div");
-    slot.className = "slot" + (f.tapped ? " tapped" : "");
-    const el = cardEl(f.card, { pt: true });
-    if (f.tapped) el.classList.add("tapped");
-    if (f.sick) el.classList.add("sick");
-    if (turnP === 0 && !busy && winner === null && !f.tapped && !f.sick) {
-      el.classList.add("selectable");
-      if (selAttacker === idx) el.classList.add("attacking");
-      el.addEventListener("click", () => {
-        selAttacker = selAttacker === idx ? null : idx;
-        render();
-      });
-    }
-    slot.appendChild(el); mf.appendChild(slot);
-  });
-
-  // 相手側全体を攻撃ターゲットに
-  const eside = document.getElementById("enemy-side");
-  eside.classList.toggle("targetable", selAttacker !== null && winner === null);
-
-  // 手札
-  const hz = document.getElementById("hand-zone"); hz.innerHTML = "";
-  m.hand.forEach(c => {
-    const el = cardEl(c);
-    if (turnP === 0 && !busy && winner === null) el.addEventListener("click", () => onHandClick(c));
-    hz.appendChild(el);
-  });
-
-  document.getElementById("btn-end").disabled = !(turnP === 0 && !busy && winner === null);
-  const hint = document.getElementById("hint");
-  if (turnP !== 0 || winner !== null) hint.textContent = "";
-  else if (selAttacker !== null) hint.textContent = "攻撃対象を選択: 相手エリア(シールド) or タップ中の敵クリーチャー";
-  else hint.textContent = "手札クリック=土地/召喚、クリーチャークリック=攻撃";
+  opts.push({ label: "キャンセル", value: null });
+  const note = atk ? "攻撃を開始したため、このターンは召喚・JOKER呪文は使えない"
+             : landPlayedThisTurn ? "土地はこのターンすでに置いた" : "";
+  const v = await choose(cardLabel(c), opts, c, note);
+  if (!uiMain) return;   // 選んでいる間に状況が変わった場合
+  if (v === "land") act({ k: "main", t: "land", card: c.id });
+  if (v === "summon") act({ k: "main", t: "summon", card: c.id });
+  if (v === "spear") {
+    const sc = await chooseCard("スペードスピア: 生贄にする自分のクリーチャー", p.field.map(f => f.card), "", "キャンセル");
+    if (!sc) return;
+    const tc = await chooseCard("スペードスピア: 破壊する相手のクリーチャー", o.field.map(f => f.card), "", "キャンセル");
+    if (!tc) return;
+    act({ k: "main", t: "spear", jk: c.id, sac: sc.id, tgt: tc.id });
+  }
+  if (v === "desire") {
+    const others = p.hand.filter(x => x.id !== c.id);
+    const disc = await chooseCard("ハートデザイア: 捨てる手札を選ぶ", others, "", "キャンセル");
+    if (!disc) return;
+    const sorted = [...p.deck].sort((a, b) => (a.joker ? 99 : a.suit * 20 + a.rank) - (b.joker ? 99 : b.suit * 20 + b.rank));
+    const pick = await chooseCard("ハートデザイア: 山札からサーチするカード", sorted, "選んだあと山札はシャッフルされる", "キャンセル");
+    if (!pick) return;
+    act({ k: "main", t: "desire", jk: c.id, disc: disc.id, pick: pick.id });
+  }
+  if (v === "crack") act({ k: "main", t: "crack", jk: c.id });
+  if (v === "mill") {
+    const sc = await chooseCard("クローバーミル: 生贄にする自分の土地", p.lands.map(l => l.card), "", "キャンセル");
+    if (!sc) return;
+    const tc = await chooseCard("クローバーミル: 破壊する相手の土地", o.lands.map(l => l.card), "", "キャンセル");
+    if (!tc) return;
+    act({ k: "main", t: "mill", jk: c.id, sac: sc.id, tgt: tc.id });
+  }
 }
+
+document.getElementById("btn-end").addEventListener("click", () => {
+  if (!uiMain || winner !== null) return;
+  act({ k: "main", t: "end" });
+});
+document.getElementById("enemy-side").addEventListener("click", (e) => {
+  if (!uiMain || selAttacker === null || winner !== null) return;
+  if (e.target.closest(".card") && e.target.closest("#e-field")) return;
+  const atk = players[myIdx].field[selAttacker];
+  if (!atk || atk.tapped || atk.sick) { selAttacker = null; render(); return; }
+  act({ k: "main", t: "attack", cre: atk.card.id, target: "player" });
+  selAttacker = null;
+});
+
+/* ================= トランスポート ================= */
+class LocalTransport {
+  start(cb) { this.cb = cb; }
+  send(a) { setTimeout(() => this.cb && this.cb(a), 0); }
+  stop() { this.cb = null; }
+}
+class BCTransport {   // 同一ブラウザ内の2ページ用(テスト・デバッグ)
+  constructor(code) { this.ch = new BroadcastChannel("duema-" + code); }
+  start(cb) { this.cb = cb; this.ch.onmessage = e => this.cb && this.cb(e.data); }
+  send(a) { this.ch.postMessage(a); setTimeout(() => this.cb && this.cb(a), 0); }
+  stop() { this.cb = null; this.ch.close(); }
+}
+class FirebaseTransport {
+  constructor(code) { this.ref = firebase.database().ref(`rooms/${code}/actions`); }
+  start(cb) { this.handler = s => cb(s.val()); this.ref.on("child_added", this.handler); }
+  send(a) { this.ref.push(a); }   // 自分の分もchild_addedで戻ってくる
+  stop() { if (this.handler) this.ref.off("child_added", this.handler); }
+}
+
+/* ================= 部屋(Firebase) ================= */
+let fbApp = null;
+function fbReady() {
+  if (!FIREBASE_CONFIG || typeof firebase === "undefined") return false;
+  if (!fbApp) fbApp = firebase.initializeApp(FIREBASE_CONFIG);
+  return true;
+}
+function genCode() {
+  const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  let s = "";
+  for (let i = 0; i < 5; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return s;
+}
+
+async function hostRoom() {
+  if (!fbReady()) return;
+  mode = "host"; myIdx = 0;
+  const code = genCode();
+  const seed = Math.floor(Math.random() * 2 ** 31);
+  const roomRef = firebase.database().ref("rooms/" + code);
+  await roomRef.set({ seed, created: Date.now(), p0: true });
+  document.getElementById("title-overlay").classList.remove("show");
+  document.getElementById("room-code-big").textContent = code;
+  document.getElementById("wait-overlay").classList.add("show");
+  roomRef.child("p1").on("value", s => {
+    if (!s.val()) return;
+    roomRef.child("p1").off();
+    document.getElementById("wait-overlay").classList.remove("show");
+    transport = new FirebaseTransport(code);
+    transport.start(onActionArrived);
+    runGame(seed);
+  });
+}
+
+async function joinRoom(code) {
+  if (!fbReady()) return;
+  code = code.trim().toUpperCase();
+  if (!code) return;
+  const roomRef = firebase.database().ref("rooms/" + code);
+  const snap = await roomRef.get();
+  if (!snap.exists()) { document.getElementById("online-note").textContent = "その部屋コードは見つかりません"; return; }
+  mode = "guest"; myIdx = 1;
+  await roomRef.child("p1").set(true);
+  document.getElementById("title-overlay").classList.remove("show");
+  transport = new FirebaseTransport(code);
+  transport.start(onActionArrived);
+  runGame(snap.val().seed);
+}
+
+/* テスト・同一ブラウザ検証用(BroadcastChannel対戦) */
+window.__startBC = function (role, code, seed) {
+  mode = role; myIdx = role === "host" ? 0 : 1;
+  document.getElementById("title-overlay").classList.remove("show");
+  transport = new BCTransport(code);
+  transport.start(onActionArrived);
+  return runGame(seed);
+};
 
 /* ================= モーダル ================= */
 function choose(title, opts, card, bodyHtml) {
@@ -470,8 +972,6 @@ function choose(title, opts, card, bodyHtml) {
     ov.classList.add("show");
   });
 }
-
-/* カードを1枚グリッドから選ぶモーダル(cancelLabel を渡すとキャンセル可能) */
 function chooseCard(title, cards, bodyHtml, cancelLabel) {
   return new Promise(res => {
     if (TEST_AUTO) { res(cards[0] || null); return; }
@@ -496,455 +996,127 @@ function chooseCard(title, cards, bodyHtml, cancelLabel) {
   });
 }
 
-/* ================= マナ ================= */
-function canPay(p, suit, total) {
-  const ls = untappedLands(p);
-  if (ls.length < total) return false;
-  return ls.some(l => l.card.joker || l.card.suit === suit);
-}
-function pay(p, suit, total) {
-  const ls = untappedLands(p);
-  const colored = ls.find(l => !l.card.joker && l.card.suit === suit) || ls.find(l => l.card.joker);
-  colored.tapped = true;
-  let need = total - 1;
-  for (const l of ls) {                       // ジョーカー以外から先に支払う
-    if (need <= 0) break;
-    if (l.tapped || l.card.joker) continue;
-    l.tapped = true; need--;
-  }
-  for (const l of ls) {
-    if (need <= 0) break;
-    if (l.tapped) continue;
-    l.tapped = true; need--;
-  }
-}
-
-/* ================= アクション ================= */
-function removeFromHand(p, c) { p.hand = p.hand.filter(x => x.id !== c.id); }
-
-function playLand(pi, c) {
-  const p = players[pi];
-  removeFromHand(p, c);
-  p.lands.push({ card: c, tapped: false });
-  landPlayedThisTurn = true;
-  log(`${p.name}: ${cardLabel(c)} を土地に置いた`);
-}
-
-function summon(pi, c, free) {
-  const p = players[pi];
-  removeFromHand(p, c);
-  if (!free) pay(p, c.suit, costOf(c));
-  p.field.push({ card: c, tapped: false, sick: true });
-  log(`${p.name}: ${cardLabel(c)} を召喚${free ? "(コストなし!)" : `(${costOf(c)}マナ)`} — ${c.rank}/${c.rank}`);
-}
-
-/* ===== JOKER呪文(すべて0マナ+追加コスト、攻撃開始前のみ) ===== */
-function spendJoker(pi, jk, spellName) {
-  const p = players[pi];
-  removeFromHand(p, jk);
-  p.grave.push(jk);
-  log(`${p.name}: JOKER — ${spellName}!`);
-}
-
-// スペードスピア: 自クリーチャー1体生贄 → 対象のクリーチャー1体破壊
-async function castSpear(pi, jk) {
-  const p = players[pi], o = players[1 - pi];
-  let sac, tgt;
-  if (pi === 1 || TEST_AUTO) {
-    sac = [...p.field].sort((a, b) => a.card.rank - b.card.rank)[0];
-    tgt = [...o.field].sort((a, b) => b.card.rank - a.card.rank)[0];
-  } else {
-    const sc = await chooseCard("スペードスピア: 生贄にする自分のクリーチャー", p.field.map(f => f.card), "", "キャンセル");
-    if (!sc) return false;
-    const tc = await chooseCard("スペードスピア: 破壊する相手のクリーチャー", o.field.map(f => f.card), "", "キャンセル");
-    if (!tc) return false;
-    sac = p.field.find(f => f.card.id === sc.id);
-    tgt = o.field.find(f => f.card.id === tc.id);
-  }
-  spendJoker(pi, jk, "スペードスピア");
-  destroy(pi, sac);
-  destroy(1 - pi, tgt);
-  return true;
-}
-
-// ハートデザイア: 手札1枚捨てる → 山札から好きなカードをサーチ
-async function castDesire(pi, jk) {
-  const p = players[pi];
-  let disc, pick;
-  const others = p.hand.filter(c => c.id !== jk.id);
-  if (pi === 1 || TEST_AUTO) {
-    disc = [...others].filter(c => !c.joker).sort((a, b) => a.rank - b.rank)[0] || others[0];
-    pick = [...p.deck].filter(c => !c.joker).sort((a, b) => b.rank - a.rank)
-      .find(c => costOf(c) <= p.lands.length + 2) || p.deck[0];
-  } else {
-    disc = await chooseCard("ハートデザイア: 捨てる手札を選ぶ", others, "", "キャンセル");
-    if (!disc) return false;
-    const sorted = [...p.deck].sort((a, b) => (a.joker ? 99 : a.suit * 20 + a.rank) - (b.joker ? 99 : b.suit * 20 + b.rank));
-    pick = await chooseCard("ハートデザイア: 山札からサーチするカード", sorted, "選んだあと山札はシャッフルされる", "キャンセル");
-    if (!pick) return false;
-  }
-  spendJoker(pi, jk, "ハートデザイア");
-  removeFromHand(p, disc);
-  p.grave.push(disc);
-  p.deck = p.deck.filter(c => c.id !== pick.id);
-  p.hand.push(pick);
-  shuffle(p.deck);
-  log(pi === 0 ? `捨て札: ${cardLabel(disc)} / サーチ: ${cardLabel(pick)}(山札シャッフル)` : `CPUは手札を1枚捨て、山札からサーチした`);
-  return true;
-}
-
-// ダイヤクラック: 自シールド1枚生贄 → 相手のシールド1枚破壊(両方Sトリガーあり)
-async function castCrack(pi, jk) {
-  spendJoker(pi, jk, "ダイヤクラック");
-  await breakShield(pi);        // 生贄(自分側もトリガー発生)
-  if (winner !== null) return true;
-  await breakShield(1 - pi);    // 相手のシールド破壊
-  return true;
-}
-
-// クローバーミル: 自土地1枚生贄 → 相手の対象の土地1枚破壊
-async function castMill(pi, jk) {
-  const p = players[pi], o = players[1 - pi];
-  let sac, tgt;
-  if (pi === 1 || TEST_AUTO) {
-    const countBy = (lands, s) => lands.filter(l => !l.card.joker && l.card.suit === s).length;
-    sac = [...p.lands].sort((a, b) => countBy(p.lands, b.card.suit) - countBy(p.lands, a.card.suit))[0];
-    tgt = [...o.lands].filter(l => !l.card.joker)
-      .sort((a, b) => countBy(o.lands, a.card.suit) - countBy(o.lands, b.card.suit))[0] || o.lands[0];
-  } else {
-    const sc = await chooseCard("クローバーミル: 生贄にする自分の土地", p.lands.map(l => l.card), "", "キャンセル");
-    if (!sc) return false;
-    const tc = await chooseCard("クローバーミル: 破壊する相手の土地", o.lands.map(l => l.card), "", "キャンセル");
-    if (!tc) return false;
-    sac = p.lands.find(l => l.card.id === sc.id);
-    tgt = o.lands.find(l => l.card.id === tc.id);
-  }
-  spendJoker(pi, jk, "クローバーミル");
-  p.lands = p.lands.filter(l => l !== sac);
-  p.grave.push(sac.card);
-  o.lands = o.lands.filter(l => l !== tgt);
-  o.grave.push(tgt.card);
-  log(`土地破壊: 自分の ${cardLabel(sac.card)} を生贄に、${o.name} の ${cardLabel(tgt.card)} を破壊`);
-  return true;
-}
-
-/* ================= 戦闘 ================= */
-// suit のクリーチャーが oppSuit と戦闘するときのタフネス修正
-function bonus(suit, oppSuit) {
-  if (suit === 0 && oppSuit === 1) return 1;  // ♠ vs ♥ → ♠ +0/+1
-  if (suit === 2 && oppSuit === 0) return 1;  // ♦ vs ♠ → ♦ +0/+1
-  if (suit === 3 && oppSuit === 2) return 1;  // ♣ vs ♦ → ♣ +0/+1
-  if (suit === 1 && oppSuit === 3) return 1;  // ♥ vs ♣ → ♥ +0/+1
-  return 0;
-}
-
-function battle(aPi, aCre, bPi, bCre) {
-  const a = aCre.card, b = bCre.card;
-  const at = a.rank + bonus(a.suit, b.suit);
-  const bt = b.rank + bonus(b.suit, a.suit);
-  const aDies = b.rank >= at, bDies = a.rank >= bt;
-  log(`戦闘: ${cardLabel(a)}(${a.rank}/${at}) vs ${cardLabel(b)}(${b.rank}/${bt})`);
-  if (bDies) destroy(bPi, bCre);
-  if (aDies) destroy(aPi, aCre);
-  if (!aDies && !bDies) log("両者生き残った");
-}
-
-function destroy(pi, cre) {
-  const p = players[pi];
-  p.field = p.field.filter(f => f !== cre);
-  p.grave.push(cre.card);
-  log(`${cardLabel(cre.card)} は破壊された`);
-}
-
-async function breakShield(defPi) {
-  const def = players[defPi];
-  const c = def.shields.pop();
-  log(`${def.name} のシールドをブレイク! ${cardLabel(c)} が手札へ`);
-  def.hand.push(c);
-  render();
-  const v = await shieldTriggerDecision(defPi, c);
-  if (v === "summon") { removeFromHand(def, c); def.field.push({ card: c, tapped: false, sick: true }); log(`Sトリガー! ${def.name}: ${cardLabel(c)} をコストなしで召喚`); }
-  render();
-}
-
-function shieldTriggerDecision(defPi, c) {
-  if (c.joker) return Promise.resolve("keep");   // JOKERは手札に加わるだけ(呪文は自ターンに)
-  if (defPi === 1) return Promise.resolve("summon");
-  return choose("シールドトリガー!", [
-    { label: `${cardLabel(c)} をコストなしで召喚する`, value: "summon", primary: true },
-    { label: "手札に加えるだけ", value: "keep" },
-  ], c);
-}
-
-function totalPower(pi) { return players[pi].field.reduce((a, f) => a + f.card.rank, 0); }
-
-/* ブロック判断 */
-function aiChooseBlock(defPi, attacker) {
-  const def = players[defPi];
-  const cands = def.field.filter(f => !f.tapped);
-  if (!cands.length) return null;
-  const a = attacker.card;
-  const kills = b => b.card.rank >= a.rank + bonus(a.suit, b.card.suit);
-  const survives = b => a.rank < b.card.rank + bonus(b.card.suit, a.suit);
-  let best = cands.filter(b => kills(b) && survives(b)).sort((x, y) => x.card.rank - y.card.rank)[0];
-  if (!best && def.shields.length === 0) best = cands.sort((x, y) => x.card.rank - y.card.rank)[0];
-  if (!best) {
-    const trade = cands.filter(kills).sort((x, y) => x.card.rank - y.card.rank)[0];
-    if (trade && a.rank >= trade.card.rank && def.shields.length <= 2) best = trade;
-  }
-  return best || null;
-}
-
-function blockOutcomeText(attacker, b) {
-  const a = attacker.card;
-  const aDies = b.card.rank >= a.rank + bonus(a.suit, b.card.suit);
-  const bDies = a.rank >= b.card.rank + bonus(b.card.suit, a.suit);
-  if (aDies && bDies) return "相討ち";
-  if (aDies) return "一方的に倒せる";
-  if (bDies) return "返り討ちにあう";
-  return "両者生存";
-}
-
-async function decideBlock(defPi, attacker, target) {
-  const def = players[defPi];
-  const cands = def.field.filter(f => !f.tapped);
-  if (!cands.length) return null;
-  if (defPi === 1 || TEST_AUTO) return aiChooseBlock(defPi, attacker);
-  const targetCre = target === "player" ? null : def.field[target];
-  const targetDesc = targetCre
-    ? `あなたの ${cardLabel(targetCre.card)}(タップ中)`
-    : (def.shields.length ? `あなたのシールド(残り${def.shields.length}枚)` : "あなた本体(とどめ!)");
-  const opts = cands.map(b => ({
-    label: `${cardLabel(b.card)}(${b.card.rank}/${b.card.rank})でブロック → ${blockOutcomeText(attacker, b)}`,
-    value: b,
-  }));
-  if (targetCre) {
-    opts.push({ label: `ブロックしない(${cardLabel(targetCre.card)} がそのまま戦闘: ${blockOutcomeText(attacker, targetCre)})`, value: null });
-  } else {
-    opts.push({ label: def.shields.length ? "ブロックしない(シールドで受ける)" : "ブロックしない(敗北!)", value: null, danger: !def.shields.length });
-  }
-  return choose(`${cardLabel(attacker.card)} の攻撃!`, opts, attacker.card,
-    `攻撃対象: <b>${targetDesc}</b>`);
-}
-
-/* 攻撃解決 */
-async function resolveAttack(atkPi, creature, target) {
-  busy = true; selAttacker = null;
-  attackedThisTurn = true;    // バトルフェイズ開始
-  const defPi = 1 - atkPi;
-  const def = players[defPi];
-  creature.tapped = true;
-  const tName = target === "player" ? (def.shields.length ? "シールド" : "プレイヤー(とどめ!)") : cardLabel(def.field[target].card);
-  log(`${players[atkPi].name}: ${cardLabel(creature.card)} で ${tName} に攻撃`);
-  render();
-
-  const blocker = await decideBlock(defPi, creature, target);
-  if (blocker) {
-    blocker.tapped = true;
-    log(`${def.name}: ${cardLabel(blocker.card)} でブロック!`);
-    battle(atkPi, creature, defPi, blocker);
-  } else if (target === "player") {
-    if (def.shields.length > 0) await breakShield(defPi);
-    else { win(atkPi, "ダイレクトアタック!"); busy = false; render(); return; }
-  } else {
-    const t = def.field[target];
-    if (t) battle(atkPi, creature, defPi, t);
-  }
-  busy = false;
-  render();
-}
-
-function win(pi, reason) {
-  winner = pi;
-  render();
-  document.getElementById("result-title").textContent = pi === 0 ? "勝利!" : "敗北…";
-  document.getElementById("result-body").innerHTML =
-    `${reason}<br>${players[pi].name} の勝ち!`;
-  setTimeout(() => document.getElementById("result-overlay").classList.add("show"), 700);
-}
-
-/* ================= ターン進行 ================= */
-function startTurn(pi) {
-  turnP = pi;
-  const p = players[pi];
-  p.lands.forEach(l => l.tapped = false);
-  p.field.forEach(f => { f.tapped = false; f.sick = false; });
-  landPlayedThisTurn = false;
-  attackedThisTurn = false;
-  selAttacker = null;
-  if (p.deck.length === 0) { win(1 - pi, `${p.name} は山札切れ`); return false; }
-  p.hand.push(p.deck.pop());
-  log(`── ${p.name} のターン${pi === 0 ? turnNo : ""} ── ドロー`);
-  render();
-  return true;
-}
-
-document.getElementById("btn-end").addEventListener("click", async () => {
-  if (turnP !== 0 || busy || winner !== null) return;
-  await cpuTurn();
-});
-
-const wait = ms => new Promise(r => setTimeout(r, TEST_AUTO ? 1 : ms));
-
-/* ================= CPU AI ================= */
-function aiPickLand(pi) {
-  const p = players[pi];
-  const hand = p.hand.filter(c => !c.joker);
-  if (!hand.length) {
-    const jk = p.hand.find(c => c.joker);
-    return p.lands.length < 3 ? jk || null : null;   // 苦しいときだけJOKERを土地に
-  }
-  const landSuits = new Set(p.lands.map(l => l.card.joker ? "*" : l.card.suit));
-  // 手札に2枚以上あるのに土地に色が無いスートを優先して確保
-  for (const c of [...hand].sort((a, b) => b.rank - a.rank)) {
-    const same = hand.filter(x => x.suit === c.suit);
-    if (!landSuits.has(c.suit) && !landSuits.has("*") && same.length >= 2) return c;
-  }
-  const sorted = [...hand].sort((a, b) => b.rank - a.rank);
-  return p.lands.length < 5 ? sorted[0] : sorted[sorted.length - 1];
-}
-
-/* CPUのJOKER呪文判断(攻撃前に1枚だけ検討) */
-async function aiJoker(pi) {
-  const p = players[pi], o = players[1 - pi];
-  const jk = p.hand.find(c => c.joker);
-  if (!jk) return;
-  const oppStrong = o.field.length ? Math.max(...o.field.map(f => f.card.rank)) : 0;
-  const myWeak = p.field.length ? Math.min(...p.field.map(f => f.card.rank)) : 99;
-  // スピア: 相手の大物を安い生贄で除去
-  if (p.field.length >= 2 && o.field.length >= 1 && oppStrong >= 7 && myWeak <= oppStrong - 4) {
-    await castSpear(pi, jk); return;
-  }
-  // クラック: 盤面優勢なら相手のシールドを削りに行く
-  if (o.shields.length >= 1 && p.shields.length >= 2 && o.shields.length <= 3 &&
-      totalPower(pi) > totalPower(1 - pi)) {
-    await castCrack(pi, jk); return;
-  }
-  // ミル: 土地優勢なら相手の色をつぶす
-  if (p.lands.length >= 6 && p.lands.length > o.lands.length + 1 && o.lands.length >= 3) {
-    await castMill(pi, jk); return;
-  }
-  // デザイア: 出せるクリーチャーがいないとき、手札を入れ替えて探す
-  if (p.hand.length >= 3 && p.deck.length > 0 && p.lands.length >= 3 &&
-      !p.hand.some(c => !c.joker && canPay(p, c.suit, costOf(c)))) {
-    await castDesire(pi, jk); return;
-  }
-}
-
-async function aiTurn(pi) {
-  const p = players[pi], opp = players[1 - pi];
-
-  // 1) JOKER呪文の判断(攻撃前のみ)
-  await aiJoker(pi);
-  if (winner !== null) return;
-  render(); await wait(CPU_DELAY);
-
-  // 2) 土地
-  if (!landPlayedThisTurn) {
-    const landCard = aiPickLand(pi);
-    if (landCard) { playLand(pi, landCard); render(); await wait(CPU_DELAY); }
-  }
-
-  // 3) 召喚(強い順に出せるだけ)
-  for (;;) {
-    const affordable = p.hand.filter(c => !c.joker && canPay(p, c.suit, costOf(c)))
-      .sort((a, b) => b.rank - a.rank);
-    if (!affordable.length) break;
-    summon(pi, affordable[0], false);
-    render(); await wait(CPU_DELAY);
-  }
-
-  // 4) 攻撃(強い順)
-  for (;;) {
-    if (winner !== null) return;
-    const ready = p.field.filter(f => !f.tapped && !f.sick).sort((a, b) => b.card.rank - a.card.rank);
-    if (!ready.length) break;
-    const atk = ready[0];
-    let target = "player";
-    if (opp.shields.length > 0) {
-      // 倒せて生き残れるタップ中クリーチャーがいれば優先
-      const idx = opp.field.findIndex(t => t.tapped &&
-        atk.card.rank >= t.card.rank + bonus(t.card.suit, atk.card.suit) &&
-        t.card.rank < atk.card.rank + bonus(atk.card.suit, t.card.suit));
-      if (idx >= 0) target = idx;
-    }
-    await resolveAttack(pi, atk, target);
-    if (winner !== null) return;
-    await wait(CPU_DELAY);
-  }
-}
-
-async function cpuTurn() {
-  busy = true; render();
-  if (firstP === 1) turnNo++;          // CPUが先攻なら、CPUのターンから新ラウンド
-  if (!startTurn(1)) { busy = false; return; }
-  await wait(CPU_DELAY);
-  await aiTurn(1);
-  busy = false;
-  if (winner !== null) return;
-  if (firstP === 0) turnNo++;          // あなたが先攻なら、あなたのターンから新ラウンド
-  startTurn(0);
-}
-
-/* ================= 人間の操作 ================= */
-async function onHandClick(c) {
-  if (turnP !== 0 || busy || winner !== null) return;
-  const p = players[0], o = players[1];
-  const opts = [];
-  const atk = attackedThisTurn;
+/* ================= 描画 ================= */
+function cardEl(c, opts = {}) {
+  const el = document.createElement("div");
+  if (opts.back) { el.className = "card back" + (opts.sm ? " sm" : ""); return el; }
   if (c.joker) {
-    const others = p.hand.filter(x => x.id !== c.id);
-    opts.push({ label: "土地に置く(4色どのマナも出せる)", value: "land", disabled: landPlayedThisTurn });
-    opts.push({ label: "♠スペードスピア: 自クリーチャー1体生贄 → 相手クリーチャー1体破壊", value: "spear",
-                disabled: atk || !p.field.length || !o.field.length });
-    opts.push({ label: "♥ハートデザイア: 手札1枚捨てる → 山札から好きな1枚をサーチ", value: "desire",
-                disabled: atk || !others.length || !p.deck.length });
-    opts.push({ label: "♦ダイヤクラック: 自シールド1枚生贄 → 相手シールド1枚破壊(両方Sトリガー)", value: "crack",
-                disabled: atk || !p.shields.length || !o.shields.length });
-    opts.push({ label: "♣クローバーミル: 自土地1枚生贄 → 相手土地1枚破壊", value: "mill",
-                disabled: atk || !p.lands.length || !o.lands.length });
+    el.className = "card joker" + (opts.sm ? " sm" : "");
+    el.innerHTML = `<span class="jk">JOKER</span>`;
   } else {
-    opts.push({ label: `土地に置く(${SUITS[c.suit]}マナ)`, value: "land", disabled: landPlayedThisTurn });
-    opts.push({
-      label: `召喚する — コスト${costOf(c)}(${SUITS[c.suit]}1+無指定${c.rank}) ${c.rank}/${c.rank}`,
-      value: "summon", primary: true, disabled: atk || !canPay(p, c.suit, costOf(c)),
+    el.className = "card" + (opts.sm ? " sm" : "") + (c.suit === 1 || c.suit === 2 ? " red" : "");
+    el.innerHTML = `<span class="rk">${RANK_LABEL[c.rank]}</span><span class="st-s">${SUITS[c.suit]}</span><span class="st-b">${SUITS[c.suit]}</span>`;
+  }
+  if (opts.pt) el.innerHTML += `<span class="pt">${c.rank}/${c.rank}</span>`;
+  return el;
+}
+
+function render() {
+  if (!players) return;
+  const me = players[myIdx], en = players[1 - myIdx];
+  document.getElementById("turn-ind").textContent =
+    winner !== null ? "" : `ターン${turnNo} — ${players[turnP].name}の番`;
+
+  document.getElementById("e-deck").textContent = en.deck.length;
+  document.getElementById("e-hand").textContent = en.hand.length;
+  document.getElementById("e-grave").textContent = en.grave.length;
+  document.getElementById("e-mana").textContent = `マナ ${untappedLands(en).length}/${en.lands.length}`;
+  document.getElementById("m-deck").textContent = me.deck.length;
+  document.getElementById("m-grave").textContent = me.grave.length;
+  document.getElementById("m-mana").textContent = `マナ ${untappedLands(me).length}/${me.lands.length}`;
+
+  // シールド
+  const es = document.getElementById("e-shields"); es.innerHTML = "";
+  en.shields.forEach(() => es.appendChild(cardEl(null, { back: true, sm: true })));
+  if (!en.shields.length) es.innerHTML = `<span style="font-size:11px;color:var(--rust);font-weight:bold">シールドなし!</span>`;
+  const ms = document.getElementById("m-shields"); ms.innerHTML = "";
+  me.shields.forEach(() => ms.appendChild(cardEl(null, { back: true, sm: true })));
+  if (!me.shields.length) ms.innerHTML = `<span style="font-size:11px;color:var(--rust);font-weight:bold">シールドなし!</span>`;
+
+  // 土地
+  for (const [id, p] of [["e-lands", en], ["m-lands", me]]) {
+    const z = document.getElementById(id); z.innerHTML = "";
+    p.lands.forEach(l => {
+      const slot = document.createElement("div");
+      slot.className = "slot" + (l.tapped ? " tapped" : "");
+      const el = cardEl(l.card, { sm: true });
+      if (l.tapped) el.classList.add("tapped");
+      slot.appendChild(el); z.appendChild(slot);
     });
   }
-  opts.push({ label: "キャンセル", value: null });
-  const note = atk ? "攻撃を開始したため、このターンは召喚・JOKER呪文は使えない"
-             : landPlayedThisTurn ? "土地はこのターンすでに置いた" : "";
-  const v = await choose(cardLabel(c), opts, c, note);
-  if (v === "land") playLand(0, c);
-  if (v === "summon") summon(0, c, false);
-  if (v === "spear") await castSpear(0, c);
-  if (v === "desire") await castDesire(0, c);
-  if (v === "crack") { busy = true; render(); await castCrack(0, c); busy = false; }
-  if (v === "mill") await castMill(0, c);
-  render();
-}
 
-async function humanAttack(target) {   // target: 'player' or 敵fieldインデックス
-  if (turnP !== 0 || busy || winner !== null || selAttacker === null) return;
-  const atk = players[0].field[selAttacker];
-  if (!atk || atk.tapped || atk.sick) { selAttacker = null; render(); return; }
-  await resolveAttack(0, atk, target);
-}
+  // バトルゾーン(敵)
+  const ef = document.getElementById("e-field"); ef.innerHTML = "";
+  en.field.forEach(f => {
+    const slot = document.createElement("div");
+    slot.className = "slot" + (f.tapped ? " tapped" : "");
+    const el = cardEl(f.card, { pt: true });
+    if (f.tapped) el.classList.add("tapped");
+    if (f.sick) el.classList.add("sick");
+    if (uiMain && selAttacker !== null && f.tapped) {
+      el.classList.add("targetable");
+      el.addEventListener("click", () => {
+        const atk = me.field[selAttacker];
+        if (!atk || atk.tapped || atk.sick) { selAttacker = null; render(); return; }
+        act({ k: "main", t: "attack", cre: atk.card.id, target: f.card.id });
+        selAttacker = null;
+      });
+    }
+    slot.appendChild(el); ef.appendChild(slot);
+  });
 
-document.getElementById("enemy-side").addEventListener("click", (e) => {
-  if (selAttacker === null || busy || winner !== null) return;
-  // クリーチャーへの攻撃はカード側のリスナーが処理するので、それ以外は本体攻撃
-  if (e.target.closest(".card") && e.target.closest("#e-field")) return;
-  humanAttack("player");
-});
+  // バトルゾーン(自分)
+  const mf = document.getElementById("m-field"); mf.innerHTML = "";
+  me.field.forEach((f, idx) => {
+    const slot = document.createElement("div");
+    slot.className = "slot" + (f.tapped ? " tapped" : "");
+    const el = cardEl(f.card, { pt: true });
+    if (f.tapped) el.classList.add("tapped");
+    if (f.sick) el.classList.add("sick");
+    if (uiMain && winner === null && !f.tapped && !f.sick) {
+      el.classList.add("selectable");
+      if (selAttacker === idx) el.classList.add("attacking");
+      el.addEventListener("click", () => {
+        selAttacker = selAttacker === idx ? null : idx;
+        render();
+      });
+    }
+    slot.appendChild(el); mf.appendChild(slot);
+  });
+
+  document.getElementById("enemy-side").classList.toggle("targetable", uiMain && selAttacker !== null && winner === null);
+
+  // 手札
+  const hz = document.getElementById("hand-zone"); hz.innerHTML = "";
+  me.hand.forEach(c => {
+    const el = cardEl(c);
+    if (uiMain && winner === null) el.addEventListener("click", () => onHandClick(c));
+    hz.appendChild(el);
+  });
+
+  document.getElementById("btn-end").disabled = !(uiMain && winner === null);
+  if (uiMain && selAttacker !== null) setHint("攻撃対象を選択: 相手エリア(シールド) or タップ中の敵クリーチャー");
+}
 
 /* ================= 開始 ================= */
-document.getElementById("btn-start").addEventListener("click", () => {
+function startCpu() {
+  mode = "cpu"; myIdx = 0;
   document.getElementById("title-overlay").classList.remove("show");
-  newDuel();
-});
-document.getElementById("btn-again").addEventListener("click", () => {
-  document.getElementById("result-overlay").classList.remove("show");
-  newDuel();
+  transport = new LocalTransport();
+  transport.start(onActionArrived);
+  runGame(Math.floor(Math.random() * 2 ** 31));
+}
+document.getElementById("btn-cpu").addEventListener("click", startCpu);
+document.getElementById("btn-host").addEventListener("click", hostRoom);
+document.getElementById("btn-join").addEventListener("click", () => joinRoom(document.getElementById("join-code").value));
+document.getElementById("btn-again").addEventListener("click", () => location.reload());
+
+window.addEventListener("DOMContentLoaded", () => {
+  if (!FIREBASE_CONFIG) {
+    document.getElementById("btn-host").disabled = true;
+    document.getElementById("btn-join").disabled = true;
+    document.getElementById("online-note").textContent = "オンライン対戦はFirebase設定後に有効になります(CPU対戦は遊べます)";
+  }
 });
 </script>
 </body>
