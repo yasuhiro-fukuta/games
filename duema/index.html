@@ -163,6 +163,55 @@
     color: var(--gold); text-align: center; margin: 14px 0;
   }
 
+  /* 演出 */
+  .banner {
+    position: fixed; inset: 0; z-index: 50; pointer-events: none;
+    display: flex; align-items: center; justify-content: center;
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    font-size: 34px; font-weight: bold; letter-spacing: .25em; color: var(--gold);
+    text-shadow: 0 0 24px rgba(201,162,39,.8), 0 2px 4px rgba(0,0,0,.9);
+    background: rgba(8,14,20,.55);
+    animation: bannerFade 1s ease both;
+  }
+  @keyframes bannerFade {
+    0% { opacity: 0; transform: scale(.85); }
+    18% { opacity: 1; transform: scale(1); }
+    82% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  .fxwrap {
+    position: fixed; inset: 0; z-index: 40; pointer-events: none;
+    background: rgba(8,14,20,.6);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .fx-card {
+    position: absolute; transform-origin: center;
+    transition: transform .36s cubic-bezier(.3,.9,.4,1);
+  }
+  .fx-left  { transform: translateX(-150px) scale(1.7) rotate(-6deg); }
+  .fx-right { transform: translateX(150px) scale(1.7) rotate(6deg); }
+  .fx-left.go  { transform: translateX(-34px) scale(1.7) rotate(-2deg); }
+  .fx-right.go { transform: translateX(34px) scale(1.7) rotate(2deg); }
+  .fx-flash {
+    position: absolute; inset: 0; opacity: 0;
+    background: radial-gradient(circle at 50% 50%, rgba(255,255,255,.95), rgba(255,255,255,0) 42%);
+  }
+  .fx-flash.go { animation: fxFlash .32s ease-out both; }
+  @keyframes fxFlash { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
+  .fx-card.slashed::before {
+    content: ""; position: absolute; inset: -8px; z-index: 2;
+    background: linear-gradient(135deg, transparent 44%, #fff 49%, #ff8a7a 51%, transparent 56%);
+    animation: fxSlashLine .3s ease-out both;
+  }
+  @keyframes fxSlashLine { 0% { opacity: 0; transform: translate(-26px,-26px); } 45% { opacity: 1; } 100% { opacity: .9; transform: translate(0,0); } }
+  .fx-left.slashed { --fxx: -34px; }
+  .fx-right.slashed { --fxx: 34px; }
+  .fx-card.slashed { animation: fxDie .8s ease-in .22s both; }
+  @keyframes fxDie {
+    0% { opacity: 1; filter: brightness(1.8); }
+    100% { opacity: 0; transform: translateX(var(--fxx, 0px)) translateY(70px) scale(1.7) rotate(24deg); filter: brightness(.6); }
+  }
+
   @media (max-width: 560px) {
     .card { width: 42px; height: 58px; }
     .card .st-b { font-size: 16px; }
@@ -242,9 +291,10 @@
       ・クリーチャー召喚コスト = <b>自スート1マナ + 数字ぶんの無指定マナ</b>(例: ♠3 は合計4マナ)。パワー/タフネス = 数字<br>
       ・出したターンは攻撃できない(召喚酔い)<br><br>
       <b>攻撃と戦闘</b>: 相手プレイヤー(シールド)か、タップ中の敵クリーチャーを攻撃。相手はアンタップのクリーチャーでブロック可能。<b>アンタップ状態のクリーチャーは、攻撃またはブロックするとタップ状態になる</b>(次の自分のターン開始時にアンタップ)。スート相性で守り側有利: ♠は♥に、♦は♠に、♣は♦に、♥は♣に <b>+0/+1</b><br>
-      ・<b>A(エース)</b>は J/Q/K との戦闘時 <b>+13/+13</b>(絵札キラー)<br>
+      ・<b>A(エース)</b>は J/Q/K との戦闘時 <b>+13/+0</b>(刺し違えて絵札を討ち取る)<br>
+      ・<b>J/Q/K</b>は召喚時、同スートの味方クリーチャーを望む数だけ生贄にでき、その数字の合計分コスト軽減。またJ/Q/Kに<b>シールドトリガーはない</b>(手札に加わるだけ)<br>
       ・戦闘ダメージは<b>ターン終了時まで蓄積</b>する(累計がタフネス以上で破壊。例: 6/6 が3点→4点と受けると2回目で破壊)<br><br>
-      <b>シールドブレイク</b>: シールドは6つの固定位置に置かれ、<b>割る側がどの位置を割るか選ぶ</b>(割れた位置は歯抜けのまま)。割られたカードは手札へ。そのままコストなしで召喚してもよい(Sトリガー)<br>
+      <b>シールドブレイク</b>: シールドは6つの固定位置に置かれ、攻撃時は<b>相手のシールドを直接クリック</b>して割る位置を選ぶ(割れた位置は歯抜けのまま)。割られたカードは手札へ。A〜10ならそのままコストなしで召喚してもよい(Sトリガー)<br>
       <b>JOKER</b>(すべて0マナ+追加コスト、2枚入り):<br>
       ・4色どのマナも出せる土地としてセット(このターン土地をセット済みでも置ける・別枠)<br>
       ・♠スペードスピア: 自クリーチャー1体生贄 → クリーチャー1体破壊<br>
@@ -380,6 +430,7 @@ function fieldById(pi, id) { return players[pi].field.find(f => f.card.id === id
 function landById(pi, id) { return players[pi].lands.find(l => l.card.id === id); }
 
 function canPay(p, suit, total) {
+  if (total <= 0) return true;
   const ls = untappedLands(p);
   if (ls.length < total) return false;
   return ls.some(l => l.card.joker || l.card.suit === suit);
@@ -409,12 +460,13 @@ function playLand(pi, c) {
   if (!c.joker) landPlayedThisTurn = true;   // JOKER土地は1ターン1枚制限の別枠
   log(`${p.name}: ${cardLabel(c)} を土地に置いた${c.joker ? "(土地セット権は消費しない)" : ""}`);
 }
-function summon(pi, c, free) {
+function summon(pi, c, free, reduction = 0) {
   const p = players[pi];
   removeFromHand(p, c);
-  if (!free) pay(p, c.suit, costOf(c));
+  const remaining = free ? 0 : Math.max(0, costOf(c) - reduction);
+  if (remaining > 0) pay(p, c.suit, remaining);
   p.field.push({ card: c, tapped: false, sick: true, dmg: 0 });
-  log(`${p.name}: ${cardLabel(c)} を召喚${free ? "(コストなし!)" : `(${costOf(c)}マナ)`} — ${c.rank}/${c.rank}`);
+  log(`${p.name}: ${cardLabel(c)} を召喚${free ? "(コストなし!)" : `(${remaining}マナ)`} — ${c.rank}/${c.rank}`);
 }
 function spendJoker(pi, jk, spellName) {
   const p = players[pi];
@@ -430,14 +482,14 @@ function bonus(suit, oppSuit) {
   if (suit === 1 && oppSuit === 3) return 1;  // ♥ vs ♣ → ♥ +0/+1
   return 0;
 }
-/* A(エース)は J/Q/K との戦闘時 +13/+13 */
+/* A(エース)は J/Q/K との戦闘時 +13/+0(パワーのみ) */
 function faceBonus(x, y) { return (x.rank === 1 && y.rank >= 11) ? 13 : 0; }
 
 /* 戦闘の数値計算(蓄積ダメージ込みの死亡判定つき・状態は変更しない) */
 function battleNumbers(aCre, bCre) {
   const a = aCre.card, b = bCre.card;
-  const ap = a.rank + faceBonus(a, b), at = a.rank + bonus(a.suit, b.suit) + faceBonus(a, b);
-  const bp = b.rank + faceBonus(b, a), bt = b.rank + bonus(b.suit, a.suit) + faceBonus(b, a);
+  const ap = a.rank + faceBonus(a, b), at = a.rank + bonus(a.suit, b.suit);
+  const bp = b.rank + faceBonus(b, a), bt = b.rank + bonus(b.suit, a.suit);
   return {
     ap, at, bp, bt,
     aDies: (aCre.dmg || 0) + bp >= at,
@@ -445,14 +497,54 @@ function battleNumbers(aCre, bCre) {
   };
 }
 
-function battle(aPi, aCre, bPi, bCre) {
+async function battle(aPi, aCre, bPi, bCre) {
   const n = battleNumbers(aCre, bCre);
   aCre.dmg = (aCre.dmg || 0) + n.bp;
   bCre.dmg = (bCre.dmg || 0) + n.ap;
   log(`戦闘: ${cardLabel(aCre.card)}(${n.ap}/${n.at}) vs ${cardLabel(bCre.card)}(${n.bp}/${n.bt})`);
+  await showBattleFx(aCre, bCre, n.aDies, n.bDies);
   if (n.bDies) destroy(bPi, bCre);
   if (n.aDies) destroy(aPi, aCre);
   if (!n.aDies && !n.bDies) log(`両者生存(蓄積ダメージ ${cardLabel(aCre.card)}:${aCre.dmg} / ${cardLabel(bCre.card)}:${bCre.dmg})`);
+}
+
+/* ================= 演出 ================= */
+function showBanner(text, ms = 1000) {
+  if (TEST_AUTO) return Promise.resolve();
+  return new Promise(res => {
+    const d = document.createElement("div");
+    d.className = "banner";
+    d.textContent = text;
+    document.body.appendChild(d);
+    setTimeout(() => { d.remove(); res(); }, ms);
+  });
+}
+
+/* 戦闘演出: カードが衝突→フラッシュ→敗者が斬られる */
+function showBattleFx(aCre, bCre, aDies, bDies) {
+  if (TEST_AUTO) return Promise.resolve();
+  return new Promise(res => {
+    const ov = document.createElement("div");
+    ov.className = "fxwrap";
+    const L = cardEl(aCre.card, { pt: true });
+    const R = cardEl(bCre.card, { pt: true });
+    L.classList.add("fx-card", "fx-left");
+    R.classList.add("fx-card", "fx-right");
+    const flash = document.createElement("div");
+    flash.className = "fx-flash";
+    ov.append(L, R, flash);
+    document.body.appendChild(ov);
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      L.classList.add("go");
+      R.classList.add("go");
+    }));
+    setTimeout(() => flash.classList.add("go"), 360);
+    setTimeout(() => {
+      if (aDies) L.classList.add("slashed");
+      if (bDies) R.classList.add("slashed");
+    }, 520);
+    setTimeout(() => { ov.remove(); res(); }, (aDies || bDies) ? 1450 : 950);
+  });
 }
 function destroy(pi, cre) {
   const p = players[pi];
@@ -552,6 +644,8 @@ async function runGame(seed) {
   document.getElementById("e-name").textContent = players[1 - myIdx].name;
   log(`デュエル開始!先攻は ${players[firstP].name}`);
   render();
+  await showBanner(myIdx === firstP ? "あなたは先攻です" : "あなたは後攻です");
+  if (token !== gameToken) return;
 
   // 後攻フリーマリガン
   const secondP = 1 - firstP;
@@ -585,7 +679,20 @@ async function applyMainAction(pi, a) {
   const p = players[pi], o = players[1 - pi];
   switch (a.t) {
     case "land": playLand(pi, handById(pi, a.card)); return false;
-    case "summon": summon(pi, handById(pi, a.card), false); return false;
+    case "summon": {
+      const c = handById(pi, a.card);
+      // J/Q/K: 同スートの味方クリーチャーを生贄にして数字の合計分コスト軽減
+      const sacs = (a.sacs || []).map(id => fieldById(pi, id)).filter(Boolean);
+      let reduction = 0;
+      for (const s of sacs) {
+        reduction += s.card.rank;
+        p.field = p.field.filter(f => f !== s);
+        p.grave.push(s.card);
+      }
+      if (sacs.length) log(`${p.name}: ${sacs.map(f => cardLabel(f.card)).join(" ")} を生贄に捧げた(コスト-${reduction})`);
+      summon(pi, c, false, reduction);
+      return false;
+    }
     case "spear": {
       spendJoker(pi, handById(pi, a.jk), "スペードスピア");
       destroy(pi, fieldById(pi, a.sac));
@@ -626,41 +733,44 @@ async function applyMainAction(pi, a) {
       log(`${p.name}は ${cardLabel(sac.card)} を生贄に、${o.name} の山札の半分 ${n}枚を墓地に送った!`);
       return false;
     }
-    case "attack": await attackFlow(pi, a.cre, a.target); return false;
+    case "attack": await attackFlow(pi, a.cre, a.tt, a.tv); return false;
     case "end": log(`${p.name}: ターン終了`); return true;
     default: console.warn("unknown action", a); return false;
   }
 }
 
-/* 攻撃解決(ブロック・Sトリガーの意思決定を挟む) */
-async function attackFlow(atkPi, creId, target) {
+/* 攻撃解決(ブロック・Sトリガーの意思決定を挟む)
+   tt: 'player'(直接攻撃) | 'sh'(シールド位置 tv を割る) | 'cre'(タップ中クリーチャー tv=カードid) */
+async function attackFlow(atkPi, creId, tt, tv) {
   const creature = fieldById(atkPi, creId);
   if (!creature) return;
   const defPi = 1 - atkPi, def = players[defPi];
   creature.tapped = true;
-  const targetCre = target === "player" ? null : fieldById(defPi, target);
-  const tName = targetCre ? cardLabel(targetCre.card)
-              : (shieldCount(def) ? "シールド" : "プレイヤー(とどめ!)");
+  const targetCre = tt === "cre" ? fieldById(defPi, tv) : null;
+  const tName = tt === "cre" ? (targetCre ? cardLabel(targetCre.card) : "?")
+              : tt === "sh" ? `シールド[位置${tv + 1}]`
+              : "プレイヤー(とどめ!)";
   log(`${players[atkPi].name}: ${cardLabel(creature.card)} で ${tName} に攻撃`);
   render();
 
   let blocker = null;
   if (def.field.some(f => !f.tapped)) {
-    const bd = await decision(defPi, "block", { attacker: creature, target });
+    const bd = await decision(defPi, "block", { attacker: creature, tt, tv });
     blocker = bd.blocker != null ? fieldById(defPi, bd.blocker) : null;
   }
   if (blocker) {
     blocker.tapped = true;
     log(`${def.name}: ${cardLabel(blocker.card)} でブロック!`);
-    battle(atkPi, creature, defPi, blocker);
-  } else if (target === "player") {
-    if (shieldCount(def) > 0) {
-      // どの位置のシールドを割るかは攻撃側が選ぶ
-      const ps = await decision(atkPi, "shield", { owner: defPi, why: "ブレイク" });
-      await breakShieldAt(defPi, ps.slot);
-    } else { win(atkPi, "ダイレクトアタック!"); return; }
+    await battle(atkPi, creature, defPi, blocker);
+  } else if (tt === "sh") {
+    await breakShieldAt(defPi, tv);
+  } else if (tt === "player") {
+    if (shieldCount(def) === 0) { win(atkPi, "ダイレクトアタック!"); return; }
+    // 保険: シールドが残っていたら先頭の位置を割る
+    const slot = def.shields.findIndex(Boolean);
+    if (slot >= 0) await breakShieldAt(defPi, slot);
   } else if (targetCre && players[defPi].field.includes(targetCre)) {
-    battle(atkPi, creature, defPi, targetCre);
+    await battle(atkPi, creature, defPi, targetCre);
   }
   render();
 }
@@ -674,11 +784,13 @@ async function breakShieldAt(defPi, slot) {
   log(`${def.name} のシールド[位置${slot + 1}]をブレイク! ${cardLabel(c)} が手札へ`);
   def.hand.push(c);
   render();
-  if (c.joker) return;   // JOKERは手札に加わるだけ
+  if (c.joker) return;                       // JOKERは手札に加わるだけ
+  if (c.rank >= 11) { log("(J/Q/Kにシールドトリガーはない)"); return; }
   const d = await decision(defPi, "trigger", { card: c });
   if (d.v === "summon") {
     removeFromHand(def, c);
     def.field.push({ card: c, tapped: false, sick: true, dmg: 0 });
+    await showBanner("シールドトリガー!");
     log(`Sトリガー! ${def.name}: ${cardLabel(c)} をコストなしで召喚`);
   }
   render();
@@ -777,20 +889,35 @@ function aiMainAction(pi) {
   {
     const s = p.hand.filter(c => !c.joker && canPay(p, c.suit, costOf(c))).sort((a, b) => b.rank - a.rank)[0];
     if (s) return { t: "summon", card: s.id };
+    // J/Q/K の生贄軽減召喚: 素出しできないときだけ、安い同スートを最大2体まで捧げて出す
+    for (const c of p.hand.filter(c => !c.joker && c.rank >= 11).sort((a, b) => b.rank - a.rank)) {
+      const sameSuit = p.field.filter(f => f.card.suit === c.suit).sort((a, b) => a.card.rank - b.card.rank);
+      const sacs = [];
+      let red = 0;
+      for (const f of sameSuit) {
+        if (sacs.length >= 2 || red >= costOf(c)) break;
+        sacs.push(f); red += f.card.rank;
+        if (canPay(p, c.suit, Math.max(0, costOf(c) - red))) break;
+      }
+      if (sacs.length && red < c.rank && canPay(p, c.suit, Math.max(0, costOf(c) - red))) {
+        return { t: "summon", card: c.id, sacs: sacs.map(f => f.card.id) };
+      }
+    }
   }
   const ready = p.field.filter(f => !f.tapped && !f.sick).sort((a, b) => b.card.rank - a.card.rank);
   if (ready.length) {
     const atk = ready[0];
-    let target = "player";
     if (shieldCount(o) > 0) {
       const t = o.field.find(t => {
         if (!t.tapped) return false;
         const n = battleNumbers(atk, t);
         return n.bDies && !n.aDies;
       });
-      if (t) target = t.card.id;
+      if (t) return { t: "attack", cre: atk.card.id, tt: "cre", tv: t.card.id };
+      const slot = o.shields.findIndex(Boolean);
+      return { t: "attack", cre: atk.card.id, tt: "sh", tv: slot };
     }
-    return { t: "attack", cre: atk.card.id, target };
+    return { t: "attack", cre: atk.card.id, tt: "player" };
   }
   return { t: "end" };
 }
@@ -832,20 +959,23 @@ function humanPrompt(pi, kind, ctx) {
   }
   if (kind === "block") {
     const def = players[pi];
-    const attacker = ctx.attacker, target = ctx.target;
+    const attacker = ctx.attacker;
     const cands = def.field.filter(f => !f.tapped);
-    const targetCre = target === "player" ? null : fieldById(pi, target);
+    const targetCre = ctx.tt === "cre" ? fieldById(pi, ctx.tv) : null;
     const targetDesc = targetCre
       ? `あなたの ${cardLabel(targetCre.card)}(タップ中)`
-      : (shieldCount(def) ? `あなたのシールド(残り${shieldCount(def)}枚)` : "あなた本体(とどめ!)");
+      : ctx.tt === "sh" ? `あなたのシールド[位置${ctx.tv + 1}]`
+      : "あなた本体(とどめ!)";
     const opts = cands.map(b => ({
       label: `${cardLabel(b.card)}(${b.card.rank}/${b.card.rank})でブロック → ${blockOutcomeText(attacker, b)}`,
       value: b.card.id,
     }));
     if (targetCre) {
       opts.push({ label: `ブロックしない(${cardLabel(targetCre.card)} がそのまま戦闘: ${blockOutcomeText(attacker, targetCre)})`, value: null });
+    } else if (ctx.tt === "sh") {
+      opts.push({ label: `ブロックしない(シールド[位置${ctx.tv + 1}]で受ける)`, value: null });
     } else {
-      opts.push({ label: shieldCount(def) ? "ブロックしない(シールドで受ける)" : "ブロックしない(敗北!)", value: null, danger: !shieldCount(def) });
+      opts.push({ label: "ブロックしない(敗北!)", value: null, danger: true });
     }
     choose(`${cardLabel(attacker.card)} の攻撃!`, opts, attacker.card, `攻撃対象: <b>${targetDesc}</b>`)
       .then(v => act({ k: "block", blocker: v }));
@@ -882,6 +1012,15 @@ async function onHandClick(c) {
       label: `召喚する — コスト${costOf(c)}(${SUITS[c.suit]}1+無指定${c.rank}) ${c.rank}/${c.rank}`,
       value: "summon", primary: true, disabled: !canPay(p, c.suit, costOf(c)),
     });
+    if (c.rank >= 11) {
+      const sameSuit = p.field.filter(f => f.card.suit === c.suit);
+      const maxRed = sameSuit.reduce((s, f) => s + f.card.rank, 0);
+      opts.push({
+        label: `生贄召喚 — 同スート(${SUITS[c.suit]})の味方を生贄にコスト軽減`,
+        value: "sacsummon",
+        disabled: !sameSuit.length || !canPay(p, c.suit, Math.max(0, costOf(c) - maxRed)),
+      });
+    }
   }
   opts.push({ label: "キャンセル", value: null });
   const note = landPlayedThisTurn && !c.joker ? "土地はこのターンすでに置いた" : "";
@@ -889,6 +1028,24 @@ async function onHandClick(c) {
   if (!uiMain) return;   // 選んでいる間に状況が変わった場合
   if (v === "land") act({ k: "main", t: "land", card: c.id });
   if (v === "summon") act({ k: "main", t: "summon", card: c.id });
+  if (v === "sacsummon") {
+    const sameSuit = p.field.filter(f => f.card.suit === c.suit).map(f => f.card);
+    const sacs = await chooseMulti(
+      `生贄召喚: ${cardLabel(c)}(コスト${costOf(c)})`,
+      sameSuit,
+      sel => {
+        const red = sel.reduce((s, x) => s + x.rank, 0);
+        const remaining = Math.max(0, costOf(c) - red);
+        return {
+          text: `生贄 ${sel.length}体(数字合計 ${red}) → 残りコスト <b>${remaining}</b>マナ` +
+                (canPay(p, c.suit, remaining) ? "" : " — <b>マナが足りない</b>"),
+          ok: canPay(p, c.suit, remaining),
+        };
+      },
+      "この生贄で召喚する", "キャンセル");
+    if (!sacs) return;
+    act({ k: "main", t: "summon", card: c.id, sacs: sacs.map(x => x.id) });
+  }
   if (v === "spear") {
     const sc = await chooseCard("スペードスピア: 生贄にする自分のクリーチャー", p.field.map(f => f.card), "", "キャンセル");
     if (!sc) return;
@@ -918,10 +1075,11 @@ document.getElementById("btn-end").addEventListener("click", () => {
 });
 document.getElementById("enemy-side").addEventListener("click", (e) => {
   if (!uiMain || selAttacker === null || winner !== null) return;
-  if (e.target.closest(".card") && e.target.closest("#e-field")) return;
+  if (e.target.closest(".card") && (e.target.closest("#e-field") || e.target.closest("#e-shields"))) return;
+  if (shieldCount(players[1 - myIdx]) > 0) return;   // シールドがある間はシールドを直接クリックする
   const atk = players[myIdx].field[selAttacker];
   if (!atk || atk.tapped || atk.sick) { selAttacker = null; render(); return; }
-  act({ k: "main", t: "attack", cre: atk.card.id, target: "player" });
+  act({ k: "main", t: "attack", cre: atk.card.id, tt: "player" });
   selAttacker = null;
 });
 
@@ -1026,6 +1184,49 @@ function choose(title, opts, card, bodyHtml) {
     ov.classList.add("show");
   });
 }
+/* 複数枚トグル選択モーダル。footerFn(選択配列)→{text, ok}。確定で配列、キャンセルで null */
+function chooseMulti(title, cards, footerFn, confirmLabel, cancelLabel) {
+  return new Promise(res => {
+    if (TEST_AUTO) { res([]); return; }
+    const ov = document.getElementById("modal");
+    document.getElementById("modal-title").textContent = title;
+    document.getElementById("modal-card").innerHTML = "";
+    const bodyEl = document.getElementById("modal-body");
+    const grid = document.getElementById("modal-grid"); grid.innerHTML = "";
+    const mo = document.getElementById("modal-opts"); mo.innerHTML = "";
+    const selected = new Set();
+    const confirmBtn = document.createElement("button");
+    confirmBtn.className = "primary";
+    confirmBtn.textContent = confirmLabel;
+    const update = () => {
+      const sel = cards.filter(c => selected.has(c.id));
+      const f = footerFn(sel);
+      bodyEl.innerHTML = f.text;
+      confirmBtn.disabled = !f.ok;
+    };
+    for (const c of cards) {
+      const el = cardEl(c, { pt: true });
+      el.addEventListener("click", () => {
+        selected.has(c.id) ? selected.delete(c.id) : selected.add(c.id);
+        el.style.outline = selected.has(c.id) ? "3px solid var(--gold)" : "";
+        el.style.transform = selected.has(c.id) ? "translateY(-4px)" : "";
+        update();
+      });
+      grid.appendChild(el);
+    }
+    confirmBtn.addEventListener("click", () => {
+      ov.classList.remove("show");
+      res(cards.filter(c => selected.has(c.id)));
+    });
+    const cancelBtn = document.createElement("button");
+    cancelBtn.textContent = cancelLabel;
+    cancelBtn.addEventListener("click", () => { ov.classList.remove("show"); res(null); });
+    mo.append(confirmBtn, cancelBtn);
+    update();
+    ov.classList.add("show");
+  });
+}
+
 function chooseCard(title, cards, bodyHtml, cancelLabel) {
   return new Promise(res => {
     if (TEST_AUTO) { res(cards[0] || null); return; }
@@ -1080,13 +1281,23 @@ function render() {
   document.getElementById("m-grave").textContent = me.grave.length;
   document.getElementById("m-mana").textContent = `マナ ${untappedLands(me).length}/${me.lands.length}`;
 
-  // シールド
+  // シールド(攻撃対象選択中は、相手のシールドを直接クリックして割る位置を選ぶ)
+  const targeting = uiMain && selAttacker !== null && winner === null;
   for (const [id, pl] of [["e-shields", en], ["m-shields", me]]) {
     const z = document.getElementById(id); z.innerHTML = "";
     pl.shields.forEach((c, i) => {
       if (c) {
         const el = cardEl(null, { back: true, sm: true });
         el.title = `位置${i + 1}`;
+        if (pl === en && targeting) {
+          el.classList.add("targetable");
+          el.addEventListener("click", () => {
+            const atk = me.field[selAttacker];
+            if (!atk || atk.tapped || atk.sick) { selAttacker = null; render(); return; }
+            act({ k: "main", t: "attack", cre: atk.card.id, tt: "sh", tv: i });
+            selAttacker = null;
+          });
+        }
         z.appendChild(el);
       } else {
         const gap = document.createElement("div");
@@ -1127,7 +1338,7 @@ function render() {
       el.addEventListener("click", () => {
         const atk = me.field[selAttacker];
         if (!atk || atk.tapped || atk.sick) { selAttacker = null; render(); return; }
-        act({ k: "main", t: "attack", cre: atk.card.id, target: f.card.id });
+        act({ k: "main", t: "attack", cre: atk.card.id, tt: "cre", tv: f.card.id });
         selAttacker = null;
       });
     }
@@ -1153,7 +1364,8 @@ function render() {
     slot.appendChild(el); mf.appendChild(slot);
   });
 
-  document.getElementById("enemy-side").classList.toggle("targetable", uiMain && selAttacker !== null && winner === null);
+  document.getElementById("enemy-side").classList.toggle("targetable",
+    uiMain && selAttacker !== null && winner === null && shieldCount(en) === 0);
 
   // 手札
   const hz = document.getElementById("hand-zone"); hz.innerHTML = "";
@@ -1164,7 +1376,11 @@ function render() {
   });
 
   document.getElementById("btn-end").disabled = !(uiMain && winner === null);
-  if (uiMain && selAttacker !== null) setHint("攻撃対象を選択: 相手エリア(シールド) or タップ中の敵クリーチャー");
+  if (uiMain && selAttacker !== null) {
+    setHint(shieldCount(en) > 0
+      ? "攻撃対象を選択: 割りたい相手シールドをクリック or タップ中の敵クリーチャー"
+      : "攻撃対象を選択: 相手エリアをクリックでとどめ! or タップ中の敵クリーチャー");
+  }
 }
 
 /* ================= 開始 ================= */
