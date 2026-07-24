@@ -288,9 +288,16 @@
    アクションだけを流す。CPU対戦も同じ仕組みで動く。
    ============================================================ */
 
-/* ▼▼ Firebase設定: ユーザーのFirebaseプロジェクトの設定に差し替える ▼▼ */
-const FIREBASE_CONFIG = null;
-/* ▲▲ null の間はオンライン対戦ボタンが無効(CPU対戦は動く) ▲▲ */
+/* Firebase設定(ウェブ用configは公開して問題ない値) */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAS_YjxvNLxHomBXT1r6tEgHHyGU7K5SvU",
+  authDomain: "dueltrump-69c9c.firebaseapp.com",
+  databaseURL: "https://dueltrump-69c9c-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "dueltrump-69c9c",
+  storageBucket: "dueltrump-69c9c.firebasestorage.app",
+  messagingSenderId: "302327013766",
+  appId: "1:302327013766:web:59f78f0d54179aa4354c07",
+};
 
 const SUITS = ["♠", "♥", "♦", "♣"];
 const RANK_LABEL = { 1:"A",2:"2",3:"3",4:"4",5:"5",6:"6",7:"7",8:"8",9:"9",10:"10",11:"J",12:"Q",13:"K" };
