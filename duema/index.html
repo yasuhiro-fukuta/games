@@ -81,6 +81,10 @@
     background: rgba(38,36,31,.85); color: var(--paper); border-radius: 4px; padding: 1px 4px;
   }
   .card.tapped { transform: rotate(90deg) scale(.94); filter: brightness(.8); }
+  .card .dmgb {
+    position: absolute; right: 2px; top: 2px; font-size: 9px; font-weight: 800;
+    background: var(--red); color: var(--paper); border-radius: 4px; padding: 1px 3px;
+  }
   .card.sick::after {
     content: "酔"; position: absolute; left: 2px; bottom: 2px; font-size: 9px;
     background: var(--rust); color: var(--paper); border-radius: 4px; padding: 1px 3px;
@@ -233,12 +237,14 @@
       ・土地は1ターンに1枚。タップでそのスートのマナ1を出す<br>
       ・クリーチャー召喚コスト = <b>自スート1マナ + 数字ぶんの無指定マナ</b>(例: ♠3 は合計4マナ)。パワー/タフネス = 数字<br>
       ・出したターンは攻撃できない(召喚酔い)<br><br>
-      <b>攻撃と戦闘</b>: 相手プレイヤー(シールド)か、タップ中の敵クリーチャーを攻撃。相手はアンタップのクリーチャーでブロック可能。スート相性で守り側有利: ♠は♥に、♦は♠に、♣は♦に、♥は♣に <b>+0/+1</b><br><br>
+      <b>攻撃と戦闘</b>: 相手プレイヤー(シールド)か、タップ中の敵クリーチャーを攻撃。相手はアンタップのクリーチャーでブロック可能。スート相性で守り側有利: ♠は♥に、♦は♠に、♣は♦に、♥は♣に <b>+0/+1</b><br>
+      ・<b>A(エース)</b>は J/Q/K との戦闘時 <b>+13/+13</b>(絵札キラー)<br>
+      ・戦闘ダメージは<b>ターン終了時まで蓄積</b>する(累計がタフネス以上で破壊。例: 6/6 が3点→4点と受けると2回目で破壊)<br><br>
       <b>シールドブレイク</b>: 割られたカードは手札へ。そのままコストなしで召喚してもよい(Sトリガー)<br>
       <b>JOKER</b>(すべて0マナ+追加コスト、2枚入り):<br>
       ・4色どのマナも出せる土地としてセット<br>
       ・♠スペードスピア: 自クリーチャー1体生贄 → クリーチャー1体破壊<br>
-      ・♥ハートデザイア: 手札1枚捨てる → 山札から好きな1枚をサーチ<br>
+      ・♥ハートデザイア: シールドを見て、1枚を手札1枚と入れ替える<br>
       ・♦ダイヤクラック: 自シールド1枚生贄 → 相手シールド1枚破壊(両方Sトリガーあり)<br>
       ・♣クローバーミル: 自土地1枚生贄 → 相手土地1枚破壊<br>
       <b>タイミング</b>: 召喚とJOKER呪文は、最初のクリーチャーが攻撃する前のみ<br>
@@ -402,7 +408,7 @@ function summon(pi, c, free) {
   const p = players[pi];
   removeFromHand(p, c);
   if (!free) pay(p, c.suit, costOf(c));
-  p.field.push({ card: c, tapped: false, sick: true });
+  p.field.push({ card: c, tapped: false, sick: true, dmg: 0 });
   log(`${p.name}: ${cardLabel(c)} を召喚${free ? "(コストなし!)" : `(${costOf(c)}マナ)`} — ${c.rank}/${c.rank}`);
 }
 function spendJoker(pi, jk, spellName) {
@@ -419,15 +425,29 @@ function bonus(suit, oppSuit) {
   if (suit === 1 && oppSuit === 3) return 1;  // ♥ vs ♣ → ♥ +0/+1
   return 0;
 }
-function battle(aPi, aCre, bPi, bCre) {
+/* A(エース)は J/Q/K との戦闘時 +13/+13 */
+function faceBonus(x, y) { return (x.rank === 1 && y.rank >= 11) ? 13 : 0; }
+
+/* 戦闘の数値計算(蓄積ダメージ込みの死亡判定つき・状態は変更しない) */
+function battleNumbers(aCre, bCre) {
   const a = aCre.card, b = bCre.card;
-  const at = a.rank + bonus(a.suit, b.suit);
-  const bt = b.rank + bonus(b.suit, a.suit);
-  const aDies = b.rank >= at, bDies = a.rank >= bt;
-  log(`戦闘: ${cardLabel(a)}(${a.rank}/${at}) vs ${cardLabel(b)}(${b.rank}/${bt})`);
-  if (bDies) destroy(bPi, bCre);
-  if (aDies) destroy(aPi, aCre);
-  if (!aDies && !bDies) log("両者生き残った");
+  const ap = a.rank + faceBonus(a, b), at = a.rank + bonus(a.suit, b.suit) + faceBonus(a, b);
+  const bp = b.rank + faceBonus(b, a), bt = b.rank + bonus(b.suit, a.suit) + faceBonus(b, a);
+  return {
+    ap, at, bp, bt,
+    aDies: (aCre.dmg || 0) + bp >= at,
+    bDies: (bCre.dmg || 0) + ap >= bt,
+  };
+}
+
+function battle(aPi, aCre, bPi, bCre) {
+  const n = battleNumbers(aCre, bCre);
+  aCre.dmg = (aCre.dmg || 0) + n.bp;
+  bCre.dmg = (bCre.dmg || 0) + n.ap;
+  log(`戦闘: ${cardLabel(aCre.card)}(${n.ap}/${n.at}) vs ${cardLabel(bCre.card)}(${n.bp}/${n.bt})`);
+  if (n.bDies) destroy(bPi, bCre);
+  if (n.aDies) destroy(aPi, aCre);
+  if (!n.aDies && !n.bDies) log(`両者生存(蓄積ダメージ ${cardLabel(aCre.card)}:${aCre.dmg} / ${cardLabel(bCre.card)}:${bCre.dmg})`);
 }
 function destroy(pi, cre) {
   const p = players[pi];
@@ -549,6 +569,8 @@ async function runGame(seed) {
       if (done || winner !== null) break;
     }
     if (winner !== null || token !== gameToken) break;
+    // ターン終了時: 蓄積ダメージは消える
+    players.forEach(p => p.field.forEach(f => { f.dmg = 0; }));
     if (cur === secondP) turnNo++;
     cur = 1 - cur;
   }
@@ -568,15 +590,14 @@ async function applyMainAction(pi, a) {
     }
     case "desire": {
       spendJoker(pi, handById(pi, a.jk), "ハートデザイア");
-      const disc = handById(pi, a.disc);
-      removeFromHand(p, disc);
-      p.grave.push(disc);
-      const pick = p.deck.find(c => c.id === a.pick);
-      p.deck = p.deck.filter(c => c.id !== a.pick);
-      p.hand.push(pick);
-      shuffle(p.deck);
-      log(pi === myIdx ? `捨て札: ${cardLabel(disc)} / サーチ: ${cardLabel(pick)}(山札シャッフル)`
-                       : `${p.name}は手札を1枚捨て、山札からサーチした`);
+      const shIdx = p.shields.findIndex(c => c.id === a.sh);
+      const hd = handById(pi, a.hd);
+      const sh = p.shields[shIdx];
+      removeFromHand(p, hd);
+      p.shields[shIdx] = hd;
+      p.hand.push(sh);
+      log(pi === myIdx ? `シールドの ${cardLabel(sh)} と手札の ${cardLabel(hd)} を入れ替えた`
+                       : `${p.name}はシールド1枚と手札1枚を入れ替えた`);
       return false;
     }
     case "crack": {
@@ -644,7 +665,7 @@ async function breakShieldFlow(defPi) {
   const d = await decision(defPi, "trigger", { card: c });
   if (d.v === "summon") {
     removeFromHand(def, c);
-    def.field.push({ card: c, tapped: false, sick: true });
+    def.field.push({ card: c, tapped: false, sick: true, dmg: 0 });
     log(`Sトリガー! ${def.name}: ${cardLabel(c)} をコストなしで召喚`);
   }
   render();
@@ -666,8 +687,8 @@ function aiChooseBlock(defPi, attacker) {
   const cands = def.field.filter(f => !f.tapped);
   if (!cands.length) return null;
   const a = attacker.card;
-  const kills = b => b.card.rank >= a.rank + bonus(a.suit, b.card.suit);
-  const survives = b => a.rank < b.card.rank + bonus(b.card.suit, a.suit);
+  const kills = b => battleNumbers(attacker, b).aDies;
+  const survives = b => !battleNumbers(attacker, b).bDies;
   let best = cands.filter(b => kills(b) && survives(b)).sort((x, y) => x.card.rank - y.card.rank)[0];
   if (!best && def.shields.length === 0) best = cands.sort((x, y) => x.card.rank - y.card.rank)[0];
   if (!best) {
@@ -712,13 +733,14 @@ function aiJokerAction(pi) {
       .sort((a, b) => countBy(o.lands, a.card.suit) - countBy(o.lands, b.card.suit))[0] || o.lands[0];
     if (sac && tgt) return { t: "mill", jk: jk.id, sac: sac.card.id, tgt: tgt.card.id };
   }
-  if (p.hand.length >= 3 && p.deck.length > 0 && p.lands.length >= 3 &&
-      !p.hand.some(c => !c.joker && canPay(p, c.suit, costOf(c)))) {
+  // デザイア: シールドに埋まった強いカードを弱い手札と入れ替えて回収
+  if (p.shields.length >= 1) {
     const others = p.hand.filter(c => c.id !== jk.id);
-    const disc = [...others].filter(c => !c.joker).sort((a, b) => a.rank - b.rank)[0] || others[0];
-    const pick = [...p.deck].filter(c => !c.joker).sort((a, b) => b.rank - a.rank)
-      .find(c => costOf(c) <= p.lands.length + 2) || p.deck[0];
-    if (disc && pick) return { t: "desire", jk: jk.id, disc: disc.id, pick: pick.id };
+    const shBest = [...p.shields].sort((a, b) => (b.joker ? 99 : b.rank) - (a.joker ? 99 : a.rank))[0];
+    const hdWorst = [...others].filter(c => !c.joker).sort((a, b) => a.rank - b.rank)[0];
+    if (shBest && hdWorst && (shBest.joker ? 99 : shBest.rank) >= hdWorst.rank + 4) {
+      return { t: "desire", jk: jk.id, sh: shBest.id, hd: hdWorst.id };
+    }
   }
   return null;
 }
@@ -742,9 +764,11 @@ function aiMainAction(pi) {
     const atk = ready[0];
     let target = "player";
     if (o.shields.length > 0) {
-      const t = o.field.find(t => t.tapped &&
-        atk.card.rank >= t.card.rank + bonus(t.card.suit, atk.card.suit) &&
-        t.card.rank < atk.card.rank + bonus(atk.card.suit, t.card.suit));
+      const t = o.field.find(t => {
+        if (!t.tapped) return false;
+        const n = battleNumbers(atk, t);
+        return n.bDies && !n.aDies;
+      });
       if (t) target = t.card.id;
     }
     return { t: "attack", cre: atk.card.id, target };
@@ -799,12 +823,10 @@ function humanPrompt(pi, kind, ctx) {
 }
 
 function blockOutcomeText(attacker, b) {
-  const a = attacker.card;
-  const aDies = b.card.rank >= a.rank + bonus(a.suit, b.card.suit);
-  const bDies = a.rank >= b.card.rank + bonus(b.card.suit, a.suit);
-  if (aDies && bDies) return "相討ち";
-  if (aDies) return "一方的に倒せる";
-  if (bDies) return "返り討ちにあう";
+  const n = battleNumbers(attacker, b);
+  if (n.aDies && n.bDies) return "相討ち";
+  if (n.aDies) return "一方的に倒せる";
+  if (n.bDies) return "返り討ちにあう";
   return "両者生存";
 }
 
@@ -819,8 +841,8 @@ async function onHandClick(c) {
     opts.push({ label: "土地に置く(4色どのマナも出せる)", value: "land", disabled: landPlayedThisTurn });
     opts.push({ label: "♠スペードスピア: 自クリーチャー1体生贄 → 相手クリーチャー1体破壊", value: "spear",
                 disabled: atk || !p.field.length || !o.field.length });
-    opts.push({ label: "♥ハートデザイア: 手札1枚捨てる → 山札から好きな1枚をサーチ", value: "desire",
-                disabled: atk || !others.length || !p.deck.length });
+    opts.push({ label: "♥ハートデザイア: シールドを見て、1枚を手札1枚と入れ替える", value: "desire",
+                disabled: atk || !others.length || !p.shields.length });
     opts.push({ label: "♦ダイヤクラック: 自シールド1枚生贄 → 相手シールド1枚破壊(両方Sトリガー)", value: "crack",
                 disabled: atk || !p.shields.length || !o.shields.length });
     opts.push({ label: "♣クローバーミル: 自土地1枚生贄 → 相手土地1枚破壊", value: "mill",
@@ -847,13 +869,11 @@ async function onHandClick(c) {
     act({ k: "main", t: "spear", jk: c.id, sac: sc.id, tgt: tc.id });
   }
   if (v === "desire") {
-    const others = p.hand.filter(x => x.id !== c.id);
-    const disc = await chooseCard("ハートデザイア: 捨てる手札を選ぶ", others, "", "キャンセル");
-    if (!disc) return;
-    const sorted = [...p.deck].sort((a, b) => (a.joker ? 99 : a.suit * 20 + a.rank) - (b.joker ? 99 : b.suit * 20 + b.rank));
-    const pick = await chooseCard("ハートデザイア: 山札からサーチするカード", sorted, "選んだあと山札はシャッフルされる", "キャンセル");
-    if (!pick) return;
-    act({ k: "main", t: "desire", jk: c.id, disc: disc.id, pick: pick.id });
+    const sh = await chooseCard("ハートデザイア: シールドを確認 — 手札と入れ替える1枚を選ぶ", p.shields, "これがあなたのシールドの中身", "キャンセル");
+    if (!sh) return;
+    const hd = await chooseCard("ハートデザイア: 代わりにシールドへ入れる手札を選ぶ", p.hand.filter(x => x.id !== c.id), "", "キャンセル");
+    if (!hd) return;
+    act({ k: "main", t: "desire", jk: c.id, sh: sh.id, hd: hd.id });
   }
   if (v === "crack") act({ k: "main", t: "crack", jk: c.id });
   if (v === "mill") {
@@ -1015,6 +1035,7 @@ function cardEl(c, opts = {}) {
     el.innerHTML = `<span class="rk">${RANK_LABEL[c.rank]}</span><span class="st-s">${SUITS[c.suit]}</span><span class="st-b">${SUITS[c.suit]}</span>`;
   }
   if (opts.pt) el.innerHTML += `<span class="pt">${c.rank}/${c.rank}</span>`;
+  if (opts.dmg > 0) el.innerHTML += `<span class="dmgb">-${opts.dmg}</span>`;
   return el;
 }
 
@@ -1057,7 +1078,7 @@ function render() {
   en.field.forEach(f => {
     const slot = document.createElement("div");
     slot.className = "slot" + (f.tapped ? " tapped" : "");
-    const el = cardEl(f.card, { pt: true });
+    const el = cardEl(f.card, { pt: true, dmg: f.dmg });
     if (f.tapped) el.classList.add("tapped");
     if (f.sick) el.classList.add("sick");
     if (uiMain && selAttacker !== null && f.tapped) {
@@ -1077,7 +1098,7 @@ function render() {
   me.field.forEach((f, idx) => {
     const slot = document.createElement("div");
     slot.className = "slot" + (f.tapped ? " tapped" : "");
-    const el = cardEl(f.card, { pt: true });
+    const el = cardEl(f.card, { pt: true, dmg: f.dmg });
     if (f.tapped) el.classList.add("tapped");
     if (f.sick) el.classList.add("sick");
     if (uiMain && winner === null && !f.tapped && !f.sick) {
