@@ -76,6 +76,10 @@
     background: repeating-linear-gradient(135deg, #35507e, #35507e 4px, #2a406a 4px, #2a406a 8px);
     border-color: #1d2c49;
   }
+  .shield-gap {
+    width: 38px; height: 53px; border-radius: 5px;
+    border: 1px dashed rgba(251,248,239,.25);
+  }
   .card .pt {
     position: absolute; right: 2px; bottom: 2px; font-size: 10px; font-weight: 800;
     background: rgba(38,36,31,.85); color: var(--paper); border-radius: 4px; padding: 1px 4px;
@@ -240,13 +244,13 @@
       <b>攻撃と戦闘</b>: 相手プレイヤー(シールド)か、タップ中の敵クリーチャーを攻撃。相手はアンタップのクリーチャーでブロック可能。<b>アンタップ状態のクリーチャーは、攻撃またはブロックするとタップ状態になる</b>(次の自分のターン開始時にアンタップ)。スート相性で守り側有利: ♠は♥に、♦は♠に、♣は♦に、♥は♣に <b>+0/+1</b><br>
       ・<b>A(エース)</b>は J/Q/K との戦闘時 <b>+13/+13</b>(絵札キラー)<br>
       ・戦闘ダメージは<b>ターン終了時まで蓄積</b>する(累計がタフネス以上で破壊。例: 6/6 が3点→4点と受けると2回目で破壊)<br><br>
-      <b>シールドブレイク</b>: 割られたカードは手札へ。そのままコストなしで召喚してもよい(Sトリガー)<br>
+      <b>シールドブレイク</b>: シールドは6つの固定位置に置かれ、<b>割る側がどの位置を割るか選ぶ</b>(割れた位置は歯抜けのまま)。割られたカードは手札へ。そのままコストなしで召喚してもよい(Sトリガー)<br>
       <b>JOKER</b>(すべて0マナ+追加コスト、2枚入り):<br>
       ・4色どのマナも出せる土地としてセット<br>
       ・♠スペードスピア: 自クリーチャー1体生贄 → クリーチャー1体破壊<br>
       ・♥ハートデザイア: シールドを見て、1枚を手札1枚と入れ替える<br>
       ・♦ダイヤクラック: 自シールド1枚生贄 → 相手シールド1枚破壊(両方Sトリガーあり)<br>
-      ・♣クローバーミル: 自土地1枚生贄 → 相手土地1枚破壊<br>
+      ・♣クローバーミル: 自土地1枚生贄 → 相手の山札の半分(端数切り上げ)を墓地に送る<br>
       <b>タイミング</b>: 召喚とJOKER呪文は、最初のクリーチャーが攻撃する前のみ<br>
       <b>勝利条件</b>: シールド0の相手に攻撃を通す(ダイレクトアタック)。山札切れは敗北<br>
       <b>後攻補正</b>: 後攻は1回だけフリーマリガン(手札5枚を山札に戻して引き直し)できる
@@ -368,6 +372,7 @@ function log(msg) {
 function cardLabel(c) { return c.joker ? "JOKER" : SUITS[c.suit] + RANK_LABEL[c.rank]; }
 function costOf(c) { return c.rank + 1; }
 function untappedLands(p) { return p.lands.filter(l => !l.tapped); }
+function shieldCount(p) { return p.shields.filter(Boolean).length; }
 function totalPower(pi) { return players[pi].field.reduce((a, f) => a + f.card.rank, 0); }
 function removeFromHand(p, c) { p.hand = p.hand.filter(x => x.id !== c.id); }
 function handById(pi, id) { return players[pi].hand.find(c => c.id === id); }
@@ -590,7 +595,7 @@ async function applyMainAction(pi, a) {
     }
     case "desire": {
       spendJoker(pi, handById(pi, a.jk), "ハートデザイア");
-      const shIdx = p.shields.findIndex(c => c.id === a.sh);
+      const shIdx = p.shields.findIndex(c => c && c.id === a.sh);
       const hd = handById(pi, a.hd);
       const sh = p.shields[shIdx];
       removeFromHand(p, hd);
@@ -602,18 +607,24 @@ async function applyMainAction(pi, a) {
     }
     case "crack": {
       spendJoker(pi, handById(pi, a.jk), "ダイヤクラック");
-      await breakShieldFlow(pi);
-      if (winner === null) await breakShieldFlow(1 - pi);
+      // 生贄にする自分のシールド位置も、破壊する相手のシールド位置も、唱えた側が選ぶ
+      const s1 = await decision(pi, "shield", { owner: pi, why: "生贄" });
+      await breakShieldAt(pi, s1.slot);
+      if (winner === null && shieldCount(o) > 0) {
+        const s2 = await decision(pi, "shield", { owner: 1 - pi, why: "破壊" });
+        await breakShieldAt(1 - pi, s2.slot);
+      }
       return false;
     }
     case "mill": {
       spendJoker(pi, handById(pi, a.jk), "クローバーミル");
-      const sac = landById(pi, a.sac), tgt = landById(1 - pi, a.tgt);
+      const sac = landById(pi, a.sac);
       p.lands = p.lands.filter(l => l !== sac);
       p.grave.push(sac.card);
-      o.lands = o.lands.filter(l => l !== tgt);
-      o.grave.push(tgt.card);
-      log(`土地破壊: ${p.name}は ${cardLabel(sac.card)} を生贄に、${o.name} の ${cardLabel(tgt.card)} を破壊`);
+      const n = Math.ceil(o.deck.length / 2);
+      const milled = o.deck.splice(o.deck.length - n, n);
+      o.grave.push(...milled);
+      log(`${p.name}は ${cardLabel(sac.card)} を生贄に、${o.name} の山札の半分 ${n}枚を墓地に送った!`);
       return false;
     }
     case "attack": await attackFlow(pi, a.cre, a.target); return false;
@@ -631,7 +642,7 @@ async function attackFlow(atkPi, creId, target) {
   creature.tapped = true;
   const targetCre = target === "player" ? null : fieldById(defPi, target);
   const tName = targetCre ? cardLabel(targetCre.card)
-              : (def.shields.length ? "シールド" : "プレイヤー(とどめ!)");
+              : (shieldCount(def) ? "シールド" : "プレイヤー(とどめ!)");
   log(`${players[atkPi].name}: ${cardLabel(creature.card)} で ${tName} に攻撃`);
   render();
 
@@ -645,20 +656,24 @@ async function attackFlow(atkPi, creId, target) {
     log(`${def.name}: ${cardLabel(blocker.card)} でブロック!`);
     battle(atkPi, creature, defPi, blocker);
   } else if (target === "player") {
-    if (def.shields.length > 0) await breakShieldFlow(defPi);
-    else { win(atkPi, "ダイレクトアタック!"); return; }
+    if (shieldCount(def) > 0) {
+      // どの位置のシールドを割るかは攻撃側が選ぶ
+      const ps = await decision(atkPi, "shield", { owner: defPi, why: "ブレイク" });
+      await breakShieldAt(defPi, ps.slot);
+    } else { win(atkPi, "ダイレクトアタック!"); return; }
   } else if (targetCre && players[defPi].field.includes(targetCre)) {
     battle(atkPi, creature, defPi, targetCre);
   }
   render();
 }
 
-/* シールドブレイク(Sトリガーの意思決定を挟む) */
-async function breakShieldFlow(defPi) {
+/* 指定位置のシールドをブレイク(Sトリガーの意思決定を挟む)。割れた位置は歯抜けになる */
+async function breakShieldAt(defPi, slot) {
   const def = players[defPi];
-  if (!def.shields.length) return;
-  const c = def.shields.pop();
-  log(`${def.name} のシールドをブレイク! ${cardLabel(c)} が手札へ`);
+  const c = def.shields[slot];
+  if (!c) return;
+  def.shields[slot] = null;
+  log(`${def.name} のシールド[位置${slot + 1}]をブレイク! ${cardLabel(c)} が手札へ`);
   def.hand.push(c);
   render();
   if (c.joker) return;   // JOKERは手札に加わるだけ
@@ -679,6 +694,15 @@ function aiDecide(pi, kind, ctx) {
     const b = aiChooseBlock(pi, ctx.attacker);
     return { k: "block", blocker: b ? b.card.id : null };
   }
+  if (kind === "shield") {
+    // 自分のシールドを生贄にするときは中身が最弱の位置、相手を割るときは残っている先頭の位置
+    const owner = players[ctx.owner];
+    const slots = owner.shields.map((c, i) => c ? i : -1).filter(i => i >= 0);
+    if (ctx.owner === pi) {
+      slots.sort((a, b) => (owner.shields[a].joker ? 99 : owner.shields[a].rank) - (owner.shields[b].joker ? 99 : owner.shields[b].rank));
+    }
+    return { k: "shield", slot: slots[0] };
+  }
   return { k: "main", ...aiMainAction(pi) };
 }
 
@@ -690,10 +714,10 @@ function aiChooseBlock(defPi, attacker) {
   const kills = b => battleNumbers(attacker, b).aDies;
   const survives = b => !battleNumbers(attacker, b).bDies;
   let best = cands.filter(b => kills(b) && survives(b)).sort((x, y) => x.card.rank - y.card.rank)[0];
-  if (!best && def.shields.length === 0) best = cands.sort((x, y) => x.card.rank - y.card.rank)[0];
+  if (!best && shieldCount(def) === 0) best = cands.sort((x, y) => x.card.rank - y.card.rank)[0];
   if (!best) {
     const trade = cands.filter(kills).sort((x, y) => x.card.rank - y.card.rank)[0];
-    if (trade && a.rank >= trade.card.rank && def.shields.length <= 2) best = trade;
+    if (trade && a.rank >= trade.card.rank && shieldCount(def) <= 2) best = trade;
   }
   return best || null;
 }
@@ -724,19 +748,18 @@ function aiJokerAction(pi) {
     const tgt = [...o.field].sort((a, b) => b.card.rank - a.card.rank)[0];
     return { t: "spear", jk: jk.id, sac: mine[0].card.id, tgt: tgt.card.id };
   }
-  if (o.shields.length >= 1 && p.shields.length >= 2 && o.shields.length <= 3 &&
+  if (shieldCount(o) >= 1 && shieldCount(p) >= 2 && shieldCount(o) <= 3 &&
       totalPower(pi) > totalPower(1 - pi)) return { t: "crack", jk: jk.id };
-  if (p.lands.length >= 6 && p.lands.length > o.lands.length + 1 && o.lands.length >= 3) {
+  // ミル: 相手の山札の半分を墓地へ(山札切れ勝ちを狙う)
+  if (p.lands.length >= 4 && o.deck.length >= 6) {
     const countBy = (lands, s) => lands.filter(l => !l.card.joker && l.card.suit === s).length;
     const sac = [...p.lands].sort((a, b) => countBy(p.lands, b.card.suit) - countBy(p.lands, a.card.suit))[0];
-    const tgt = [...o.lands].filter(l => !l.card.joker)
-      .sort((a, b) => countBy(o.lands, a.card.suit) - countBy(o.lands, b.card.suit))[0] || o.lands[0];
-    if (sac && tgt) return { t: "mill", jk: jk.id, sac: sac.card.id, tgt: tgt.card.id };
+    if (sac) return { t: "mill", jk: jk.id, sac: sac.card.id };
   }
   // デザイア: シールドに埋まった強いカードを弱い手札と入れ替えて回収
-  if (p.shields.length >= 1) {
+  if (shieldCount(p) >= 1) {
     const others = p.hand.filter(c => c.id !== jk.id);
-    const shBest = [...p.shields].sort((a, b) => (b.joker ? 99 : b.rank) - (a.joker ? 99 : a.rank))[0];
+    const shBest = p.shields.filter(Boolean).sort((a, b) => (b.joker ? 99 : b.rank) - (a.joker ? 99 : a.rank))[0];
     const hdWorst = [...others].filter(c => !c.joker).sort((a, b) => a.rank - b.rank)[0];
     if (shBest && hdWorst && (shBest.joker ? 99 : shBest.rank) >= hdWorst.rank + 4) {
       return { t: "desire", jk: jk.id, sh: shBest.id, hd: hdWorst.id };
@@ -763,7 +786,7 @@ function aiMainAction(pi) {
   if (ready.length) {
     const atk = ready[0];
     let target = "player";
-    if (o.shields.length > 0) {
+    if (shieldCount(o) > 0) {
       const t = o.field.find(t => {
         if (!t.tapped) return false;
         const n = battleNumbers(atk, t);
@@ -800,6 +823,17 @@ function humanPrompt(pi, kind, ctx) {
     ], c).then(v => act({ k: "trigger", v }));
     return;
   }
+  if (kind === "shield") {
+    const owner = players[ctx.owner];
+    const mine = ctx.owner === pi;
+    const opts = owner.shields.map((c, i) => c ? { label: `位置${i + 1} のシールド`, value: i } : null).filter(Boolean);
+    choose(
+      mine ? `${ctx.why}にする自分のシールドの位置を選ぶ` : `${ctx.why}する相手のシールドの位置を選ぶ`,
+      opts, null,
+      mine ? "自分のシールドの中身はハートデザイアで確認・入れ替えできる" : "どの位置に何が入っているかは相手だけが知っている"
+    ).then(v => act({ k: "shield", slot: v }));
+    return;
+  }
   if (kind === "block") {
     const def = players[pi];
     const attacker = ctx.attacker, target = ctx.target;
@@ -807,7 +841,7 @@ function humanPrompt(pi, kind, ctx) {
     const targetCre = target === "player" ? null : fieldById(pi, target);
     const targetDesc = targetCre
       ? `あなたの ${cardLabel(targetCre.card)}(タップ中)`
-      : (def.shields.length ? `あなたのシールド(残り${def.shields.length}枚)` : "あなた本体(とどめ!)");
+      : (shieldCount(def) ? `あなたのシールド(残り${shieldCount(def)}枚)` : "あなた本体(とどめ!)");
     const opts = cands.map(b => ({
       label: `${cardLabel(b.card)}(${b.card.rank}/${b.card.rank})でブロック → ${blockOutcomeText(attacker, b)}`,
       value: b.card.id,
@@ -815,7 +849,7 @@ function humanPrompt(pi, kind, ctx) {
     if (targetCre) {
       opts.push({ label: `ブロックしない(${cardLabel(targetCre.card)} がそのまま戦闘: ${blockOutcomeText(attacker, targetCre)})`, value: null });
     } else {
-      opts.push({ label: def.shields.length ? "ブロックしない(シールドで受ける)" : "ブロックしない(敗北!)", value: null, danger: !def.shields.length });
+      opts.push({ label: shieldCount(def) ? "ブロックしない(シールドで受ける)" : "ブロックしない(敗北!)", value: null, danger: !shieldCount(def) });
     }
     choose(`${cardLabel(attacker.card)} の攻撃!`, opts, attacker.card, `攻撃対象: <b>${targetDesc}</b>`)
       .then(v => act({ k: "block", blocker: v }));
@@ -842,11 +876,11 @@ async function onHandClick(c) {
     opts.push({ label: "♠スペードスピア: 自クリーチャー1体生贄 → 相手クリーチャー1体破壊", value: "spear",
                 disabled: atk || !p.field.length || !o.field.length });
     opts.push({ label: "♥ハートデザイア: シールドを見て、1枚を手札1枚と入れ替える", value: "desire",
-                disabled: atk || !others.length || !p.shields.length });
+                disabled: atk || !others.length || !shieldCount(p) });
     opts.push({ label: "♦ダイヤクラック: 自シールド1枚生贄 → 相手シールド1枚破壊(両方Sトリガー)", value: "crack",
-                disabled: atk || !p.shields.length || !o.shields.length });
-    opts.push({ label: "♣クローバーミル: 自土地1枚生贄 → 相手土地1枚破壊", value: "mill",
-                disabled: atk || !p.lands.length || !o.lands.length });
+                disabled: atk || !shieldCount(p) || !shieldCount(o) });
+    opts.push({ label: "♣クローバーミル: 自土地1枚生贄 → 相手の山札の半分を墓地へ", value: "mill",
+                disabled: atk || !p.lands.length || !o.deck.length });
   } else {
     opts.push({ label: `土地に置く(${SUITS[c.suit]}マナ)`, value: "land", disabled: landPlayedThisTurn });
     opts.push({
@@ -869,7 +903,7 @@ async function onHandClick(c) {
     act({ k: "main", t: "spear", jk: c.id, sac: sc.id, tgt: tc.id });
   }
   if (v === "desire") {
-    const sh = await chooseCard("ハートデザイア: シールドを確認 — 手札と入れ替える1枚を選ぶ", p.shields, "これがあなたのシールドの中身", "キャンセル");
+    const sh = await chooseCard("ハートデザイア: シールドを確認 — 手札と入れ替える1枚を選ぶ", p.shields.filter(Boolean), "これがあなたのシールドの中身", "キャンセル");
     if (!sh) return;
     const hd = await chooseCard("ハートデザイア: 代わりにシールドへ入れる手札を選ぶ", p.hand.filter(x => x.id !== c.id), "", "キャンセル");
     if (!hd) return;
@@ -877,11 +911,10 @@ async function onHandClick(c) {
   }
   if (v === "crack") act({ k: "main", t: "crack", jk: c.id });
   if (v === "mill") {
-    const sc = await chooseCard("クローバーミル: 生贄にする自分の土地", p.lands.map(l => l.card), "", "キャンセル");
+    const sc = await chooseCard("クローバーミル: 生贄にする自分の土地", p.lands.map(l => l.card),
+      `相手の山札 ${o.deck.length}枚の半分(${Math.ceil(o.deck.length / 2)}枚)を墓地に送る`, "キャンセル");
     if (!sc) return;
-    const tc = await chooseCard("クローバーミル: 破壊する相手の土地", o.lands.map(l => l.card), "", "キャンセル");
-    if (!tc) return;
-    act({ k: "main", t: "mill", jk: c.id, sac: sc.id, tgt: tc.id });
+    act({ k: "main", t: "mill", jk: c.id, sac: sc.id });
   }
 }
 
@@ -1054,12 +1087,26 @@ function render() {
   document.getElementById("m-mana").textContent = `マナ ${untappedLands(me).length}/${me.lands.length}`;
 
   // シールド
-  const es = document.getElementById("e-shields"); es.innerHTML = "";
-  en.shields.forEach(() => es.appendChild(cardEl(null, { back: true, sm: true })));
-  if (!en.shields.length) es.innerHTML = `<span style="font-size:11px;color:var(--rust);font-weight:bold">シールドなし!</span>`;
-  const ms = document.getElementById("m-shields"); ms.innerHTML = "";
-  me.shields.forEach(() => ms.appendChild(cardEl(null, { back: true, sm: true })));
-  if (!me.shields.length) ms.innerHTML = `<span style="font-size:11px;color:var(--rust);font-weight:bold">シールドなし!</span>`;
+  for (const [id, pl] of [["e-shields", en], ["m-shields", me]]) {
+    const z = document.getElementById(id); z.innerHTML = "";
+    pl.shields.forEach((c, i) => {
+      if (c) {
+        const el = cardEl(null, { back: true, sm: true });
+        el.title = `位置${i + 1}`;
+        z.appendChild(el);
+      } else {
+        const gap = document.createElement("div");
+        gap.className = "shield-gap";
+        z.appendChild(gap);
+      }
+    });
+    if (shieldCount(pl) === 0) {
+      const w = document.createElement("span");
+      w.style.cssText = "font-size:11px;color:var(--rust);font-weight:bold;align-self:center;margin-left:6px";
+      w.textContent = "シールドなし!";
+      z.appendChild(w);
+    }
+  }
 
   // 土地
   for (const [id, p] of [["e-lands", en], ["m-lands", me]]) {
