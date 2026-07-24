@@ -554,17 +554,26 @@ function blockOutcomeText(attacker, b) {
   return "両者生存";
 }
 
-async function decideBlock(defPi, attacker) {
+async function decideBlock(defPi, attacker, target) {
   const def = players[defPi];
   const cands = def.field.filter(f => !f.tapped);
   if (!cands.length) return null;
   if (defPi === 1 || TEST_AUTO) return aiChooseBlock(defPi, attacker);
+  const targetCre = target === "player" ? null : def.field[target];
+  const targetDesc = targetCre
+    ? `あなたの ${cardLabel(targetCre.card)}(タップ中)`
+    : (def.shields.length ? `あなたのシールド(残り${def.shields.length}枚)` : "あなた本体(とどめ!)");
   const opts = cands.map(b => ({
     label: `${cardLabel(b.card)}(${b.card.rank}/${b.card.rank})でブロック → ${blockOutcomeText(attacker, b)}`,
     value: b,
   }));
-  opts.push({ label: def.shields.length ? "ブロックしない(シールドで受ける)" : "ブロックしない(敗北!)", value: null, danger: !def.shields.length });
-  return choose(`${cardLabel(attacker.card)} が攻撃!`, opts, attacker.card);
+  if (targetCre) {
+    opts.push({ label: `ブロックしない(${cardLabel(targetCre.card)} がそのまま戦闘: ${blockOutcomeText(attacker, targetCre)})`, value: null });
+  } else {
+    opts.push({ label: def.shields.length ? "ブロックしない(シールドで受ける)" : "ブロックしない(敗北!)", value: null, danger: !def.shields.length });
+  }
+  return choose(`${cardLabel(attacker.card)} の攻撃!`, opts, attacker.card,
+    `攻撃対象: <b>${targetDesc}</b>`);
 }
 
 /* 攻撃解決 */
@@ -577,7 +586,7 @@ async function resolveAttack(atkPi, creature, target) {
   log(`${players[atkPi].name}: ${cardLabel(creature.card)} で ${tName} に攻撃`);
   render();
 
-  const blocker = await decideBlock(defPi, creature);
+  const blocker = await decideBlock(defPi, creature, target);
   if (blocker) {
     blocker.tapped = true;
     log(`${def.name}: ${cardLabel(blocker.card)} でブロック!`);
