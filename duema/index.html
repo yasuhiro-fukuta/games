@@ -251,7 +251,7 @@
       ・♥ハートデザイア: シールドを見て、1枚を手札1枚と入れ替える<br>
       ・♦ダイヤクラック: 自シールド1枚生贄 → 相手シールド1枚破壊(両方Sトリガーあり)<br>
       ・♣クローバーミル: 自土地1枚生贄 → 相手の山札の半分(端数切り上げ)を墓地に送る<br>
-      <b>タイミング</b>: 召喚とJOKER呪文は、最初のクリーチャーが攻撃する前のみ<br>
+      <b>タイミング</b>: 召喚・JOKER呪文・土地セットは、自分のターン中ならいつでも(攻撃後でも)可能<br>
       <b>勝利条件</b>: シールド0の相手に攻撃を通す(ダイレクトアタック)。山札切れは敗北<br>
       <b>後攻補正</b>: 後攻は1回だけフリーマリガン(手札5枚を山札に戻して引き直し)できる
     </div>
@@ -327,7 +327,7 @@ function mulberry32(seed) {
 let rng = Math.random;
 
 /* ================= 状態 ================= */
-let players, turnP, turnNo, landPlayedThisTurn, attackedThisTurn, winner, firstP;
+let players, turnP, turnNo, landPlayedThisTurn, winner, firstP;
 let myIdx = 0;              // 自分の席(0=部屋主/CPU戦の人間, 1=ゲスト)
 let mode = "cpu";           // 'cpu' | 'host' | 'guest'
 let uiMain = false;         // 自分のメインフェイズ入力を受付中か
@@ -473,7 +473,6 @@ function startTurn(pi) {
   p.lands.forEach(l => l.tapped = false);
   p.field.forEach(f => { f.tapped = false; f.sick = false; });
   landPlayedThisTurn = false;
-  attackedThisTurn = false;
   selAttacker = null;
   if (p.deck.length === 0) { win(1 - pi, `${p.name} は山札切れ`); return false; }
   p.hand.push(p.deck.pop());
@@ -546,7 +545,7 @@ async function runGame(seed) {
   }
   firstP = rng() < 0.5 ? 0 : 1;
   turnP = firstP; turnNo = 1;
-  landPlayedThisTurn = false; attackedThisTurn = false;
+  landPlayedThisTurn = false;
   winner = null; uiMain = false; selAttacker = null;
   logLines = [];
   inbox.length = 0; pendingResolve = null;
@@ -635,7 +634,6 @@ async function applyMainAction(pi, a) {
 
 /* 攻撃解決(ブロック・Sトリガーの意思決定を挟む) */
 async function attackFlow(atkPi, creId, target) {
-  attackedThisTurn = true;
   const creature = fieldById(atkPi, creId);
   if (!creature) return;
   const defPi = 1 - atkPi, def = players[defPi];
@@ -770,15 +768,13 @@ function aiJokerAction(pi) {
 
 function aiMainAction(pi) {
   const p = players[pi], o = players[1 - pi];
-  if (!attackedThisTurn) {
-    const sp = aiJokerAction(pi);
-    if (sp) return sp;
-  }
+  const sp = aiJokerAction(pi);
+  if (sp) return sp;
   if (!landPlayedThisTurn) {
     const c = aiPickLand(pi);
     if (c) return { t: "land", card: c.id };
   }
-  if (!attackedThisTurn) {
+  {
     const s = p.hand.filter(c => !c.joker && canPay(p, c.suit, costOf(c))).sort((a, b) => b.rank - a.rank)[0];
     if (s) return { t: "summon", card: s.id };
   }
@@ -868,29 +864,27 @@ function blockOutcomeText(attacker, b) {
 async function onHandClick(c) {
   if (!uiMain || winner !== null) return;
   const p = players[myIdx], o = players[1 - myIdx];
-  const atk = attackedThisTurn;
   const opts = [];
   if (c.joker) {
     const others = p.hand.filter(x => x.id !== c.id);
     opts.push({ label: "土地に置く(4色マナ・1ターン1枚制限とは別枠)", value: "land" });
     opts.push({ label: "♠スペードスピア: 自クリーチャー1体生贄 → 相手クリーチャー1体破壊", value: "spear",
-                disabled: atk || !p.field.length || !o.field.length });
+                disabled: !p.field.length || !o.field.length });
     opts.push({ label: "♥ハートデザイア: シールドを見て、1枚を手札1枚と入れ替える", value: "desire",
-                disabled: atk || !others.length || !shieldCount(p) });
+                disabled: !others.length || !shieldCount(p) });
     opts.push({ label: "♦ダイヤクラック: 自シールド1枚生贄 → 相手シールド1枚破壊(両方Sトリガー)", value: "crack",
-                disabled: atk || !shieldCount(p) || !shieldCount(o) });
+                disabled: !shieldCount(p) || !shieldCount(o) });
     opts.push({ label: "♣クローバーミル: 自土地1枚生贄 → 相手の山札の半分を墓地へ", value: "mill",
-                disabled: atk || !p.lands.length || !o.deck.length });
+                disabled: !p.lands.length || !o.deck.length });
   } else {
     opts.push({ label: `土地に置く(${SUITS[c.suit]}マナ)`, value: "land", disabled: landPlayedThisTurn });
     opts.push({
       label: `召喚する — コスト${costOf(c)}(${SUITS[c.suit]}1+無指定${c.rank}) ${c.rank}/${c.rank}`,
-      value: "summon", primary: true, disabled: atk || !canPay(p, c.suit, costOf(c)),
+      value: "summon", primary: true, disabled: !canPay(p, c.suit, costOf(c)),
     });
   }
   opts.push({ label: "キャンセル", value: null });
-  const note = atk ? "攻撃を開始したため、このターンは召喚・JOKER呪文は使えない"
-             : landPlayedThisTurn ? "土地はこのターンすでに置いた" : "";
+  const note = landPlayedThisTurn && !c.joker ? "土地はこのターンすでに置いた" : "";
   const v = await choose(cardLabel(c), opts, c, note);
   if (!uiMain) return;   // 選んでいる間に状況が変わった場合
   if (v === "land") act({ k: "main", t: "land", card: c.id });
