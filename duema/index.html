@@ -309,12 +309,11 @@
   <!-- オリジナルルール: フェイズトラッカー -->
   <div id="phasebar" style="display:none">
     <div class="pb-ticks">
-      <span class="pb-tick" id="pb-untap" title="アンタップ&ドロー">☀</span>
-      <span class="pb-tick" id="pb-attack" title="アタック(ターン側)">⚔</span>
-      <span class="pb-tick" id="pb-main" title="メイン(相手側: 土地・呪文・召喚)">⚚</span>
-      <span class="pb-tick" id="pb-block" title="ブロック(相手側)">⛨</span>
-      <span class="pb-tick" id="pb-battle" title="戦闘解決">✦</span>
-      <span class="pb-tick" id="pb-end" title="ターンエンド">☽</span>
+      <span class="pb-tick" id="pb-draw" title="ドロー">🂠</span>
+      <span class="pb-tick" id="pb-main" title="メイン(土地・呪文・召喚)">⚚</span>
+      <span class="pb-tick" id="pb-block" title="ブロック(相手の攻撃に対応)">⛨</span>
+      <span class="pb-tick" id="pb-clean" title="クリンナップ(戦闘解決→アンタップ)">✦</span>
+      <span class="pb-tick" id="pb-attack" title="アタック(宣言してターン終了)">⚔</span>
     </div>
   </div>
 
@@ -364,9 +363,9 @@
     </div>
     <div class="body" id="rules-original" style="display:none">
       54枚フルデッキ(4色×13+JOKER2枚)同士の1対1。<b>シールドなし・勝利条件はデッキアウトのみ</b>。先攻後攻はランダム、後攻は1回フリーマリガン可。<br><br>
-      <b>フェイズ進行</b>(毎ターン): ☀→⚔→⚚→⛨→✦→☽<br>
-      ☀アンタップ&amp;ドロー → ⚔<b>アタック</b>(ターン側が攻撃を全て宣言)→ ⚚<b>メイン</b>(<b>相手側</b>が土地セット・JOKER呪文・クリーチャー召喚)→ ⛨<b>ブロック</b>(相手側が全て宣言)→ ✦<b>戦闘解決</b> → ☽自動でターンエンド<br><br>
-      <b>土地・呪文・召喚はすべて相手のターン中に行う</b>(攻撃宣言を見てから対応)。召喚酔いはなし。J/Q/Kの生贄軽減召喚も使える<br>
+      <b>フェイズ進行</b>(毎ターン、すべて自分の行動): 🂠→⚚→⛨→✦→⚔<br>
+      🂠<b>ドロー</b> → ⚚<b>メイン</b>(土地セット・JOKER呪文・召喚)→ ⛨<b>ブロック</b>(相手が前のターン末に宣言した攻撃へのブロックを一括指定)→ ✦<b>クリンナップ</b>(戦闘解決→自分アンタップ)→ ⚔<b>アタック</b>(攻撃を全て宣言=ターン終了)<br><br>
+      <b>攻撃はターンの最後に宣言し、相手は次の自分のターンで対応する</b>(召喚・呪文で迎撃してからブロック)。召喚酔いはなし。J/Q/Kの生贄軽減召喚も使える<br>
       <b>攻撃</b>: タップ中の敵クリーチャー(1体につき攻撃1つまで)か、プレイヤー本体(複数可)。攻撃対象が召喚フェイズ中の生贄などで消えたら空振り<br>
       <b>ダイレクトアタック</b>: 攻撃が通ると、その数字ぶん相手の山札が墓地へ落ちる<br>
       <b>戦闘</b>: 常に1対1、蓄積ダメージなし。Aの絵札特効(+13/+0)はあり<br>
@@ -921,8 +920,6 @@ async function checkDeckOut(causerPi) {
 function startTurnO(pi) {
   turnP = pi;
   const p = players[pi];
-  p.lands.forEach(l => l.tapped = false);
-  p.field.forEach(f => { f.tapped = false; f.sick = false; f.dmg = 0; });
   landPlayedThisTurn = false;
   selAttacker = null; pendingAttacks = []; pendingBlocks = []; selTargetAtt = null;
   p.hand.push(p.deck.pop());
@@ -934,14 +931,76 @@ function startTurnO(pi) {
 async function runOriginalTurns(token, secondP) {
   let cur = firstP;
   while (winner === null) {
-    // アンタップフェイズ(アンタップ&ドロー・自動)
-    oPhase = { phase: "untap", actor: cur };
+    // ドローフェイズ(ドローのみ・自動)
+    oPhase = { phase: "draw", actor: cur };
     startTurnO(cur);
     if (await checkDeckOut()) return;
     await showBanner(cur === myIdx ? "あなたのターン" : "相手のターン", 900);
     if (token !== gameToken) return;
 
-    // アタックフェイズ(ターン側: 全攻撃を一括宣言)
+    // メインフェイズ(土地・JOKER呪文・召喚)
+    for (;;) {
+      if (winner !== null || token !== gameToken) return;
+      oPhase = { phase: "main", actor: cur }; render();
+      const a = await decision(cur, "omain");
+      if (token !== gameToken) return;
+      if (a.t === "done") break;
+      await applyMainO(cur, a);
+      if (winner !== null) return;
+      render();
+    }
+
+    // 相手が前のターン末に宣言した攻撃の空振り判定
+    const att = 1 - cur;
+    const alive = declaredAttacks.filter(at =>
+      fieldById(att, at.cre) && (at.tt !== "cre" || fieldById(cur, at.tv)));
+    if (alive.length < declaredAttacks.length) log(`${declaredAttacks.length - alive.length}件の攻撃は空振りになった`);
+
+    // ブロックフェイズ(相手の攻撃へのブロックを一括指定)
+    let blocks = [];
+    if (alive.length && players[cur].field.some(f => !f.tapped)) {
+      oPhase = { phase: "block", actor: cur }; render();
+      const b = await decision(cur, "oblocks");
+      if (token !== gameToken) return;
+      blocks = b.list || [];
+    }
+
+    // クリンナップ(戦闘解決 → 自分アンタップ・自動)
+    oPhase = { phase: "clean", actor: cur }; render();
+    for (const at of alive) {
+      if (winner !== null || token !== gameToken) return;
+      const atkCre = fieldById(att, at.cre);
+      if (!atkCre) continue;
+      const bl = blocks.find(b => b.attacker === at.cre);
+      const blocker = bl ? fieldById(cur, bl.blocker) : null;
+      if (blocker) {
+        blocker.tapped = true;
+        log(`${players[cur].name}: ${cardLabel(blocker.card)} で ${cardLabel(atkCre.card)} をブロック!`);
+        await battleO(att, atkCre, cur, blocker);
+      } else if (at.tt === "player") {
+        const n = atkCre.card.rank;
+        const milled = players[cur].deck.splice(Math.max(0, players[cur].deck.length - n), n);
+        players[cur].grave.push(...milled);
+        sfx("clash");
+        log(`ダイレクトアタック! ${cardLabel(atkCre.card)} → ${players[cur].name}の山札${milled.length}枚が墓地へ`);
+        render();
+        if (await checkDeckOut()) return;
+      } else {
+        const t = fieldById(cur, at.tv);
+        if (t) await battleO(att, atkCre, cur, t);
+      }
+      render();
+    }
+    declaredAttacks = [];
+    // 自分の土地とクリーチャーをアンタップ(ダメージ回復も)
+    players[cur].lands.forEach(l => { l.tapped = false; });
+    players[cur].field.forEach(f => { f.tapped = false; f.dmg = 0; });
+    log(`${players[cur].name}: クリンナップ — アンタップ`);
+    render();
+    await wait(450);
+    if (winner !== null || token !== gameToken) return;
+
+    // アタックフェイズ(攻撃を宣言してターン終了)
     oPhase = { phase: "attack", actor: cur }; render();
     const ad = await decision(cur, "oattacks");
     if (token !== gameToken) return;
@@ -949,70 +1008,10 @@ async function runOriginalTurns(token, secondP) {
     for (const at of declaredAttacks) fieldById(cur, at.cre).tapped = true;
     if (declaredAttacks.length) {
       sfx("attack");
-      log(`${players[cur].name}: ${declaredAttacks.length}件の攻撃を宣言`);
-    } else log(`${players[cur].name}: 攻撃なし`);
+      log(`${players[cur].name}: ${declaredAttacks.length}件の攻撃を宣言してターン終了`);
+    } else log(`${players[cur].name}: 攻撃なしでターン終了`);
     render();
 
-    // メインフェイズ(相手側: 土地・JOKER呪文・召喚。攻撃0件でも必ず発生)
-    const def = 1 - cur;
-    for (;;) {
-      if (winner !== null || token !== gameToken) return;
-      oPhase = { phase: "main", actor: def }; render();
-      const a = await decision(def, "omain");
-      if (token !== gameToken) return;
-      if (a.t === "done") break;
-      await applyMainO(def, a);
-      if (winner !== null) return;
-      render();
-    }
-
-    // 対象や攻撃者を失った攻撃は空振り(戦闘から除外)
-    const alive = declaredAttacks.filter(at =>
-      fieldById(cur, at.cre) && (at.tt !== "cre" || fieldById(def, at.tv)));
-    if (alive.length < declaredAttacks.length) log(`${declaredAttacks.length - alive.length}件の攻撃は空振りになった`);
-
-    // ブロックフェイズ(防御側が一括宣言)
-    let blocks = [];
-    if (alive.length && players[def].field.some(f => !f.tapped)) {
-      oPhase = { phase: "block", actor: def }; render();
-      const b = await decision(def, "oblocks");
-      if (token !== gameToken) return;
-      blocks = b.list || [];
-    }
-
-    // 戦闘解決(宣言順)
-    oPhase = { phase: "battle", actor: cur }; render();
-    for (const at of alive) {
-      if (winner !== null || token !== gameToken) return;
-      const atkCre = fieldById(cur, at.cre);
-      if (!atkCre) continue;
-      const bl = blocks.find(b => b.attacker === at.cre);
-      const blocker = bl ? fieldById(def, bl.blocker) : null;
-      if (blocker && !players[def].field.includes(blocker)) continue;
-      if (blocker) {
-        blocker.tapped = true;
-        log(`${players[def].name}: ${cardLabel(blocker.card)} で ${cardLabel(atkCre.card)} をブロック!`);
-        await battleO(cur, atkCre, def, blocker);
-      } else if (at.tt === "player") {
-        const n = atkCre.card.rank;
-        const milled = players[def].deck.splice(Math.max(0, players[def].deck.length - n), n);
-        players[def].grave.push(...milled);
-        sfx("clash");
-        log(`ダイレクトアタック! ${cardLabel(atkCre.card)} → ${players[def].name}の山札${milled.length}枚が墓地へ`);
-        render();
-        if (await checkDeckOut()) return;
-      } else {
-        const t = fieldById(def, at.tv);
-        if (t) await battleO(cur, atkCre, def, t);
-      }
-      render();
-    }
-    declaredAttacks = [];
-    // ターンエンド(自動・ダメージ回復)
-    oPhase = { phase: "end", actor: cur };
-    players.forEach(p => p.field.forEach(f => { f.dmg = 0; }));
-    render();
-    await wait(450);
     oPhase = null;
     if (cur === secondP) turnNo++;
     cur = 1 - cur;
@@ -1487,13 +1486,13 @@ function humanPrompt(pi, kind, ctx) {
   }
   if (kind === "omain") {
     uiMain = true;
-    setHint("メインフェイズ(相手の攻撃を見てから): 手札クリックで土地・JOKER呪文・召喚。終わったらボタンで次へ");
+    setHint("メインフェイズ: 手札クリックで土地・JOKER呪文・召喚。相手の攻撃はこの後のブロックで対応");
     render();
     return;
   }
   if (kind === "oattacks") {
     uiMain = true; pendingAttacks = []; selAttacker = null;
-    setHint("アタックフェイズ: 自分のクリーチャー→対象(タップ中の敵 or 相手エリア)の順にクリック。全て決めたら確定");
+    setHint("アタックフェイズ: 自分のクリーチャー→対象(タップ中の敵 or 相手エリア)の順にクリック。確定するとターン終了");
     render();
     return;
   }
@@ -1624,7 +1623,7 @@ async function onHandClickO(c) {
                   disabled: !p.deck.length });
     }
     opts.push({ label: "キャンセル", value: null });
-    const v = await choose(cardLabel(c), opts, c, "JOKER呪文と土地は相手ターン中の自分のメインフェイズで");
+    const v = await choose(cardLabel(c), opts, c, "JOKER呪文と土地は自分のメインフェイズで");
     if (!uiMain) return;
     if (v === "land") act({ k: "omain", t: "land", card: c.id });
     if (v === "spear") {
@@ -1956,7 +1955,7 @@ function render() {
   if (!players) return;
   const me = players[myIdx], en = players[1 - myIdx];
   const original = ruleMode === "original";
-  const PHASE_NAME = { untap: "アンタップ", attack: "アタック", main: "メイン", block: "ブロック", battle: "戦闘", end: "ターンエンド" };
+  const PHASE_NAME = { draw: "ドロー", main: "メイン", block: "ブロック", clean: "クリンナップ", attack: "アタック" };
   document.getElementById("turn-ind").textContent =
     winner !== null ? "" :
     `ターン${turnNo} — ${players[turnP].name}の番` +
@@ -1967,19 +1966,17 @@ function render() {
     document.getElementById(id).style.display = original ? "none" : "";
   }
 
-  // フェイズトラッカー(自ターン=オレンジ線、相手ターン=青線。記号は行動者の色)
+  // フェイズトラッカー(全フェイズがターン側の行動: 自ターン=オレンジ、相手ターン=青)
   const pb = document.getElementById("phasebar");
   pb.style.display = original ? "" : "none";
   if (original) {
     const myTurn = turnP === myIdx;
     pb.classList.toggle("myturn", myTurn);
     const cp = oPhase ? oPhase.phase : null;
-    for (const [ph, id] of [["untap","pb-untap"],["attack","pb-attack"],["main","pb-main"],["block","pb-block"],["battle","pb-battle"],["end","pb-end"]]) {
+    for (const [ph, id] of [["draw","pb-draw"],["main","pb-main"],["block","pb-block"],["clean","pb-clean"],["attack","pb-attack"]]) {
       const el = document.getElementById(id);
-      const turnSide = ph === "untap" || ph === "attack";      // ターン側が動くフェイズ
-      const mine = turnSide ? myTurn : !myTurn;                // 自分が動くなら orange
-      el.classList.toggle("orange", mine);
-      el.classList.toggle("blue", !mine);
+      el.classList.toggle("orange", myTurn);
+      el.classList.toggle("blue", !myTurn);
       el.classList.toggle("active", cp === ph);
     }
   }
@@ -2061,8 +2058,8 @@ function render() {
       });
     }
     if (original) {
-      // 敵側が攻撃宣言中のクリーチャーには⚔マーク
-      if (turnP !== myIdx && declAtkSet.has(f.card.id)) el.innerHTML += `<span class="atkmark">⚔️</span>`;
+      // 攻撃宣言中のクリーチャーには⚔マーク
+      if (declAtkSet.has(f.card.id)) el.innerHTML += `<span class="atkmark">⚔️</span>`;
       // 自分のアタックフェイズ: タップ中の敵(未指定)をターゲットにできる(1体1攻撃まで)
       if (uiMain && oPhase && oPhase.phase === "attack" && selAttacker !== null && f.tapped && !pendTvSet.has(f.card.id)) {
         el.classList.add("targetable");
@@ -2108,8 +2105,8 @@ function render() {
       });
     }
     if (original) {
-      // 自分が攻撃宣言中のクリーチャーには⚔マーク
-      if (turnP === myIdx && (declAtkSet.has(f.card.id) || pendAtkSet.has(f.card.id))) el.innerHTML += `<span class="atkmark">⚔️</span>`;
+      // 攻撃宣言中(確定前含む)のクリーチャーには⚔マーク
+      if (declAtkSet.has(f.card.id) || pendAtkSet.has(f.card.id)) el.innerHTML += `<span class="atkmark">⚔️</span>`;
       // アタックフェイズ: 攻撃クリーチャーの選択/割り当て解除
       if (uiMain && oPhase && oPhase.phase === "attack") {
         if (pendAtkSet.has(f.card.id)) {
@@ -2166,20 +2163,16 @@ function render() {
   const btn = document.getElementById("btn-end");
   btn.disabled = !(uiMain && winner === null);
   if (original && oPhase) {
-    let final = false;
-    if (oPhase.phase === "block") final = true;
-    if (oPhase.phase === "main") {
-      const aliveAtk = declaredAttacks.some(at =>
-        fieldById(turnP, at.cre) && (at.tt !== "cre" || fieldById(1 - turnP, at.tv)));
-      const canBlock = players[1 - turnP].field.some(f => !f.tapped);
-      final = !(aliveAtk && canBlock);   // ブロックフェイズが飛ばされる=このボタンでターン終了へ
-    }
+    const att = 1 - turnP;
+    const aliveAtk = declaredAttacks.some(at =>
+      fieldById(att, at.cre) && (at.tt !== "cre" || fieldById(turnP, at.tv)));
+    const canBlock = players[turnP].field.some(f => !f.tapped);
     btn.textContent = {
-      attack: `攻撃を確定(${pendingAttacks.length}件)`,
-      main: final ? "メインを終えてターンエンドへ" : "メインを終えてブロックへ",
+      main: aliveAtk && canBlock ? "メインを終えてブロックへ" : "メインを終えてクリンナップへ",
       block: `ブロックを確定(${pendingBlocks.length}件)`,
+      attack: `攻撃を確定してターン終了(${pendingAttacks.length}件)`,
     }[oPhase.phase] || "―";
-    btn.classList.toggle("final", final);
+    btn.classList.toggle("final", oPhase.phase === "attack");   // ターン終了に至るボタンはオレンジ
   } else {
     btn.textContent = "ターン終了";
     btn.classList.remove("final");
