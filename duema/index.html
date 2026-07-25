@@ -166,12 +166,23 @@
   /* 演出 */
   .banner {
     position: fixed; inset: 0; z-index: 50; pointer-events: none;
-    display: flex; align-items: center; justify-content: center;
+    display: flex; flex-direction: column; gap: 30px;
+    align-items: center; justify-content: center;
     font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
     font-size: 34px; font-weight: bold; letter-spacing: .25em; color: var(--gold);
     text-shadow: 0 0 24px rgba(201,162,39,.8), 0 2px 4px rgba(0,0,0,.9);
     background: rgba(8,14,20,.55);
-    animation: bannerFade 1s ease both;
+    animation: bannerFade 1.2s ease both;
+  }
+  .banner-card { transform: scale(1.7); box-shadow: 0 0 34px rgba(201,162,39,.75); }
+  .fx-sacrow { display: flex; gap: 22px; position: absolute; }
+  .fx-sacrow .card { transform: scale(1.5); --fxx: 0px; }
+  .fx-appear { opacity: 0; position: absolute; }
+  .fx-appear.go { animation: fxAppear .55s cubic-bezier(.2,.8,.3,1) both; }
+  @keyframes fxAppear {
+    0% { opacity: 0; transform: scale(2.7); filter: brightness(3.2); }
+    55% { opacity: 1; }
+    100% { opacity: 1; transform: scale(1.85); filter: brightness(1); box-shadow: 0 0 44px rgba(201,162,39,.9); }
   }
   @keyframes bannerFade {
     0% { opacity: 0; transform: scale(.85); }
@@ -509,14 +520,50 @@ async function battle(aPi, aCre, bPi, bCre) {
 }
 
 /* ================= 演出 ================= */
-function showBanner(text, ms = 1000) {
+function showBanner(text, ms = 1000, card) {
   if (TEST_AUTO) return Promise.resolve();
   return new Promise(res => {
     const d = document.createElement("div");
     d.className = "banner";
-    d.textContent = text;
+    const t = document.createElement("div");
+    t.textContent = text;
+    d.appendChild(t);
+    if (card) {
+      const el = cardEl(card, { pt: !card.joker });
+      el.classList.add("banner-card");
+      d.appendChild(el);
+    }
     document.body.appendChild(d);
     setTimeout(() => { d.remove(); res(); }, ms);
+  });
+}
+
+/* 絵札(J/Q/K)召喚演出: 生贄が斬られ、フラッシュと共にカードが降臨する */
+function showSummonFx(card, sacCards) {
+  if (TEST_AUTO) return Promise.resolve();
+  return new Promise(res => {
+    const ov = document.createElement("div");
+    ov.className = "fxwrap";
+    const flash = document.createElement("div");
+    flash.className = "fx-flash";
+    ov.appendChild(flash);
+    let delay = 0;
+    if (sacCards && sacCards.length) {
+      const row = document.createElement("div");
+      row.className = "fx-sacrow";
+      sacCards.forEach(c => row.appendChild(cardEl(c, { pt: true })));
+      ov.appendChild(row);
+      setTimeout(() => row.querySelectorAll(".card").forEach(el => el.classList.add("slashed")), 380);
+      delay = 1150;
+      setTimeout(() => row.remove(), delay);
+    }
+    document.body.appendChild(ov);
+    const sc = cardEl(card, { pt: true });
+    sc.classList.add("fx-appear");
+    ov.appendChild(sc);
+    setTimeout(() => flash.classList.add("go"), delay + 60);
+    setTimeout(() => sc.classList.add("go"), delay + 160);
+    setTimeout(() => { ov.remove(); res(); }, delay + 1150);
   });
 }
 
@@ -683,6 +730,7 @@ async function applyMainAction(pi, a) {
       const c = handById(pi, a.card);
       // J/Q/K: 同スートの味方クリーチャーを生贄にして数字の合計分コスト軽減
       const sacs = (a.sacs || []).map(id => fieldById(pi, id)).filter(Boolean);
+      if (c.rank >= 11) await showSummonFx(c, sacs.map(f => f.card));   // 絵札の降臨演出
       let reduction = 0;
       for (const s of sacs) {
         reduction += s.card.rank;
@@ -790,7 +838,7 @@ async function breakShieldAt(defPi, slot) {
   if (d.v === "summon") {
     removeFromHand(def, c);
     def.field.push({ card: c, tapped: false, sick: true, dmg: 0 });
-    await showBanner("シールドトリガー!");
+    await showBanner("シールドトリガー!", 1200, c);
     log(`Sトリガー! ${def.name}: ${cardLabel(c)} をコストなしで召喚`);
   }
   render();
