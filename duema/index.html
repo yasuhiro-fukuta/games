@@ -386,7 +386,8 @@
       ☀<b>アンタップ&amp;ドロー</b> → ⚚<b>第1メイン</b>(土地・JOKER呪文・召喚)→ ⚔<b>アタック</b>(攻撃を全て宣言)→ ⛨<b>ブロック</b>(<b>相手が</b>ブロック指定+JOKER呪文も使える)→ ✦<b>戦闘解決</b> → ⚚<b>第2メイン</b> → ☽<b>クリンナップ</b>(ダメージ回復)=ターン終了<br><br>
       <b>攻撃</b>: タップ中の敵クリーチャー(1体につき攻撃1つ)か、プレイヤー本体(複数可)。通ると数字ぶん相手の山札が墓地へ<br>
       <b>多重ブロック可</b>: 1体の攻撃を複数のクリーチャーでブロックできる。攻撃側のダメージは<b>数字の大きいブロッカーへ優先して致死分ずつ割り振られ</b>、余りは次へ(例: ♥Qを♠3と♦8でブロック→♦8に8点、♠3に4点)。ブロッカー全員のパワーが攻撃側に返る<br>
-      <b>ダメージはクリンナップまで蓄積</b>(数字以上で破壊)。召喚酔いなし。Aの絵札特効(+13/+0)あり<br><br>
+      <b>ダメージはクリンナップまで蓄積</b>(数字以上で破壊)。<b>召喚酔いあり</b>(出したターンは攻撃不可)。<b>タップ状態で戦闘フェイズを終えたクリーチャーはパワー0</b>(アンタップで回復)。Aの絵札特効(+13/+0)あり<br><br>
+      <b>スート能力</b>: ♠<b>速攻</b>(召喚酔いしない)/ ♥<b>瞬速</b>(相手のブロックフェイズに召喚できる)/ ♦<b>警戒</b>(各戦闘フェイズ後にアンタップ)/ ♣<b>トランプル</b>(余剰戦闘ダメージが当初の攻撃対象へ)<br><br>
       <b>JOKER</b>(0マナ+追加コスト。メイン、呪文はブロックフェイズでも可):<br>
       ・モックスジョーカー: 相手より土地が少ないときのみ置ける4色マナの0マナアーティファクト(セット権不要・メインのみ)<br>
       ・♠スペードスピア: 自分の♠クリーチャー1体生贄 → 相手クリーチャー1体破壊<br>
@@ -603,11 +604,12 @@ function bonus() { return 0; }
 /* A(エース)は J/Q/K との戦闘時 +13/+0(パワーのみ) */
 function faceBonus(x, y) { return (x.rank === 1 && y.rank >= 11) ? 13 : 0; }
 
-/* 戦闘の数値計算(蓄積ダメージ込みの死亡判定つき・状態は変更しない) */
+/* 戦闘の数値計算(蓄積ダメージ・タップ時パワー0(pz)込み・状態は変更しない) */
 function battleNumbers(aCre, bCre) {
   const a = aCre.card, b = bCre.card;
-  const ap = a.rank + faceBonus(a, b), at = a.rank + bonus(a.suit, b.suit);
-  const bp = b.rank + faceBonus(b, a), bt = b.rank + bonus(b.suit, a.suit);
+  const ap = aCre.pz ? 0 : a.rank + faceBonus(a, b);
+  const bp = bCre.pz ? 0 : b.rank + faceBonus(b, a);
+  const at = a.rank, bt = b.rank;
   return {
     ap, at, bp, bt,
     aDies: (aCre.dmg || 0) + bp >= at,
@@ -966,7 +968,7 @@ async function runOriginalTurns(token, secondP) {
     landPlayedThisTurn = false;
     selAttacker = null; pendingAttacks = []; pendingBlocks = []; selTargetAtt = null;
     players[cur].lands.forEach(l => { l.tapped = false; });
-    players[cur].field.forEach(f => { f.tapped = false; });
+    players[cur].field.forEach(f => { f.tapped = false; f.sick = false; f.pz = false; });
     players[cur].hand.push(players[cur].deck.pop());
     log(`── ${players[cur].name} のターン${turnNo} ── アンタップ&ドロー(山札${players[cur].deck.length})`);
     render();
@@ -1040,7 +1042,7 @@ async function runOriginalTurns(token, secondP) {
       if (bls.length) {
         bls.forEach(b => b.tapped = true);
         log(`${players[def].name}: ${bls.map(b => cardLabel(b.card)).join(" ")} で ${cardLabel(atkCre.card)} をブロック!`);
-        await battleMulti(cur, atkCre, def, bls);
+        await battleMulti(cur, atkCre, def, bls, at);
       } else if (at.tt === "player") {
         const n = atkCre.card.rank;
         const milled = players[def].deck.splice(Math.max(0, players[def].deck.length - n), n);
@@ -1057,6 +1059,11 @@ async function runOriginalTurns(token, secondP) {
     }
     declaredAttacks = [];
     activeBlocks = [];
+    // 戦闘フェイズ終了時: ♦は警戒でアンタップ、タップ状態のクリーチャーはパワー0(アンタップまで)
+    players.forEach(p => p.field.forEach(f => {
+      if (f.card.suit === 2) { f.tapped = false; f.pz = false; }
+      else if (f.tapped) f.pz = true;
+    }));
     render();
     await wait(350);
     if (winner !== null || token !== gameToken) return;
@@ -1088,19 +1095,21 @@ async function runOriginalTurns(token, secondP) {
 
 /* 多重ブロックの戦闘解決:
    攻撃側のダメージはコスト(数字)の大きいブロッカーへ優先して致死分ずつ割り振り、
-   最後のブロッカーが残り全部を受ける。各ブロッカーは自身のパワーで反撃する */
-async function battleMulti(atkPi, atkCre, defPi, blockers) {
+   ♣(トランプル)は余剰を当初の攻撃対象へ、それ以外は最後のブロッカーが残りを受ける */
+async function battleMulti(atkPi, atkCre, defPi, blockers, at) {
   const sorted = [...blockers].sort((a, b) => b.card.rank - a.card.rank);
-  let pool = atkCre.card.rank + faceBonus(atkCre.card, sorted[0].card);
+  const trample = atkCre.card.suit === 3;
+  let pool = atkCre.pz ? 0 : atkCre.card.rank + faceBonus(atkCre.card, sorted[0].card);
   const assigns = [];
   sorted.forEach((b, i) => {
     const lethal = Math.max(0, b.card.rank - (b.dmg || 0));
-    const assign = (i === sorted.length - 1) ? pool : Math.min(pool, lethal);
+    const last = i === sorted.length - 1;
+    const assign = (last && !trample) ? pool : Math.min(pool, lethal);
     b.dmg = (b.dmg || 0) + assign;
     pool -= assign;
     assigns.push(`${cardLabel(b.card)}に${assign}点`);
   });
-  const counter = blockers.reduce((s, b) => s + b.card.rank + faceBonus(b.card, atkCre.card), 0);
+  const counter = blockers.reduce((s, b) => s + (b.pz ? 0 : b.card.rank + faceBonus(b.card, atkCre.card)), 0);
   atkCre.dmg = (atkCre.dmg || 0) + counter;
   log(`割り振り: ${assigns.join("、")} / 反撃: ${cardLabel(atkCre.card)}に合計${counter}点`);
   const atkDies = atkCre.dmg >= atkCre.card.rank;
@@ -1110,6 +1119,23 @@ async function battleMulti(atkPi, atkCre, defPi, blockers) {
     if (b.dmg >= b.card.rank) destroy(defPi, b);
   }
   if (atkDies) destroy(atkPi, atkCre);
+  // ♣トランプル: 余剰ダメージを当初の攻撃対象へ
+  if (trample && pool > 0 && at) {
+    if (at.tt === "player") {
+      const milled = players[defPi].deck.splice(Math.max(0, players[defPi].deck.length - pool), pool);
+      players[defPi].grave.push(...milled);
+      log(`トランプル! 余剰${pool}点 → ${players[defPi].name}の山札${milled.length}枚が墓地へ`);
+      render();
+      await checkDeckOut();
+    } else {
+      const t = fieldById(defPi, at.tv);
+      if (t) {
+        t.dmg = (t.dmg || 0) + pool;
+        log(`トランプル! 余剰${pool}点 → ${cardLabel(t.card)}`);
+        if (t.dmg >= t.card.rank) destroy(defPi, t);
+      }
+    }
+  }
 }
 
 /* 1対1の一発勝負(蓄積ダメージなし) */
@@ -1193,7 +1219,7 @@ async function applySummonO(pi, a) {
   }
   if (sacs.length) log(`${p.name}: ${sacs.map(f => cardLabel(f.card)).join(" ")} を生贄に捧げた(コスト-${reduction})`);
   summon(pi, c, false, reduction);
-  p.field[p.field.length - 1].sick = false;   // 召喚酔いなし
+  p.field[p.field.length - 1].sick = c.suit !== 0;   // ♠は速攻(召喚酔いなし)
 }
 
 /* メインフェイズのアクション適用。'end' なら true を返す */
@@ -1349,6 +1375,14 @@ function aiDecide(pi, kind, ctx) {
         aiSpearUsedThisBlock = true;
         return { k: "oblocks", t: "spear", jk: jk.id, sac: spades[0].card.id, tgt: big.card.id };
       }
+    }
+    // ♥瞬速召喚: 大物の攻撃が来ていて、受け止められる♥が出せるなら出す
+    const attackers2 = declaredAttacks.map(at => fieldById(1 - pi, at.cre)).filter(Boolean);
+    const big2 = attackers2.sort((a, b) => b.card.rank - a.card.rank)[0];
+    if (big2 && big2.card.rank >= 6) {
+      const flash = p.hand.filter(c => !c.joker && c.suit === 1 && c.rank >= big2.card.rank && canPay(p, c.suit, costOf(c)))
+        .sort((a, b) => a.rank - b.rank)[0];
+      if (flash) return { k: "oblocks", t: "summon", card: flash.id };
     }
     aiSpearUsedThisBlock = false;
     return { k: "oblocks", t: "blocks", list: aiOBlocks(pi) };
@@ -1546,7 +1580,7 @@ function aiOAttacks(pi) {
   const p = players[pi], o = players[1 - pi];
   const list = [];
   const taken = new Set();   // クリーチャー1体につき攻撃1つまで
-  for (const f of [...p.field].filter(f => !f.tapped).sort((a, b) => b.card.rank - a.card.rank)) {
+  for (const f of [...p.field].filter(f => !f.tapped && !f.sick).sort((a, b) => b.card.rank - a.card.rank)) {
     if (oneSidedByBlocker(pi, f)) continue;   // 一方的に討たれるなら攻撃しない
     const t = o.field.find(t => {
       if (!t.tapped || taken.has(t.card.id)) return false;
@@ -1688,8 +1722,45 @@ function blockOutcomeText(attacker, b) {
 async function onHandClickO(c) {
   const p = players[myIdx], o = players[1 - myIdx];
   if (oPhase && oPhase.phase === "block" && oPhase.actor === myIdx) {
-    // ブロックフェイズ中はJOKER呪文のみ使える
-    if (!c.joker) { setHint("ブロックフェイズで使えるのはJOKER呪文のみ"); return; }
+    // ブロックフェイズ中はJOKER呪文と♥(瞬速)の召喚が使える
+    if (!c.joker && c.suit !== 1) { setHint("ブロックフェイズで使えるのは♥クリーチャー(瞬速)とJOKER呪文のみ"); return; }
+    if (!c.joker && c.suit === 1) {
+      const opts = [{
+        label: `瞬速で召喚する — コスト${costOf(c)}(${SUITS[c.suit]}1+無指定${c.rank}) ${c.rank}/${c.rank}`,
+        value: "summon", primary: true, disabled: !canPay(p, c.suit, costOf(c)),
+      }];
+      if (c.rank >= 11) {
+        const sameSuit = p.field.filter(f => f.card.suit === c.suit);
+        const maxRed = sameSuit.reduce((s, f) => s + f.card.rank, 0);
+        opts.push({
+          label: `生贄召喚 — 同スート(♥)の味方を生贄にコスト軽減`,
+          value: "sacsummon",
+          disabled: !sameSuit.length || !canPay(p, c.suit, Math.max(0, costOf(c) - maxRed)),
+        });
+      }
+      opts.push({ label: "キャンセル", value: null });
+      const v = await choose(cardLabel(c), opts, c, "♥は瞬速: ブロックフェイズに召喚して、そのままブロックに参加できる");
+      if (!uiMain) return;
+      if (v === "summon") act({ k: "oblocks", t: "summon", card: c.id });
+      if (v === "sacsummon") {
+        const sameSuit = p.field.filter(f => f.card.suit === c.suit).map(f => f.card);
+        const sacs = await chooseMulti(
+          `生贄召喚: ${cardLabel(c)}(コスト${costOf(c)})`, sameSuit,
+          sel => {
+            const red = sel.reduce((s, x) => s + x.rank, 0);
+            const remaining = Math.max(0, costOf(c) - red);
+            return {
+              text: `生贄 ${sel.length}体(数字合計 ${red}) → 残りコスト <b>${remaining}</b>マナ` +
+                    (canPay(p, c.suit, remaining) ? "" : " — <b>マナが足りない</b>"),
+              ok: canPay(p, c.suit, remaining),
+            };
+          },
+          "この生贄で召喚する", "キャンセル");
+        if (!sacs) return;
+        act({ k: "oblocks", t: "summon", card: c.id, sacs: sacs.map(x => x.id) });
+      }
+      return;
+    }
     const opts = [];
     const spades = p.field.filter(f => f.card.suit === 0);
     const hearts = p.hand.filter(x => !x.joker && x.suit === 1);
@@ -2111,7 +2182,7 @@ function cardEl(c, opts = {}) {
     el.className = "card" + (opts.sm ? " sm" : "") + (c.suit === 1 || c.suit === 2 ? " red" : "");
     el.innerHTML = `<span class="rk">${RANK_LABEL[c.rank]}</span><span class="st-s">${SUITS[c.suit]}</span><span class="st-b">${SUITS[c.suit]}</span>`;
   }
-  if (opts.pt) el.innerHTML += `<span class="pt">${c.rank}/${c.rank}</span>`;
+  if (opts.pt) el.innerHTML += `<span class="pt">${opts.pz ? 0 : c.rank}/${c.rank}</span>`;
   if (opts.dmg > 0) el.innerHTML += `<span class="dmgb">-${opts.dmg}</span>`;
   return el;
 }
@@ -2211,7 +2282,7 @@ function render() {
   en.field.forEach(f => {
     const slot = document.createElement("div");
     slot.className = "slot" + (f.tapped ? " tapped" : "");
-    const el = cardEl(f.card, { pt: true, dmg: f.dmg });
+    const el = cardEl(f.card, { pt: true, dmg: f.dmg, pz: f.pz });
     el.dataset.cid = f.card.id;
     if (f.tapped) el.classList.add("tapped");
     if (f.sick) el.classList.add("sick");
@@ -2260,7 +2331,7 @@ function render() {
   me.field.forEach((f, idx) => {
     const slot = document.createElement("div");
     slot.className = "slot" + (f.tapped ? " tapped" : "");
-    const el = cardEl(f.card, { pt: true, dmg: f.dmg });
+    const el = cardEl(f.card, { pt: true, dmg: f.dmg, pz: f.pz });
     el.dataset.cid = f.card.id;
     if (f.tapped) el.classList.add("tapped");
     if (f.sick) el.classList.add("sick");
@@ -2283,7 +2354,7 @@ function render() {
             pendingAttacks = pendingAttacks.filter(a => a.cre !== f.card.id);
             render();
           });
-        } else if (!f.tapped) {
+        } else if (!f.tapped && !f.sick) {
           el.classList.add("selectable");
           if (selAttacker === idx) el.classList.add("attacking");
           el.addEventListener("click", () => {
