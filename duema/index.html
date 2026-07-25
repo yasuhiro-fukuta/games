@@ -1064,8 +1064,15 @@ function aiMainAction(pi) {
     }
   }
   const ready = p.field.filter(f => !f.tapped && !f.sick).sort((a, b) => b.card.rank - a.card.rank);
-  if (ready.length) {
-    const atk = ready[0];
+  // アンタップ状態の敵にブロックされて一方的に討ち取られるクリーチャーでは攻撃しない。
+  // 攻撃は1体ごとに別の意思決定なので、1戦闘終わるたびにこの判定はやり直される
+  const suicidal = atk => o.field.some(b => {
+    if (b.tapped) return false;
+    const n = battleNumbers(atk, b);
+    return n.aDies && !n.bDies;
+  });
+  for (const atk of ready) {
+    if (suicidal(atk)) continue;
     if (shieldCount(o) > 0) {
       const t = o.field.find(t => {
         if (!t.tapped) return false;
