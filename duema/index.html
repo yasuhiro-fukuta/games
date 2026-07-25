@@ -312,7 +312,8 @@
       <span class="pb-tick" id="pb-draw" title="ドロー">🂠</span>
       <span class="pb-tick" id="pb-main" title="メイン(土地・呪文・召喚)">⚚</span>
       <span class="pb-tick" id="pb-block" title="ブロック(相手の攻撃に対応)">⛨</span>
-      <span class="pb-tick" id="pb-clean" title="クリンナップ(戦闘解決→アンタップ)">✦</span>
+      <span class="pb-tick" id="pb-clean" title="クリンナップ(戦闘解決)">✦</span>
+      <span class="pb-tick" id="pb-untap" title="アンタップ">☀</span>
       <span class="pb-tick" id="pb-attack" title="アタック(宣言してターン終了)">⚔</span>
     </div>
   </div>
@@ -363,13 +364,13 @@
     </div>
     <div class="body" id="rules-original" style="display:none">
       54枚フルデッキ(4色×13+JOKER2枚)同士の1対1。<b>シールドなし・勝利条件はデッキアウトのみ</b>。先攻後攻はランダム、後攻は1回フリーマリガン可。<br><br>
-      <b>フェイズ進行</b>(毎ターン、すべて自分の行動): 🂠→⚚→⛨→✦→⚔<br>
-      🂠<b>ドロー</b> → ⚚<b>メイン</b>(土地セット・JOKER呪文・召喚)→ ⛨<b>ブロック</b>(相手が前のターン末に宣言した攻撃へのブロックを一括指定)→ ✦<b>クリンナップ</b>(戦闘解決→自分アンタップ)→ ⚔<b>アタック</b>(攻撃を全て宣言=ターン終了)<br><br>
+      <b>フェイズ進行</b>(毎ターン、すべて自分の行動): 🂠→⚚→⛨→✦→☀→⚔<br>
+      🂠<b>ドロー</b> → ⚚<b>メイン</b>(土地セット・JOKER呪文・召喚)→ ⛨<b>ブロック</b>(相手が前のターン末に宣言した攻撃へのブロックを一括指定)→ ✦<b>クリンナップ</b>(戦闘解決)→ ☀<b>アンタップ</b>(自分の土地とクリーチャー)→ ⚔<b>アタック</b>(攻撃を全て宣言=ターン終了)<br><br>
       <b>攻撃はターンの最後に宣言し、相手は次の自分のターンで対応する</b>(召喚・呪文で迎撃してからブロック)。召喚酔いはなし。J/Q/Kの生贄軽減召喚も使える<br>
       <b>攻撃</b>: タップ中の敵クリーチャー(1体につき攻撃1つまで)か、プレイヤー本体(複数可)。攻撃対象が召喚フェイズ中の生贄などで消えたら空振り<br>
       <b>ダイレクトアタック</b>: 攻撃が通ると、その数字ぶん相手の山札が墓地へ落ちる<br>
       <b>戦闘</b>: 常に1対1、蓄積ダメージなし。Aの絵札特効(+13/+0)はあり<br>
-      <b>デッキアウト</b>: 山札が0枚になった瞬間に敗北。両者同時なら引き分け<br><br>
+      <b>デッキアウト</b>: 山札が0枚になった瞬間に敗北。両者同時なら引き分け。敗者の手札は公開される<br><br>
       <b>JOKER</b>(0マナ+追加コスト、自分のメインのみ):<br>
       ・モックスジョーカー: 相手より土地が少ないときのみ、4色マナが出る0マナアーティファクトとして置ける(セット権不要)<br>
       ・♠スペードスピア: 自分の<b>♠クリーチャー</b>1体生贄 → 相手クリーチャー1体破壊<br>
@@ -425,6 +426,7 @@
   <div class="panel">
     <h2 id="result-title"></h2>
     <div class="body" id="result-body" style="text-align:center"></div>
+    <div id="result-hand"></div>
     <div class="start-row"><button id="btn-again">タイトルへ戻る</button></div>
   </div>
 </div>
@@ -761,11 +763,26 @@ function destroy(pi, cre) {
   p.grave.push(cre.card);
   log(`${cardLabel(cre.card)} は破壊された`);
 }
+/* 敗者の手札を結果画面に公開する */
+function revealHand(container, pi) {
+  const wrap = document.createElement("div");
+  wrap.innerHTML = `<div class="body" style="text-align:center;margin-top:12px">${players[pi].name}の手札(公開)</div>`;
+  const row = document.createElement("div");
+  row.className = "cardrow";
+  if (players[pi].hand.length) players[pi].hand.forEach(c => row.appendChild(cardEl(c, { sm: true })));
+  else row.innerHTML = `<span style="color:var(--dim);font-size:12px">(手札なし)</span>`;
+  wrap.appendChild(row);
+  container.appendChild(wrap);
+}
+
 function win(pi, reason) {
   winner = pi;
   render();
   document.getElementById("result-title").textContent = pi === myIdx ? "勝利!" : "敗北…";
   document.getElementById("result-body").innerHTML = `${reason}<br>${players[pi].name} の勝ち!`;
+  const rh = document.getElementById("result-hand");
+  rh.innerHTML = "";
+  revealHand(rh, 1 - pi);   // 敗者の手札は公開される
   setTimeout(() => {
     sfx(pi === myIdx ? "win" : "lose");
     document.getElementById("result-overlay").classList.add("show");
@@ -900,6 +917,10 @@ function drawGame(reason) {
   render();
   document.getElementById("result-title").textContent = "引き分け";
   document.getElementById("result-body").innerHTML = reason;
+  const rh = document.getElementById("result-hand");
+  rh.innerHTML = "";
+  revealHand(rh, 0);   // 引き分けは両者の手札を公開
+  revealHand(rh, 1);
   setTimeout(() => document.getElementById("result-overlay").classList.add("show"), 700);
 }
 
@@ -992,10 +1013,15 @@ async function runOriginalTurns(token, secondP) {
       render();
     }
     declaredAttacks = [];
-    // 自分の土地とクリーチャーをアンタップ(ダメージ回復も)
+    render();
+    await wait(350);
+    if (winner !== null || token !== gameToken) return;
+
+    // アンタップフェイズ(自分の土地とクリーチャーをアンタップ・自動)
+    oPhase = { phase: "untap", actor: cur };
     players[cur].lands.forEach(l => { l.tapped = false; });
     players[cur].field.forEach(f => { f.tapped = false; f.dmg = 0; });
-    log(`${players[cur].name}: クリンナップ — アンタップ`);
+    log(`${players[cur].name}: アンタップ`);
     render();
     await wait(450);
     if (winner !== null || token !== gameToken) return;
@@ -1955,7 +1981,7 @@ function render() {
   if (!players) return;
   const me = players[myIdx], en = players[1 - myIdx];
   const original = ruleMode === "original";
-  const PHASE_NAME = { draw: "ドロー", main: "メイン", block: "ブロック", clean: "クリンナップ", attack: "アタック" };
+  const PHASE_NAME = { draw: "ドロー", main: "メイン", block: "ブロック", clean: "クリンナップ", untap: "アンタップ", attack: "アタック" };
   document.getElementById("turn-ind").textContent =
     winner !== null ? "" :
     `ターン${turnNo} — ${players[turnP].name}の番` +
@@ -1973,7 +1999,7 @@ function render() {
     const myTurn = turnP === myIdx;
     pb.classList.toggle("myturn", myTurn);
     const cp = oPhase ? oPhase.phase : null;
-    for (const [ph, id] of [["draw","pb-draw"],["main","pb-main"],["block","pb-block"],["clean","pb-clean"],["attack","pb-attack"]]) {
+    for (const [ph, id] of [["draw","pb-draw"],["main","pb-main"],["block","pb-block"],["clean","pb-clean"],["untap","pb-untap"],["attack","pb-attack"]]) {
       const el = document.getElementById(id);
       el.classList.toggle("orange", myTurn);
       el.classList.toggle("blue", !myTurn);
