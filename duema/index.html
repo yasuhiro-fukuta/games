@@ -25,7 +25,8 @@
     color: var(--paper);
     -webkit-user-select: none; user-select: none;
   }
-  #app { max-width: 880px; margin: 0 auto; padding: 8px 10px 20px; }
+  #app { max-width: 880px; margin: 0 auto; padding: 8px 10px 20px; position: relative; }
+  #arrows { position: absolute; inset: 0; pointer-events: none; z-index: 6; overflow: visible; }
 
   header { display: flex; align-items: baseline; gap: 12px; padding: 4px 2px 8px; }
   header h1 {
@@ -98,8 +99,12 @@
   .card.selectable { cursor: pointer; }
   .card.selectable:hover { transform: translateY(-4px); }
   .card.tapped.selectable:hover { transform: rotate(90deg) scale(.94); }
-  .card.attacking { outline: 2px solid var(--gold); transform: translateY(-4px); }
+  .card.attacking { outline: 3px solid var(--gold); transform: translateY(-4px); animation: selPulse .9s ease-in-out infinite; }
   .card.tapped.attacking { transform: rotate(90deg) scale(.94); }   /* タップ状態は維持 */
+  @keyframes selPulse {
+    0%, 100% { box-shadow: 0 0 5px rgba(201,162,39,.6); }
+    50% { box-shadow: 0 0 18px rgba(201,162,39,1); }
+  }
   .card.targetable { outline: 2px dashed var(--rust); cursor: pointer; }
 
   #hand-zone .card { cursor: pointer; }
@@ -341,6 +346,18 @@
       <span class="hint" id="hint"></span>
     </div>
   </div>
+
+  <!-- 攻撃・ブロックの矢印オーバーレイ -->
+  <svg id="arrows">
+    <defs>
+      <marker id="arr-o" markerWidth="8" markerHeight="8" refX="5" refY="3" orient="auto" markerUnits="strokeWidth">
+        <path d="M0,0 L6,3 L0,6 Z" fill="#ff9433"/>
+      </marker>
+      <marker id="arr-b" markerWidth="8" markerHeight="8" refX="5" refY="3" orient="auto" markerUnits="strokeWidth">
+        <path d="M0,0 L6,3 L0,6 Z" fill="#5aa7e8"/>
+      </marker>
+    </defs>
+  </svg>
 </div>
 
 <!-- 汎用モーダル -->
@@ -477,6 +494,7 @@ let players, turnP, turnNo, landPlayedThisTurn, winner, firstP;
 let ruleMode = "duema";          // 'duema' | 'original'
 let oPhase = null;               // オリジナル: {phase:'main'|'attack'|'summon'|'block'|'battle', actor}
 let declaredAttacks = [];        // オリジナル: 宣言済み攻撃 [{cre, tt, tv}]
+let activeBlocks = [];           // オリジナル: 確定済みブロック(クリンナップ中の矢印表示用)
 let pendingAttacks = [];         // UI: 確定前の攻撃割り当て
 let pendingBlocks = [];          // UI: 確定前のブロック割り当て [{attacker, blocker}]
 let selTargetAtt = null;         // UI: ブロック対象に選んだ攻撃クリーチャーid
@@ -865,7 +883,7 @@ async function runGame(seed) {
     else p.shields = [];                       // オリジナル: シールドなし
     p.hand = p.deck.splice(0, 5);
   }
-  oPhase = null; declaredAttacks = []; pendingAttacks = []; pendingBlocks = []; selTargetAtt = null;
+  oPhase = null; declaredAttacks = []; activeBlocks = []; pendingAttacks = []; pendingBlocks = []; selTargetAtt = null;
   firstP = rng() < 0.5 ? 0 : 1;
   turnP = firstP; turnNo = 1;
   landPlayedThisTurn = false;
@@ -983,8 +1001,15 @@ async function runOriginalTurns(token, secondP) {
       oPhase = { phase: "block", actor: cur }; render();
       const b = await decision(cur, "oblocks");
       if (token !== gameToken) return;
-      blocks = b.list || [];
+      // 1ブロッカー=1攻撃・1攻撃=1ブロッカーを強制(重複宣言は先勝ちで無効)
+      const seenA = new Set(), seenB = new Set();
+      blocks = (b.list || []).filter(x => {
+        if (seenA.has(x.attacker) || seenB.has(x.blocker)) return false;
+        seenA.add(x.attacker); seenB.add(x.blocker);
+        return true;
+      });
     }
+    activeBlocks = blocks;
 
     // クリンナップ(戦闘解決 → 自分アンタップ・自動)
     oPhase = { phase: "clean", actor: cur }; render();
@@ -993,7 +1018,8 @@ async function runOriginalTurns(token, secondP) {
       const atkCre = fieldById(att, at.cre);
       if (!atkCre) continue;
       const bl = blocks.find(b => b.attacker === at.cre);
-      const blocker = bl ? fieldById(cur, bl.blocker) : null;
+      let blocker = bl ? fieldById(cur, bl.blocker) : null;
+      if (blocker && blocker.tapped) blocker = null;   // 使用済みブロッカーは無効(1体1ブロック)
       if (blocker) {
         blocker.tapped = true;
         log(`${players[cur].name}: ${cardLabel(blocker.card)} で ${cardLabel(atkCre.card)} をブロック!`);
@@ -1013,6 +1039,7 @@ async function runOriginalTurns(token, secondP) {
       render();
     }
     declaredAttacks = [];
+    activeBlocks = [];
     render();
     await wait(350);
     if (winner !== null || token !== gameToken) return;
@@ -2072,6 +2099,7 @@ function render() {
     const slot = document.createElement("div");
     slot.className = "slot" + (f.tapped ? " tapped" : "");
     const el = cardEl(f.card, { pt: true, dmg: f.dmg });
+    el.dataset.cid = f.card.id;
     if (f.tapped) el.classList.add("tapped");
     if (f.sick) el.classList.add("sick");
     if (!original && uiMain && selAttacker !== null && f.tapped) {
@@ -2120,6 +2148,7 @@ function render() {
     const slot = document.createElement("div");
     slot.className = "slot" + (f.tapped ? " tapped" : "");
     const el = cardEl(f.card, { pt: true, dmg: f.dmg });
+    el.dataset.cid = f.card.id;
     if (f.tapped) el.classList.add("tapped");
     if (f.sick) el.classList.add("sick");
     if (!original && uiMain && winner === null && !f.tapped && !f.sick) {
@@ -2161,6 +2190,8 @@ function render() {
         } else if (selTargetAtt !== null && !f.tapped) {
           el.classList.add("selectable");
           el.addEventListener("click", () => {
+            // 1ブロッカー=1攻撃・1攻撃=1ブロッカー
+            if (pendingBlocks.some(b => b.blocker === f.card.id || b.attacker === selTargetAtt)) { selTargetAtt = null; render(); return; }
             pendingBlocks.push({ attacker: selTargetAtt, blocker: f.card.id });
             selTargetAtt = null;
             render();
@@ -2212,7 +2243,64 @@ function render() {
   if (original && uiMain && oPhase && oPhase.phase === "attack" && selAttacker !== null) {
     setHint("攻撃対象を選択: タップ中の敵クリーチャー(1体1攻撃まで) or 相手エリア(本体・複数可)");
   }
+
+  requestAnimationFrame(drawArrows);
 }
+
+/* 攻撃・ブロックの矢印(自分のクリーチャーの行動=オレンジ、相手の=青) */
+function drawArrows() {
+  const svg = document.getElementById("arrows");
+  if (!svg) return;
+  [...svg.querySelectorAll("path.arrowline")].forEach(el => el.remove());
+  if (ruleMode !== "original" || !players || winner !== null) return;
+  const appR = document.getElementById("app").getBoundingClientRect();
+  const cardOf = id => document.querySelector(`[data-cid="${id}"]`);
+  const center = el => {
+    const r = el.getBoundingClientRect();
+    return { x: r.left + r.width / 2 - appR.left, y: r.top + r.height / 2 - appR.top };
+  };
+  const draw = (fromEl, toEl, mine, dashed) => {
+    if (!fromEl || !toEl) return;
+    const a = center(fromEl), b = center(toEl);
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const bx = b.x - (dx / len) * 34, by = b.y - (dy / len) * 34;   // カード手前で止める
+    const mx = (a.x + bx) / 2 + (dy / len) * 22, my = (a.y + by) / 2 - (dx / len) * 22;  // ゆるいカーブ
+    const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    p.setAttribute("class", "arrowline");
+    p.setAttribute("d", `M${a.x},${a.y} Q${mx},${my} ${bx},${by}`);
+    p.setAttribute("fill", "none");
+    p.setAttribute("stroke", mine ? "#ff9433" : "#5aa7e8");
+    p.setAttribute("stroke-width", "2.5");
+    p.setAttribute("opacity", "0.9");
+    if (dashed) p.setAttribute("stroke-dasharray", "6 4");
+    p.setAttribute("marker-end", `url(#${mine ? "arr-o" : "arr-b"})`);
+    svg.appendChild(p);
+  };
+  const sideHead = pi => document.querySelector(pi === myIdx ? "#my-side .pname" : "#enemy-side .pname");
+  const ownerOf = id => fieldById(0, id) ? 0 : (fieldById(1, id) ? 1 : null);
+  // 宣言済み攻撃
+  for (const at of declaredAttacks) {
+    const owner = ownerOf(at.cre);
+    if (owner === null) continue;
+    const toEl = at.tt === "cre" ? cardOf(at.tv) : sideHead(1 - owner);
+    draw(cardOf(at.cre), toEl, owner === myIdx, false);
+  }
+  // 自分のアタックフェイズの割り当て中(点線)
+  for (const at of pendingAttacks) {
+    const toEl = at.tt === "cre" ? cardOf(at.tv) : sideHead(1 - myIdx);
+    draw(cardOf(at.cre), toEl, true, true);
+  }
+  // 自分のブロック割り当て中(点線)
+  for (const bl of pendingBlocks) draw(cardOf(bl.blocker), cardOf(bl.attacker), true, true);
+  // 確定済みブロック(クリンナップ中)
+  for (const bl of activeBlocks) {
+    const owner = ownerOf(bl.blocker);
+    if (owner === null) continue;
+    draw(cardOf(bl.blocker), cardOf(bl.attacker), owner === myIdx, false);
+  }
+}
+window.addEventListener("resize", () => requestAnimationFrame(drawArrows));
 
 /* ================= 開始 ================= */
 function setRule(r) {
