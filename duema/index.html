@@ -154,6 +154,26 @@
   .opts button { background: rgba(251,248,239,.16); color: var(--paper); text-align: left; }
   .opts button.primary { background: var(--gold); color: var(--ink); }
   .opts button.danger { background: var(--rust); color: var(--paper); }
+  /* フェイズトラッカー */
+  #phasebar { padding: 6px 14px 8px; }
+  .pb-ticks { display: flex; justify-content: space-between; position: relative; }
+  .pb-ticks::before {
+    content: ""; position: absolute; left: 14px; right: 14px; top: 50%;
+    height: 2px; transform: translateY(-50%); background: #3d7bc6; border-radius: 2px;
+  }
+  #phasebar.myturn .pb-ticks::before { background: #e8842c; }
+  .pb-tick {
+    position: relative; z-index: 1; width: 28px; height: 28px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; line-height: 1;
+    background: var(--felt-dark); border: 1px solid rgba(251,248,239,.28);
+    transition: transform .2s, box-shadow .2s;
+  }
+  .pb-tick.orange { color: #ffab4a; }
+  .pb-tick.blue { color: #6ab7ff; }
+  .pb-tick.active { transform: scale(1.3); border-color: currentColor; box-shadow: 0 0 12px currentColor; background: #1a2733; }
+  #btn-end.final { background: #e8842c; color: var(--ink); }
+
   .rulesel { display: flex; gap: 8px; justify-content: center; margin-bottom: 14px; }
   .rulesel button {
     background: rgba(251,248,239,.12); color: var(--paper); font-size: 13px;
@@ -285,6 +305,18 @@
     <div class="zone" id="e-field"></div>
   </div>
 
+  <!-- オリジナルルール: フェイズトラッカー -->
+  <div id="phasebar" style="display:none">
+    <div class="pb-ticks">
+      <span class="pb-tick" id="pb-untap" title="アンタップ&ドロー">☀</span>
+      <span class="pb-tick" id="pb-attack" title="アタック(ターン側)">⚔</span>
+      <span class="pb-tick" id="pb-main" title="メイン(相手側: 土地・呪文・召喚)">⚚</span>
+      <span class="pb-tick" id="pb-block" title="ブロック(相手側)">⛨</span>
+      <span class="pb-tick" id="pb-battle" title="戦闘解決">✦</span>
+      <span class="pb-tick" id="pb-end" title="ターンエンド">☽</span>
+    </div>
+  </div>
+
   <div id="log"></div>
 
   <!-- 自分(下段) -->
@@ -331,9 +363,9 @@
     </div>
     <div class="body" id="rules-original" style="display:none">
       54枚フルデッキ(4色×13+JOKER2枚)同士の1対1。<b>シールドなし・勝利条件はデッキアウトのみ</b>。先攻後攻はランダム、後攻は1回フリーマリガン可。<br><br>
-      <b>フェイズ進行</b>(毎ターン):<br>
-      アンタップ&amp;ドロー → <b>メイン</b>(土地セット・JOKER呪文/自分で移行)→ <b>アタック</b>(攻撃を全て宣言/自分で移行)→ <b>召喚</b>(<b>相手が</b>クリーチャーを召喚できる)→ <b>ブロック</b>(相手が全て宣言)→ <b>戦闘解決</b> → 自動でターン終了<br><br>
-      <b>召喚は相手のターンにしかできない</b>(攻撃宣言を見てから召喚)。そのため召喚酔いはなし。J/Q/Kの生贄軽減召喚もここで使える<br>
+      <b>フェイズ進行</b>(毎ターン): ☀→⚔→⚚→⛨→✦→☽<br>
+      ☀アンタップ&amp;ドロー → ⚔<b>アタック</b>(ターン側が攻撃を全て宣言)→ ⚚<b>メイン</b>(<b>相手側</b>が土地セット・JOKER呪文・クリーチャー召喚)→ ⛨<b>ブロック</b>(相手側が全て宣言)→ ✦<b>戦闘解決</b> → ☽自動でターンエンド<br><br>
+      <b>土地・呪文・召喚はすべて相手のターン中に行う</b>(攻撃宣言を見てから対応)。召喚酔いはなし。J/Q/Kの生贄軽減召喚も使える<br>
       <b>攻撃</b>: タップ中の敵クリーチャー(1体につき攻撃1つまで)か、プレイヤー本体(複数可)。攻撃対象が召喚フェイズ中の生贄などで消えたら空振り<br>
       <b>ダイレクトアタック</b>: 攻撃が通ると、その数字ぶん相手の山札が墓地へ落ちる<br>
       <b>戦闘</b>: 常に1対1、蓄積ダメージなし。スート相性(+0/+1)とAの絵札特効(+13/+0)はあり<br>
@@ -424,6 +456,7 @@ const SUITS = ["♠", "♥", "♦", "♣"];
 const RANK_LABEL = { 1:"A",2:"2",3:"3",4:"4",5:"5",6:"6",7:"7",8:"8",9:"9",10:"10",11:"J",12:"Q",13:"K" };
 let CPU_DELAY = 650;
 let TEST_AUTO = false;      // テスト: 自席もAIが指す
+const wait = ms => new Promise(r => setTimeout(r, TEST_AUTO ? 1 : ms));
 
 /* ================= 乱数(シード決定論) ================= */
 function mulberry32(seed) {
@@ -903,22 +936,13 @@ function startTurnO(pi) {
 async function runOriginalTurns(token, secondP) {
   let cur = firstP;
   while (winner === null) {
+    // アンタップフェイズ(アンタップ&ドロー・自動)
+    oPhase = { phase: "untap", actor: cur };
     startTurnO(cur);
     if (await checkDeckOut()) return;
+    await wait(450);
 
-    // メインフェイズ(土地・JOKER呪文)
-    for (;;) {
-      if (winner !== null || token !== gameToken) return;
-      oPhase = { phase: "main", actor: cur }; render();
-      const a = await decision(cur, "omain");
-      if (token !== gameToken) return;
-      if (a.t === "toattack") break;
-      await applyMainO(cur, a);
-      if (winner !== null) return;
-      render();
-    }
-
-    // アタックフェイズ(全攻撃を一括宣言)
+    // アタックフェイズ(ターン側: 全攻撃を一括宣言)
     oPhase = { phase: "attack", actor: cur }; render();
     const ad = await decision(cur, "oattacks");
     if (token !== gameToken) return;
@@ -930,21 +954,23 @@ async function runOriginalTurns(token, secondP) {
     } else log(`${players[cur].name}: 攻撃なし`);
     render();
 
-    // 召喚フェイズ(防御側のみ召喚できる。攻撃0件でも必ず発生)
+    // メインフェイズ(相手側: 土地・JOKER呪文・召喚。攻撃0件でも必ず発生)
     const def = 1 - cur;
     for (;;) {
       if (winner !== null || token !== gameToken) return;
-      oPhase = { phase: "summon", actor: def }; render();
-      const a = await decision(def, "odefsummon");
+      oPhase = { phase: "main", actor: def }; render();
+      const a = await decision(def, "omain");
       if (token !== gameToken) return;
-      if (a.t === "endsummon") break;
-      if (a.t === "summon") await applySummonO(def, a);
+      if (a.t === "done") break;
+      await applyMainO(def, a);
+      if (winner !== null) return;
       render();
     }
 
-    // 対象を失った攻撃は空振り(戦闘から除外)
-    const alive = declaredAttacks.filter(at => at.tt !== "cre" || fieldById(def, at.tv));
-    if (alive.length < declaredAttacks.length) log(`${declaredAttacks.length - alive.length}件の攻撃は対象を失い空振り`);
+    // 対象や攻撃者を失った攻撃は空振り(戦闘から除外)
+    const alive = declaredAttacks.filter(at =>
+      fieldById(cur, at.cre) && (at.tt !== "cre" || fieldById(def, at.tv)));
+    if (alive.length < declaredAttacks.length) log(`${declaredAttacks.length - alive.length}件の攻撃は空振りになった`);
 
     // ブロックフェイズ(防御側が一括宣言)
     let blocks = [];
@@ -983,6 +1009,11 @@ async function runOriginalTurns(token, secondP) {
       render();
     }
     declaredAttacks = [];
+    // ターンエンド(自動・ダメージ回復)
+    oPhase = { phase: "end", actor: cur };
+    players.forEach(p => p.field.forEach(f => { f.dmg = 0; }));
+    render();
+    await wait(450);
     oPhase = null;
     if (cur === secondP) turnNo++;
     cur = 1 - cur;
@@ -999,11 +1030,12 @@ async function battleO(aPi, aCre, bPi, bCre) {
   if (!n.aDies && !n.bDies) log("両者生き残った");
 }
 
-/* オリジナルのメインフェイズ行動(土地・JOKER呪文) */
+/* オリジナルのメインフェイズ行動(相手側: 土地・JOKER呪文・召喚) */
 async function applyMainO(pi, a) {
   const p = players[pi], o = players[1 - pi];
   switch (a.t) {
     case "land": playLand(pi, handById(pi, a.card)); return;
+    case "summon": await applySummonO(pi, a); return;
     case "spear": {   // ♠クリーチャー1体生贄 → 相手クリーチャー1体破壊
       spendJoker(pi, handById(pi, a.jk), "スペードスピア");
       destroy(pi, fieldById(pi, a.sac));
@@ -1213,7 +1245,6 @@ function aiDecide(pi, kind, ctx) {
   }
   if (kind === "omain") return { k: "omain", ...aiOMain(pi) };
   if (kind === "oattacks") return { k: "oattacks", list: aiOAttacks(pi) };
-  if (kind === "odefsummon") return { k: "odefsummon", ...aiODefSummon(pi) };
   if (kind === "oblocks") return { k: "oblocks", list: aiOBlocks(pi) };
   if (kind === "shield") {
     // 自分のシールドを生贄にするときは中身が最弱の位置、相手を割るときは残っている先頭の位置
@@ -1349,7 +1380,7 @@ function oneSidedByBlocker(pi, atkCre) {   // 相手のアンタップに一方�
   });
 }
 
-function aiOMain(pi) {
+function aiOMain(pi) {   // 相手ターン中のメイン: 土地→呪文→召喚→done
   const p = players[pi], o = players[1 - pi];
   if (!landPlayedThisTurn) {
     const c = aiPickLand(pi);
@@ -1357,9 +1388,11 @@ function aiOMain(pi) {
   }
   const jk = p.hand.find(c => c.joker);
   if (jk) {
-    // スピア: 相手の大物を安い♠で除去
+    // スピア: 宣言中の最大アタッカー(いなければ相手の最大)を安い♠で除去
     const spades = p.field.filter(f => f.card.suit === 0).sort((a, b) => a.card.rank - b.card.rank);
-    const oppStrong = o.field.length ? [...o.field].sort((a, b) => b.card.rank - a.card.rank)[0] : null;
+    const attackers = declaredAttacks.map(at => fieldById(1 - pi, at.cre)).filter(Boolean);
+    const pool = attackers.length ? attackers : o.field;
+    const oppStrong = pool.length ? [...pool].sort((a, b) => b.card.rank - a.card.rank)[0] : null;
     if (spades.length && oppStrong && oppStrong.card.rank >= 7 && spades[0].card.rank <= oppStrong.card.rank - 4) {
       return { t: "spear", jk: jk.id, sac: spades[0].card.id, tgt: oppStrong.card.id };
     }
@@ -1382,7 +1415,23 @@ function aiOMain(pi) {
       return { t: "mill", jk: jk.id };
     }
   }
-  return { t: "toattack" };
+  // 召喚(出せる限り最強から)
+  const s = p.hand.filter(c => !c.joker && canPay(p, c.suit, costOf(c))).sort((a, b) => b.rank - a.rank)[0];
+  if (s) return { t: "summon", card: s.id };
+  for (const c of p.hand.filter(c => !c.joker && c.rank >= 11).sort((a, b) => b.rank - a.rank)) {
+    const sameSuit = p.field.filter(f => f.card.suit === c.suit).sort((a, b) => a.card.rank - b.card.rank);
+    const sacs = [];
+    let red = 0;
+    for (const f of sameSuit) {
+      if (sacs.length >= 2 || red >= costOf(c)) break;
+      sacs.push(f); red += f.card.rank;
+      if (canPay(p, c.suit, Math.max(0, costOf(c) - red))) break;
+    }
+    if (sacs.length && red < c.rank && canPay(p, c.suit, Math.max(0, costOf(c) - red))) {
+      return { t: "summon", card: c.id, sacs: sacs.map(f => f.card.id) };
+    }
+  }
+  return { t: "done" };
 }
 
 function aiOAttacks(pi) {
@@ -1400,26 +1449,6 @@ function aiOAttacks(pi) {
     else list.push({ cre: f.card.id, tt: "player" });   // 本体は複数可
   }
   return list;
-}
-
-function aiODefSummon(pi) {
-  const p = players[pi];
-  const s = p.hand.filter(c => !c.joker && canPay(p, c.suit, costOf(c))).sort((a, b) => b.rank - a.rank)[0];
-  if (s) return { t: "summon", card: s.id };
-  for (const c of p.hand.filter(c => !c.joker && c.rank >= 11).sort((a, b) => b.rank - a.rank)) {
-    const sameSuit = p.field.filter(f => f.card.suit === c.suit).sort((a, b) => a.card.rank - b.card.rank);
-    const sacs = [];
-    let red = 0;
-    for (const f of sameSuit) {
-      if (sacs.length >= 2 || red >= costOf(c)) break;
-      sacs.push(f); red += f.card.rank;
-      if (canPay(p, c.suit, Math.max(0, costOf(c) - red))) break;
-    }
-    if (sacs.length && red < c.rank && canPay(p, c.suit, Math.max(0, costOf(c) - red))) {
-      return { t: "summon", card: c.id, sacs: sacs.map(f => f.card.id) };
-    }
-  }
-  return { t: "endsummon" };
 }
 
 function aiOBlocks(pi) {
@@ -1458,19 +1487,13 @@ function humanPrompt(pi, kind, ctx) {
   }
   if (kind === "omain") {
     uiMain = true;
-    setHint("メインフェイズ: 手札クリックで土地セット/JOKER呪文。終わったらボタンでアタックへ");
+    setHint("メインフェイズ(相手の攻撃を見てから): 手札クリックで土地・JOKER呪文・召喚。終わったらボタンで次へ");
     render();
     return;
   }
   if (kind === "oattacks") {
     uiMain = true; pendingAttacks = []; selAttacker = null;
     setHint("アタックフェイズ: 自分のクリーチャー→対象(タップ中の敵 or 相手エリア)の順にクリック。全て決めたら確定");
-    render();
-    return;
-  }
-  if (kind === "odefsummon") {
-    uiMain = true;
-    setHint("召喚フェイズ: 手札クリックで召喚できる(相手の攻撃を見てから!)。終わったらボタンでブロックへ");
     render();
     return;
   }
@@ -1540,12 +1563,52 @@ function blockOutcomeText(attacker, b) {
   return "両者生存";
 }
 
-/* オリジナルルールの手札クリック */
+/* オリジナルルールの手札クリック(相手ターン中の自分のメインフェイズ) */
 async function onHandClickO(c) {
   const p = players[myIdx], o = players[1 - myIdx];
   if (oPhase && oPhase.phase === "main" && oPhase.actor === myIdx) {
+    if (!c.joker) {
+      // 通常カード: 土地 or 召喚(J/Q/Kは生贄召喚も)
+      const opts = [{ label: `土地に置く(${SUITS[c.suit]}マナ)`, value: "land", disabled: landPlayedThisTurn }];
+      opts.push({
+        label: `召喚する — コスト${costOf(c)}(${SUITS[c.suit]}1+無指定${c.rank}) ${c.rank}/${c.rank}`,
+        value: "summon", primary: true, disabled: !canPay(p, c.suit, costOf(c)),
+      });
+      if (c.rank >= 11) {
+        const sameSuit = p.field.filter(f => f.card.suit === c.suit);
+        const maxRed = sameSuit.reduce((s, f) => s + f.card.rank, 0);
+        opts.push({
+          label: `生贄召喚 — 同スート(${SUITS[c.suit]})の味方を生贄にコスト軽減`,
+          value: "sacsummon",
+          disabled: !sameSuit.length || !canPay(p, c.suit, Math.max(0, costOf(c) - maxRed)),
+        });
+      }
+      opts.push({ label: "キャンセル", value: null });
+      const v = await choose(cardLabel(c), opts, c, "召喚酔いなし: このターンからブロックできる");
+      if (!uiMain) return;
+      if (v === "land") act({ k: "omain", t: "land", card: c.id });
+      if (v === "summon") act({ k: "omain", t: "summon", card: c.id });
+      if (v === "sacsummon") {
+        const sameSuit = p.field.filter(f => f.card.suit === c.suit).map(f => f.card);
+        const sacs = await chooseMulti(
+          `生贄召喚: ${cardLabel(c)}(コスト${costOf(c)})`, sameSuit,
+          sel => {
+            const red = sel.reduce((s, x) => s + x.rank, 0);
+            const remaining = Math.max(0, costOf(c) - red);
+            return {
+              text: `生贄 ${sel.length}体(数字合計 ${red}) → 残りコスト <b>${remaining}</b>マナ` +
+                    (canPay(p, c.suit, remaining) ? "" : " — <b>マナが足りない</b>"),
+              ok: canPay(p, c.suit, remaining),
+            };
+          },
+          "この生贄で召喚する", "キャンセル");
+        if (!sacs) return;
+        act({ k: "omain", t: "summon", card: c.id, sacs: sacs.map(x => x.id) });
+      }
+      return;
+    }
     const opts = [];
-    if (c.joker) {
+    {
       const spades = p.field.filter(f => f.card.suit === 0);
       const hearts = p.hand.filter(x => !x.joker && x.suit === 1);
       const diaLands = p.lands.filter(l => !l.card.joker && l.card.suit === 2);
@@ -1558,11 +1621,9 @@ async function onHandClickO(c) {
                   disabled: !diaLands.length || !o.lands.length });
       opts.push({ label: "♣クローバーミル: 自分の山札を♣が捲れるまで墓地へ → その数字ぶん相手の山札を墓地へ", value: "mill",
                   disabled: !p.deck.length });
-    } else {
-      opts.push({ label: `土地に置く(${SUITS[c.suit]}マナ)`, value: "land", disabled: landPlayedThisTurn });
     }
     opts.push({ label: "キャンセル", value: null });
-    const v = await choose(cardLabel(c), opts, c, "オリジナルルール: 召喚は相手のターンの召喚フェイズのみ");
+    const v = await choose(cardLabel(c), opts, c, "JOKER呪文と土地は相手ターン中の自分のメインフェイズで");
     if (!uiMain) return;
     if (v === "land") act({ k: "omain", t: "land", card: c.id });
     if (v === "spear") {
@@ -1588,44 +1649,6 @@ async function onHandClickO(c) {
       act({ k: "omain", t: "crack", jk: c.id, sac: sc.id, tgt: tc.id });
     }
     if (v === "mill") act({ k: "omain", t: "mill", jk: c.id });
-    return;
-  }
-  if (oPhase && oPhase.phase === "summon" && oPhase.actor === myIdx) {
-    if (c.joker) { await choose("JOKER", [{ label: "JOKER呪文は自分のメインフェイズのみ", value: null }, { label: "閉じる", value: null }], c); return; }
-    const opts = [{
-      label: `召喚する — コスト${costOf(c)}(${SUITS[c.suit]}1+無指定${c.rank}) ${c.rank}/${c.rank}`,
-      value: "summon", primary: true, disabled: !canPay(p, c.suit, costOf(c)),
-    }];
-    if (c.rank >= 11) {
-      const sameSuit = p.field.filter(f => f.card.suit === c.suit);
-      const maxRed = sameSuit.reduce((s, f) => s + f.card.rank, 0);
-      opts.push({
-        label: `生贄召喚 — 同スート(${SUITS[c.suit]})の味方を生贄にコスト軽減`,
-        value: "sacsummon",
-        disabled: !sameSuit.length || !canPay(p, c.suit, Math.max(0, costOf(c) - maxRed)),
-      });
-    }
-    opts.push({ label: "キャンセル", value: null });
-    const v = await choose(cardLabel(c), opts, c, "召喚フェイズ(召喚酔いなし・このターンからブロックできる)");
-    if (!uiMain) return;
-    if (v === "summon") act({ k: "odefsummon", t: "summon", card: c.id });
-    if (v === "sacsummon") {
-      const sameSuit = p.field.filter(f => f.card.suit === c.suit).map(f => f.card);
-      const sacs = await chooseMulti(
-        `生贄召喚: ${cardLabel(c)}(コスト${costOf(c)})`, sameSuit,
-        sel => {
-          const red = sel.reduce((s, x) => s + x.rank, 0);
-          const remaining = Math.max(0, costOf(c) - red);
-          return {
-            text: `生贄 ${sel.length}体(数字合計 ${red}) → 残りコスト <b>${remaining}</b>マナ` +
-                  (canPay(p, c.suit, remaining) ? "" : " — <b>マナが足りない</b>"),
-            ok: canPay(p, c.suit, remaining),
-          };
-        },
-        "この生贄で召喚する", "キャンセル");
-      if (!sacs) return;
-      act({ k: "odefsummon", t: "summon", card: c.id, sacs: sacs.map(x => x.id) });
-    }
     return;
   }
 }
@@ -1713,9 +1736,8 @@ async function onHandClick(c) {
 document.getElementById("btn-end").addEventListener("click", () => {
   if (!uiMain || winner !== null) return;
   if (ruleMode === "original" && oPhase) {
-    if (oPhase.phase === "main") act({ k: "omain", t: "toattack" });
-    else if (oPhase.phase === "attack") { act({ k: "oattacks", list: pendingAttacks }); pendingAttacks = []; selAttacker = null; }
-    else if (oPhase.phase === "summon") act({ k: "odefsummon", t: "endsummon" });
+    if (oPhase.phase === "attack") { act({ k: "oattacks", list: pendingAttacks }); pendingAttacks = []; selAttacker = null; }
+    else if (oPhase.phase === "main") act({ k: "omain", t: "done" });
     else if (oPhase.phase === "block") { act({ k: "oblocks", list: pendingBlocks }); pendingBlocks = []; selTargetAtt = null; }
     return;
   }
@@ -1932,7 +1954,7 @@ function render() {
   if (!players) return;
   const me = players[myIdx], en = players[1 - myIdx];
   const original = ruleMode === "original";
-  const PHASE_NAME = { main: "メイン", attack: "アタック", summon: "召喚", block: "ブロック", battle: "戦闘" };
+  const PHASE_NAME = { untap: "アンタップ", attack: "アタック", main: "メイン", block: "ブロック", battle: "戦闘", end: "ターンエンド" };
   document.getElementById("turn-ind").textContent =
     winner !== null ? "" :
     `ターン${turnNo} — ${players[turnP].name}の番` +
@@ -1941,6 +1963,23 @@ function render() {
   // シールド行はオリジナルルールでは非表示
   for (const id of ["e-sh-label", "e-shields", "m-sh-label", "m-shields"]) {
     document.getElementById(id).style.display = original ? "none" : "";
+  }
+
+  // フェイズトラッカー(自ターン=オレンジ線、相手ターン=青線。記号は行動者の色)
+  const pb = document.getElementById("phasebar");
+  pb.style.display = original ? "" : "none";
+  if (original) {
+    const myTurn = turnP === myIdx;
+    pb.classList.toggle("myturn", myTurn);
+    const cp = oPhase ? oPhase.phase : null;
+    for (const [ph, id] of [["untap","pb-untap"],["attack","pb-attack"],["main","pb-main"],["block","pb-block"],["battle","pb-battle"],["end","pb-end"]]) {
+      const el = document.getElementById(id);
+      const turnSide = ph === "untap" || ph === "attack";      // ターン側が動くフェイズ
+      const mine = turnSide ? myTurn : !myTurn;                // 自分が動くなら orange
+      el.classList.toggle("orange", mine);
+      el.classList.toggle("blue", !mine);
+      el.classList.toggle("active", cp === ph);
+    }
   }
 
   // オリジナル: 割り当て状況のセット
@@ -2113,7 +2152,7 @@ function render() {
 
   // 手札(アタック/ブロック指定中はクリック不可)
   const handOk = uiMain && winner === null &&
-    (!original || !oPhase || oPhase.phase === "main" || oPhase.phase === "summon");
+    (!original || !oPhase || oPhase.phase === "main");
   const hz = document.getElementById("hand-zone"); hz.innerHTML = "";
   me.hand.forEach(c => {
     const el = cardEl(c);
@@ -2121,14 +2160,27 @@ function render() {
     hz.appendChild(el);
   });
 
-  // フェイズ移行ボタン
+  // フェイズ移行ボタン(ターン終了に至るボタンはオレンジ)
   const btn = document.getElementById("btn-end");
   btn.disabled = !(uiMain && winner === null);
   if (original && oPhase) {
-    btn.textContent = { main: "アタックフェイズへ", attack: `攻撃を確定(${pendingAttacks.length}件)`,
-                        summon: "召喚を終えてブロックへ", block: `ブロックを確定(${pendingBlocks.length}件)` }[oPhase.phase] || "―";
+    let final = false;
+    if (oPhase.phase === "block") final = true;
+    if (oPhase.phase === "main") {
+      const aliveAtk = declaredAttacks.some(at =>
+        fieldById(turnP, at.cre) && (at.tt !== "cre" || fieldById(1 - turnP, at.tv)));
+      const canBlock = players[1 - turnP].field.some(f => !f.tapped);
+      final = !(aliveAtk && canBlock);   // ブロックフェイズが飛ばされる=このボタンでターン終了へ
+    }
+    btn.textContent = {
+      attack: `攻撃を確定(${pendingAttacks.length}件)`,
+      main: final ? "メインを終えてターンエンドへ" : "メインを終えてブロックへ",
+      block: `ブロックを確定(${pendingBlocks.length}件)`,
+    }[oPhase.phase] || "―";
+    btn.classList.toggle("final", final);
   } else {
     btn.textContent = "ターン終了";
+    btn.classList.remove("final");
   }
 
   if (!original && uiMain && selAttacker !== null) {
