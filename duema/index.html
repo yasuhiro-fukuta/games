@@ -99,6 +99,7 @@
   .card.selectable:hover { transform: translateY(-4px); }
   .card.tapped.selectable:hover { transform: rotate(90deg) scale(.94); }
   .card.attacking { outline: 2px solid var(--gold); transform: translateY(-4px); }
+  .card.tapped.attacking { transform: rotate(90deg) scale(.94); }   /* タップ状態は維持 */
   .card.targetable { outline: 2px dashed var(--rust); cursor: pointer; }
 
   #hand-zone .card { cursor: pointer; }
@@ -368,10 +369,10 @@
       <b>土地・呪文・召喚はすべて相手のターン中に行う</b>(攻撃宣言を見てから対応)。召喚酔いはなし。J/Q/Kの生贄軽減召喚も使える<br>
       <b>攻撃</b>: タップ中の敵クリーチャー(1体につき攻撃1つまで)か、プレイヤー本体(複数可)。攻撃対象が召喚フェイズ中の生贄などで消えたら空振り<br>
       <b>ダイレクトアタック</b>: 攻撃が通ると、その数字ぶん相手の山札が墓地へ落ちる<br>
-      <b>戦闘</b>: 常に1対1、蓄積ダメージなし。スート相性(+0/+1)とAの絵札特効(+13/+0)はあり<br>
+      <b>戦闘</b>: 常に1対1、蓄積ダメージなし。Aの絵札特効(+13/+0)はあり<br>
       <b>デッキアウト</b>: 山札が0枚になった瞬間に敗北。両者同時なら引き分け<br><br>
       <b>JOKER</b>(0マナ+追加コスト、自分のメインのみ):<br>
-      ・4色土地としてセット(1ターン1枚制限の別枠)<br>
+      ・モックスジョーカー: 相手より土地が少ないときのみ、4色マナが出る0マナアーティファクトとして置ける(セット権不要)<br>
       ・♠スペードスピア: 自分の<b>♠クリーチャー</b>1体生贄 → 相手クリーチャー1体破壊<br>
       ・♥ハートデザイア: 手札の<b>♥カード</b>1枚捨てる → 墓地から好きな1枚を手札へ<br>
       ・♦ダイヤクラック: 自分の<b>♦土地</b>1枚生贄 → 相手の土地1枚破壊<br>
@@ -383,13 +384,13 @@
       ・土地は1ターンに1枚。タップでそのスートのマナ1を出す<br>
       ・クリーチャー召喚コスト = <b>自スート1マナ + 数字ぶんの無指定マナ</b>(例: ♠3 は合計4マナ)。パワー/タフネス = 数字<br>
       ・出したターンは攻撃できない(召喚酔い)<br><br>
-      <b>攻撃と戦闘</b>: 相手プレイヤー(シールド)か、タップ中の敵クリーチャーを攻撃。相手はアンタップのクリーチャーでブロック可能。<b>アンタップ状態のクリーチャーは、攻撃またはブロックするとタップ状態になる</b>(次の自分のターン開始時にアンタップ)。スート相性で守り側有利: ♠は♥に、♦は♠に、♣は♦に、♥は♣に <b>+0/+1</b><br>
+      <b>攻撃と戦闘</b>: 相手プレイヤー(シールド)か、タップ中の敵クリーチャーを攻撃。相手はアンタップのクリーチャーでブロック可能。<b>アンタップ状態のクリーチャーは、攻撃またはブロックするとタップ状態になる</b>(次の自分のターン開始時にアンタップ)<br>
       ・<b>A(エース)</b>は J/Q/K との戦闘時 <b>+13/+0</b>(刺し違えて絵札を討ち取る)<br>
       ・<b>J/Q/K</b>は召喚時、同スートの味方クリーチャーを望む数だけ生贄にでき、その数字の合計分コスト軽減。またJ/Q/Kに<b>シールドトリガーはない</b>(手札に加わるだけ)<br>
       ・戦闘ダメージは<b>ターン終了時まで蓄積</b>する(累計がタフネス以上で破壊。例: 6/6 が3点→4点と受けると2回目で破壊)<br><br>
       <b>シールドブレイク</b>: シールドは6つの固定位置に置かれ、攻撃時は<b>相手のシールドを直接クリック</b>して割る位置を選ぶ(割れた位置は歯抜けのまま)。割られたカードは手札へ。A〜10ならそのままコストなしで召喚してもよい(Sトリガー)<br>
       <b>JOKER</b>(すべて0マナ+追加コスト、2枚入り):<br>
-      ・4色どのマナも出せる土地としてセット(このターン土地をセット済みでも置ける・別枠)<br>
+      ・モックスジョーカー: 相手より土地が少ないときのみ、4色マナが出る0マナアーティファクトとして置ける(セット権不要)<br>
       ・♠スペードスピア: 自クリーチャー1体生贄 → クリーチャー1体破壊<br>
       ・♥ハートデザイア: シールドを見て、1枚を手札1枚と入れ替える<br>
       ・♦ダイヤクラック: 自シールド1枚生贄 → 相手シールド1枚破壊(両方Sトリガーあり)<br>
@@ -557,9 +558,10 @@ function playLand(pi, c) {
   const p = players[pi];
   removeFromHand(p, c);
   p.lands.push({ card: c, tapped: false });
-  if (!c.joker) landPlayedThisTurn = true;   // JOKER土地は1ターン1枚制限の別枠
+  if (!c.joker) landPlayedThisTurn = true;   // モックスジョーカーは1ターン1枚制限の別枠
   sfx("land");
-  log(`${p.name}: ${cardLabel(c)} を土地に置いた${c.joker ? "(土地セット権は消費しない)" : ""}`);
+  log(c.joker ? `${p.name}: モックスジョーカーを置いた(4色マナ・セット権消費なし)`
+              : `${p.name}: ${cardLabel(c)} を土地に置いた`);
 }
 function summon(pi, c, free, reduction = 0) {
   const p = players[pi];
@@ -577,14 +579,8 @@ function spendJoker(pi, jk, spellName) {
   sfx("joker");
   log(`${p.name}: JOKER — ${spellName}!`);
 }
-// suit のクリーチャーが oppSuit と戦闘するときのタフネス修正
-function bonus(suit, oppSuit) {
-  if (suit === 0 && oppSuit === 1) return 1;  // ♠ vs ♥ → ♠ +0/+1
-  if (suit === 2 && oppSuit === 0) return 1;  // ♦ vs ♠ → ♦ +0/+1
-  if (suit === 3 && oppSuit === 2) return 1;  // ♣ vs ♦ → ♣ +0/+1
-  if (suit === 1 && oppSuit === 3) return 1;  // ♥ vs ♣ → ♥ +0/+1
-  return 0;
-}
+// スート相性ルールは廃止(常に修正なし)
+function bonus() { return 0; }
 /* A(エース)は J/Q/K との戦闘時 +13/+0(パワーのみ) */
 function faceBonus(x, y) { return (x.rank === 1 && y.rank >= 11) ? 13 : 0; }
 
@@ -881,6 +877,8 @@ async function runGame(seed) {
   let cur = firstP;
   while (winner === null) {
     if (!startTurn(cur)) break;
+    await showBanner(cur === myIdx ? "あなたのターン" : "相手のターン", 900);
+    if (token !== gameToken) return;
     for (;;) {
       if (winner !== null || token !== gameToken) return;
       const a = await decision(cur, "main");
@@ -940,7 +938,8 @@ async function runOriginalTurns(token, secondP) {
     oPhase = { phase: "untap", actor: cur };
     startTurnO(cur);
     if (await checkDeckOut()) return;
-    await wait(450);
+    await showBanner(cur === myIdx ? "あなたのターン" : "相手のターン", 900);
+    if (token !== gameToken) return;
 
     // アタックフェイズ(ターン側: 全攻撃を一括宣言)
     oPhase = { phase: "attack", actor: cur }; render();
@@ -1278,8 +1277,9 @@ function aiPickLand(pi) {
   const p = players[pi];
   const hand = p.hand.filter(c => !c.joker);
   if (!hand.length) {
+    // モックスジョーカー: 相手より土地が少ないときのみ置ける
     const jk = p.hand.find(c => c.joker);
-    return p.lands.length < 3 ? jk || null : null;
+    return (p.lands.length < 3 && p.lands.length < players[1 - pi].lands.length) ? jk || null : null;
   }
   const landSuits = new Set(p.lands.map(l => l.card.joker ? "*" : l.card.suit));
   for (const c of [...hand].sort((a, b) => b.rank - a.rank)) {
@@ -1612,7 +1612,8 @@ async function onHandClickO(c) {
       const spades = p.field.filter(f => f.card.suit === 0);
       const hearts = p.hand.filter(x => !x.joker && x.suit === 1);
       const diaLands = p.lands.filter(l => !l.card.joker && l.card.suit === 2);
-      opts.push({ label: "土地に置く(4色マナ・1ターン1枚制限とは別枠)", value: "land" });
+      opts.push({ label: "モックスジョーカー: 4色マナが出る0マナアーティファクトとして置く(相手より土地が少ないときのみ・セット権不要)", value: "land",
+                disabled: !(p.lands.length < o.lands.length) });
       opts.push({ label: "♠スペードスピア: 自分の♠クリーチャー1体生贄 → 相手クリーチャー1体破壊", value: "spear",
                   disabled: !spades.length || !o.field.length });
       opts.push({ label: "♥ハートデザイア: 手札の♥カード1枚捨てる → 墓地から1枚回収", value: "desire",
@@ -1661,7 +1662,8 @@ async function onHandClick(c) {
   const opts = [];
   if (c.joker) {
     const others = p.hand.filter(x => x.id !== c.id);
-    opts.push({ label: "土地に置く(4色マナ・1ターン1枚制限とは別枠)", value: "land" });
+    opts.push({ label: "モックスジョーカー: 4色マナが出る0マナアーティファクトとして置く(相手より土地が少ないときのみ・セット権不要)", value: "land",
+                disabled: !(p.lands.length < o.lands.length) });
     opts.push({ label: "♠スペードスピア: 自クリーチャー1体生贄 → 相手クリーチャー1体破壊", value: "spear",
                 disabled: !p.field.length || !o.field.length });
     opts.push({ label: "♥ハートデザイア: シールドを見て、1枚を手札1枚と入れ替える", value: "desire",
