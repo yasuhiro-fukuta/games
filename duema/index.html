@@ -63,7 +63,7 @@
   }
   .card .rk { font-size: 13px; font-weight: 700; line-height: 1; padding: 4px 0 0 5px; }
   .card .st-s { font-size: 10px; line-height: 1; padding: 1px 0 0 5px; }
-  .card .st-b { font-size: 19px; text-align: center; margin-top: 2px; }
+  .card .st-b { font-size: 27px; text-align: center; margin-top: 0; }
   .card.red { color: var(--red); }
   .card.joker { background: linear-gradient(160deg, #f5eeda, #e8d9b8); }
   .card.joker .jk {
@@ -73,7 +73,7 @@
   .card.sm { width: 38px; height: 53px; }
   .card.sm .rk { font-size: 11px; padding: 3px 0 0 4px; }
   .card.sm .st-s { font-size: 9px; padding: 0 0 0 4px; }
-  .card.sm .st-b { font-size: 14px; margin-top: 0; }
+  .card.sm .st-b { font-size: 19px; margin-top: 0; }
   .card.back {
     background: repeating-linear-gradient(135deg, #35507e, #35507e 4px, #2a406a 4px, #2a406a 8px);
     border-color: #1d2c49;
@@ -280,7 +280,7 @@
 
   @media (max-width: 560px) {
     .card { width: 42px; height: 58px; }
-    .card .st-b { font-size: 16px; }
+    .card .st-b { font-size: 22px; }
     header h1 { font-size: 18px; letter-spacing: .14em; }
   }
 </style>
@@ -1010,7 +1010,7 @@ async function runOriginalTurns(token, secondP) {
     let blocks = [];
     const preAlive = declaredAttacks.filter(at =>
       fieldById(cur, at.cre) && (at.tt !== "cre" || fieldById(def, at.tv)));
-    if (preAlive.length && (players[def].field.some(f => !f.tapped) || players[def].hand.some(c => c.joker))) {
+    if (preAlive.length && (players[def].field.some(f => !f.tapped) || players[def].hand.some(c => c.joker || c.suit === 1))) {
       for (;;) {
         if (winner !== null || token !== gameToken) return;
         oPhase = { phase: "block", actor: def }; render();
@@ -1381,12 +1381,11 @@ function aiDecide(pi, kind, ctx) {
         return { k: "oblocks", t: "spear", jk: jk.id, sac: spades[0].card.id, tgt: big.card.id };
       }
     }
-    // ♥瞬速召喚: 大物の攻撃が来ていて、受け止められる♥が出せるなら出す
+    // ♥瞬速召喚: 攻撃が来ていれば、出せる♥を強い順に出して待ち伏せる
     const attackers2 = declaredAttacks.map(at => fieldById(1 - pi, at.cre)).filter(Boolean);
-    const big2 = attackers2.sort((a, b) => b.card.rank - a.card.rank)[0];
-    if (big2 && big2.card.rank >= 6) {
-      const flash = p.hand.filter(c => !c.joker && c.suit === 1 && c.rank >= big2.card.rank && canPay(p, c.suit, costOf(c)))
-        .sort((a, b) => a.rank - b.rank)[0];
+    if (attackers2.length) {
+      const flash = p.hand.filter(c => !c.joker && c.suit === 1 && canPay(p, c.suit, costOf(c)))
+        .sort((a, b) => b.rank - a.rank)[0];
       if (flash) return { k: "oblocks", t: "summon", card: flash.id };
     }
     aiSpearUsedThisBlock = false;
@@ -1429,12 +1428,11 @@ function aiPickLand(pi) {
     return (p.lands.length < 3 && p.lands.length < players[1 - pi].lands.length) ? jk || null : null;
   }
   const landSuits = new Set(p.lands.map(l => l.card.joker ? "*" : l.card.suit));
-  for (const c of [...hand].sort((a, b) => b.rank - a.rank)) {
-    const same = hand.filter(x => x.suit === c.suit);
-    if (!landSuits.has(c.suit) && !landSuits.has("*") && same.length >= 2) return c;
-  }
-  const sorted = [...hand].sort((a, b) => b.rank - a.rank);
-  return p.lands.length < 5 ? sorted[0] : sorted[sorted.length - 1];
+  // A: マナゾーンに無いスートを優先 / B: |土地枚数 - コスト| が最大のカード
+  const missing = landSuits.has("*") ? [] : hand.filter(c => !landSuits.has(c.suit));
+  const pool = missing.length ? missing : hand;
+  const L = p.lands.length;
+  return [...pool].sort((a, b) => Math.abs(L - costOf(b)) - Math.abs(L - costOf(a)))[0];
 }
 
 function aiJokerAction(pi) {
@@ -1562,10 +1560,10 @@ function aiOMain(pi) {   // 相手ターン中のメイン: 土地→呪文→�
       return { t: "mill", jk: jk.id };
     }
   }
-  // 召喚(出せる限り最強から)
-  const s = p.hand.filter(c => !c.joker && canPay(p, c.suit, costOf(c))).sort((a, b) => b.rank - a.rank)[0];
+  // 召喚(出せる限り最強から)。♥は瞬速のため相手のブロックフェイズまで温存する
+  const s = p.hand.filter(c => !c.joker && c.suit !== 1 && canPay(p, c.suit, costOf(c))).sort((a, b) => b.rank - a.rank)[0];
   if (s) return { t: "summon", card: s.id };
-  for (const c of p.hand.filter(c => !c.joker && c.rank >= 11).sort((a, b) => b.rank - a.rank)) {
+  for (const c of p.hand.filter(c => !c.joker && c.suit !== 1 && c.rank >= 11).sort((a, b) => b.rank - a.rank)) {
     const sameSuit = p.field.filter(f => f.card.suit === c.suit).sort((a, b) => a.card.rank - b.card.rank);
     const sacs = [];
     let red = 0;
@@ -1600,38 +1598,57 @@ function aiOAttacks(pi) {
 
 function aiOBlocks(pi) {
   const p = players[pi], atkPi = 1 - pi;
-  const alive = declaredAttacks.filter(at => at.tt !== "cre" || fieldById(pi, at.tv));
+  const alive = declaredAttacks.filter(at => fieldById(atkPi, at.cre) && (at.tt !== "cre" || fieldById(pi, at.tv)));
   const list = [];
   const used = new Set();
   const free = () => p.field.filter(f => !f.tapped && !used.has(f.card.id));
+  const effPow = (b, oppCard) => b.pz ? 0 : b.card.rank + faceBonus(b.card, oppCard);
   for (const at of [...alive].sort((a, b) => (fieldById(atkPi, b.cre)?.card.rank || 0) - (fieldById(atkPi, a.cre)?.card.rank || 0))) {
     const atk = fieldById(atkPi, at.cre);
     if (!atk) continue;
-    // 1) 一方的に討ち取れるブロック
-    let b = free().filter(x => { const n = battleNumbers(atk, x); return n.aDies && !n.bDies; })
+    const lethal = Math.max(0, atk.card.rank - (atk.dmg || 0));
+    // 1) 単体で討ち取って生き残るブロック
+    const single = free().filter(x => { const n = battleNumbers(atk, x); return n.aDies && !n.bDies; })
       .sort((x, y) => x.card.rank - y.card.rank)[0];
-    // 2) 本体攻撃(山札が削れる)は相打ちでも止める
-    if (!b && at.tt === "player" && atk.card.rank >= 6) {
-      b = free().filter(x => { const n = battleNumbers(atk, x); return n.aDies && x.card.rank <= atk.card.rank; })
-        .sort((x, y) => x.card.rank - y.card.rank)[0];
-    }
-    // 3) 山札が残り少ないときはチャンプブロックで延命
-    if (!b && at.tt === "player" && p.deck.length <= 12) {
-      b = free().sort((x, y) => x.card.rank - y.card.rank)[0];
-    }
-    if (b) { used.add(b.card.id); list.push({ attacker: at.cre, blocker: b.card.id }); continue; }
-    // ギャングブロック: 大物の本体攻撃は複数体で止める(合計パワー≧攻撃側の数字)
-    if (at.tt === "player" && atk.card.rank >= 9) {
-      const gang = [];
-      let sum = 0;
-      for (const x of free().sort((a, b2) => b2.card.rank - a.card.rank)) {
-        if (gang.length >= 3) break;
-        gang.push(x); sum += x.card.rank;
-        if (sum >= atk.card.rank) break;
+    if (single) { used.add(single.card.id); list.push({ attacker: at.cre, blocker: single.card.id }); continue; }
+    if (at.tt !== "player") continue;   // クリーチャーへの攻撃は有利ブロックのみ
+    // 2) 単体トレード(相打ち・格下で)
+    const trade = free().filter(x => { const n = battleNumbers(atk, x); return n.aDies && x.card.rank <= atk.card.rank; })
+      .sort((x, y) => x.card.rank - y.card.rank)[0];
+    if (trade) { used.add(trade.card.id); list.push({ attacker: at.cre, blocker: trade.card.id }); continue; }
+    // 3) ギャングブロック(2〜3体): 合計パワーで討ち取れて、失う数字の合計が見合う組を探す
+    const cands = free();
+    const combos = [];
+    for (let i = 0; i < cands.length; i++)
+      for (let j = i + 1; j < cands.length; j++) {
+        combos.push([cands[i], cands[j]]);
+        for (let k = j + 1; k < cands.length; k++) combos.push([cands[i], cands[j], cands[k]]);
       }
-      if (sum >= atk.card.rank && gang.length >= 2) {
-        for (const g of gang) { used.add(g.card.id); list.push({ attacker: at.cre, blocker: g.card.id }); }
-      }
+    let best = null;
+    for (const combo of combos) {
+      const sum = combo.reduce((s, b) => s + effPow(b, atk.card), 0);
+      if (sum < lethal) continue;   // 討ち取れない
+      // 割り振りをシミュレーションして損害を数える
+      const sorted = [...combo].sort((a, b) => b.card.rank - a.card.rank);
+      let pool = atk.pz ? 0 : atk.card.rank + faceBonus(atk.card, sorted[0].card);
+      let lost = 0;
+      sorted.forEach((b, i2) => {
+        const bl = Math.max(0, b.card.rank - (b.dmg || 0));
+        const assign = (i2 === sorted.length - 1 && atk.card.suit !== 3) ? pool : Math.min(pool, bl);
+        if ((b.dmg || 0) + assign >= b.card.rank) lost += b.card.rank;
+        pool -= assign;
+      });
+      if (lost > atk.card.rank + 1) continue;   // 損なトレードはしない
+      if (!best || lost < best.lost || (lost === best.lost && combo.length < best.combo.length)) best = { combo, lost };
+    }
+    if (best) {
+      for (const b of best.combo) { used.add(b.card.id); list.push({ attacker: at.cre, blocker: b.card.id }); }
+      continue;
+    }
+    // 4) 山札が残り少ないときはチャンプブロックで延命
+    if (p.deck.length <= 12) {
+      const chump = free().sort((x, y) => x.card.rank - y.card.rank)[0];
+      if (chump) { used.add(chump.card.id); list.push({ attacker: at.cre, blocker: chump.card.id }); }
     }
   }
   return list;
