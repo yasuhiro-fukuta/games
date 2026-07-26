@@ -993,10 +993,17 @@ async function runOriginalTurns(token, secondP) {
       render();
     }
 
-    // ⚔アタックフェイズ(攻撃を一括宣言)
+    // ⚔アタックフェイズ(攻撃を一括宣言)。攻撃可能なクリーチャーが0体なら無操作で自動遷移
     oPhase = { phase: "attack", actor: cur }; render();
-    const ad = await decision(cur, "oattacks");
-    if (token !== gameToken) return;
+    let ad = { list: [] };
+    if (players[cur].field.some(f => !f.tapped && !f.sick)) {
+      ad = await decision(cur, "oattacks");
+      if (token !== gameToken) return;
+    } else {
+      log(`${players[cur].name}: 攻撃可能なクリーチャーなし`);
+      await wait(600);
+      if (token !== gameToken) return;
+    }
     declaredAttacks = (ad.list || []).filter(x => fieldById(cur, x.cre));
     for (const at of declaredAttacks) fieldById(cur, at.cre).tapped = true;
     if (declaredAttacks.length) {
@@ -1005,12 +1012,15 @@ async function runOriginalTurns(token, secondP) {
     } else log(`${players[cur].name}: 攻撃なし`);
     render();
 
-    // ⛨ブロックフェイズ(相手がブロック一括指定。JOKER呪文も使える)
+    // ⛨ブロックフェイズ(相手がブロック一括指定。攻撃0件でも必ず発生 — ♥瞬速召喚やJOKER呪文が使える)
     const def = 1 - cur;
     let blocks = [];
     const preAlive = declaredAttacks.filter(at =>
       fieldById(cur, at.cre) && (at.tt !== "cre" || fieldById(def, at.tv)));
-    if (preAlive.length && (players[def].field.some(f => !f.tapped) || players[def].hand.some(c => c.joker || c.suit === 1))) {
+    const defCanAct = (preAlive.length && players[def].field.some(f => !f.tapped)) ||
+                      players[def].hand.some(c => c.joker || c.suit === 1);
+    oPhase = { phase: "block", actor: def }; render();
+    if (defCanAct) {
       for (;;) {
         if (winner !== null || token !== gameToken) return;
         oPhase = { phase: "block", actor: def }; render();
@@ -1026,10 +1036,13 @@ async function runOriginalTurns(token, secondP) {
           });
           break;
         }
-        await applyMainO(def, b);   // ブロックフェイズ中のJOKER呪文
+        await applyMainO(def, b);   // ブロックフェイズ中のJOKER呪文・♥瞬速召喚
         if (winner !== null) return;
         render();
       }
+    } else {
+      await wait(600);
+      if (token !== gameToken) return;
     }
     activeBlocks = blocks;
 
@@ -1070,7 +1083,7 @@ async function runOriginalTurns(token, secondP) {
       else if (f.tapped) f.pz = true;
     }));
     render();
-    await wait(350);
+    await wait(600);
     if (winner !== null || token !== gameToken) return;
 
     // ⚚第2メインフェイズ(土地・JOKER呪文・召喚)
@@ -1682,7 +1695,7 @@ function humanPrompt(pi, kind, ctx) {
   }
   if (kind === "mull") {
     choose("後攻フリーマリガン", [
-      { label: "引き直す(手札5枚を山札に戻してシャッフルし、5枚引き直す)", value: true, primary: true },
+      { label: `引き直す(手札${players[pi].hand.length}枚を山札に戻してシャッフルし、${players[pi].hand.length}枚引き直す)`, value: true, primary: true },
       { label: "このままでいく", value: false },
     ], players[pi].hand, "あなたは後攻です。1回だけ無料で手札を引き直せます")
       .then(v => act({ k: "mull", v }));
