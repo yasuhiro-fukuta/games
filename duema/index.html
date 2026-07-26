@@ -77,6 +77,14 @@
   /* 土地: スートが主役なので大きく1つだけ表示 */
   .card.sm.land .st-s { display: none; }
   .card.sm.land .st-b { font-size: 30px; margin-top: -2px; }
+  /* 遊戯王: 裏側セットの「R」マーク(自分にだけ表が見える) */
+  .card .rmark {
+    position: absolute; right: 2px; top: 2px; width: 15px; height: 15px; line-height: 15px;
+    text-align: center; font-size: 10px; font-weight: 800; border-radius: 50%;
+    background: var(--gold); color: #26241f; box-shadow: 0 1px 3px rgba(0,0,0,.4);
+  }
+  /* 遊戯王: 攻撃済みモンスター */
+  .card.spent { filter: grayscale(.5) brightness(.75); }
   .card.back {
     background: repeating-linear-gradient(135deg, #35507e, #35507e 4px, #2a406a 4px, #2a406a 8px);
     border-color: #1d2c49;
@@ -308,7 +316,7 @@
     </div>
     <div class="zone-label" id="e-sh-label">シールド</div>
     <div class="zone" id="e-shields"></div>
-    <div class="zone-label">マナゾーン(土地)</div>
+    <div class="zone-label" id="e-ld-label">マナゾーン(土地)</div>
     <div class="zone" id="e-lands"></div>
     <div class="zone-label">バトルゾーン</div>
     <div class="zone" id="e-field"></div>
@@ -339,7 +347,7 @@
     </div>
     <div class="zone-label">バトルゾーン</div>
     <div class="zone" id="m-field"></div>
-    <div class="zone-label">マナゾーン(土地)</div>
+    <div class="zone-label" id="m-ld-label">マナゾーン(土地)</div>
     <div class="zone" id="m-lands"></div>
     <div class="zone-label" id="m-sh-label">シールド</div>
     <div class="zone" id="m-shields"></div>
@@ -382,6 +390,22 @@
     <div class="rulesel">
       <button id="rule-duema" class="on">デュエマルール</button>
       <button id="rule-original">マジックルール</button>
+      <button id="rule-yugi">遊戯王ルール</button>
+    </div>
+    <div class="body" id="rules-yugi" style="display:none">
+      54枚フルデッキ(4色×13+JOKER2枚)同士の1対1。<b>初手5枚・マナなし・勝利条件はデッキアウトのみ</b>(山札0枚で即敗北・両者同時なら引き分け)。先攻後攻はランダム、後攻は1回フリーマリガン可。<b>先攻の1ターン目はバトルフェイズなし</b>。敗者の手札は公開される。<br><br>
+      <b>ダメージ = 山札</b>: 戦闘ダメージを受けると、その数字ぶん山札が墓地に落ちる。<b>回復</b> = その数字ぶん墓地の下から山札の下に戻す(墓地の枚数まで)<br><br>
+      <b>フェイズ進行</b>: ドロー → メイン(召喚・セット・JOKER)→ バトル → ターン終了<br>
+      <b>召喚(1ターン1回)</b>: 表側攻撃表示 or 裏側守備表示セット。<b>数字7〜10は生贄1体、J/Q/Kは2体、Aは3体</b>が必要(Aは最上級・攻守14)。召喚酔いなし=出したターンから攻撃できる<br>
+      <b>表示形式</b>: 攻撃表示(縦)/守備表示(横)。裏側は自分にだけ「R」マーク付きで見える。表示変更・反転召喚はメインに1体1回(出したターンは不可)<br>
+      <b>戦闘</b>: 攻撃表示同士 → 数字が低い方が破壊され、差の枚数が持ち主の山札から墓地へ(同値なら相討ち)。<b>守備表示への攻撃</b> → 上回れば破壊(山札は減らない)、下回れば差のダメージが攻撃側に跳ね返る。裏側を攻撃するとリバース(公開)。<b>相手モンスターが0体なら直接攻撃</b>(数字ぶん山札へ)<br>
+      <b>罠</b>: 手札を何枚でも罠として伏せられる(数字は相手に見えない)。<b>自分の数字以下の攻撃</b>が宣言されたとき発動できる(1攻撃に1枚)。スートで効果が決まる:<br>
+      ・♠<b>奈落の落とし穴</b>: 攻撃モンスターを破壊<br>
+      ・♥<b>恵みの雨</b>: 攻撃無効+罠の数字ぶん回復<br>
+      ・♦<b>魔法の筒</b>: 攻撃無効+攻撃モンスターの数字ぶん相手の山札を墓地へ<br>
+      ・♣<b>停戦協定</b>: 攻撃無効+攻撃モンスターを守備表示に<br>
+      <b>スート能力</b>: ♠<b>貫通</b>(守備表示を破壊したとき超過分のダメージ)/ ♥<b>慈悲</b>(戦闘破壊されたとき数字の半分(切り上げ)回復)/ ♦<b>叡智</b>(表側で場に出たとき1ドロー)/ ♣<b>供物</b>(生贄にするとき2体分)<br>
+      <b>JOKER</b>: 死者蘇生(墓地のモンスター1体を表側攻撃で特殊召喚)or 強欲な壺(2ドロー)
     </div>
     <div class="body" id="rules-original" style="display:none">
       54枚フルデッキ(4色×13+JOKER2枚)同士の1対1。<b>初手7枚・シールドなし・勝利条件はデッキアウトのみ</b>(山札0枚で即敗北・両者同時なら引き分け)。先攻後攻はランダム、後攻は1回フリーマリガン可。<b>先攻の1ターン目はアンタップ&ドローを飛ばす</b>。敗者の手札は公開される。<br><br>
@@ -494,7 +518,8 @@ let rng = Math.random;
 
 /* ================= 状態 ================= */
 let players, turnP, turnNo, landPlayedThisTurn, winner, firstP;
-let ruleMode = "duema";          // 'duema' | 'original'
+let ruleMode = "duema";          // 'duema' | 'original' | 'yugi'
+let ySummoned = false;           // 遊戯王: このターン通常召喚/セットを使ったか
 let oPhase = null;               // オリジナル: {phase:'main'|'attack'|'summon'|'block'|'battle', actor}
 let declaredAttacks = [];        // オリジナル: 宣言済み攻撃 [{cre, tt, tv}]
 let activeBlocks = [];           // 確定済みブロック(矢印表示用)
@@ -881,13 +906,13 @@ async function runGame(seed) {
   const token = ++gameToken;
   rng = mulberry32(seed);
   players = [
-    { name: myIdx === 0 ? "あなた" : (mode === "cpu" ? "CPU" : "相手"), deck: shuffle(buildDeck(0)),   hand: [], shields: [], lands: [], field: [], grave: [] },
-    { name: myIdx === 1 ? "あなた" : (mode === "cpu" ? "CPU" : "相手"), deck: shuffle(buildDeck(200)), hand: [], shields: [], lands: [], field: [], grave: [] },
+    { name: myIdx === 0 ? "あなた" : (mode === "cpu" ? "CPU" : "相手"), deck: shuffle(buildDeck(0)),   hand: [], shields: [], lands: [], field: [], grave: [], traps: [] },
+    { name: myIdx === 1 ? "あなた" : (mode === "cpu" ? "CPU" : "相手"), deck: shuffle(buildDeck(200)), hand: [], shields: [], lands: [], field: [], grave: [], traps: [] },
   ];
   for (const p of players) {
     if (ruleMode === "duema") p.shields = p.deck.splice(0, 6);
-    else p.shields = [];                       // マジック: シールドなし
-    p.hand = p.deck.splice(0, ruleMode === "duema" ? 5 : 7);
+    else p.shields = [];                       // マジック・遊戯王: シールドなし
+    p.hand = p.deck.splice(0, ruleMode === "original" ? 7 : 5);
   }
   oPhase = null; declaredAttacks = []; activeBlocks = []; pendingAttacks = []; pendingBlocks = []; selTargetAtt = null;
   firstP = rng() < 0.5 ? 0 : 1;
@@ -914,6 +939,7 @@ async function runGame(seed) {
 
   // ターンループ
   if (ruleMode === "original") { await runOriginalTurns(token, secondP); return; }
+  if (ruleMode === "yugi") { await runYugiTurns(token, secondP); return; }
   let cur = firstP;
   while (winner === null) {
     if (!startTurn(cur)) break;
@@ -1112,6 +1138,382 @@ async function runOriginalTurns(token, secondP) {
     if (cur === secondP) turnNo++;
     cur = 1 - cur;
   }
+}
+
+/* ================= 遊戯王ルール =================
+   マナなし・召喚酔いなし。ダメージ=山札を墓地へ、回復=墓地の下から山札の下へ。
+   勝利条件はデッキアウトのみ。 */
+const YR = c => c.rank === 1 ? 14 : c.rank;                          // Aは最上級(攻守14)
+const yTribNeed = r => r <= 6 ? 0 : r <= 10 ? 1 : r <= 13 ? 2 : 3;   // 必要な生贄数
+const yTribVal = f => f.card.suit === 3 ? 2 : 1;                     // ♣供物は生贄2体分
+const TRAP_NAME = { 0: "奈落の落とし穴", 1: "恵みの雨", 2: "魔法の筒", 3: "停戦協定" };
+const TRAP_DESC = {
+  0: "攻撃モンスターを破壊",
+  1: "攻撃無効+罠の数字ぶん回復",
+  2: "攻撃無効+攻撃モンスターの数字ぶん相手の山札を墓地へ",
+  3: "攻撃無効+攻撃モンスターを守備表示に",
+};
+
+function yMill(pi, n) {
+  const p = players[pi];
+  const real = Math.min(n, p.deck.length);
+  if (real <= 0) return;
+  p.grave.push(...p.deck.splice(p.deck.length - real, real));
+  log(`${p.name} の山札が${real}枚墓地へ(残り${p.deck.length})`);
+}
+function yHeal(pi, n) {
+  const p = players[pi];
+  const real = Math.min(n, p.grave.length);   // 数字は墓地の枚数を上回れない
+  if (real <= 0) return;
+  p.deck.unshift(...p.grave.splice(0, real)); // 古い順に山札の下へ
+  log(`${p.name}: 回復 — 墓地の${real}枚が山札の下に戻った(山札${p.deck.length})`);
+}
+function yDraw(pi, n) {
+  const p = players[pi];
+  for (let i = 0; i < n && p.deck.length; i++) p.hand.push(p.deck.pop());
+}
+function yDestroyByBattle(pi, cre) {
+  destroy(pi, cre);
+  if (cre.card.suit === 1) { yHeal(pi, Math.ceil(YR(cre.card) / 2)); log(`♥慈悲が発動`); }
+}
+
+async function runYugiTurns(token, secondP) {
+  let cur = firstP;
+  while (winner === null) {
+    // ドローフェイズ
+    oPhase = { phase: "ydraw", actor: cur };
+    turnP = cur;
+    ySummoned = false;
+    selAttacker = null;
+    players[cur].field.forEach(f => { f.attacked = false; f.posed = false; f.fresh = false; });
+    yDraw(cur, 1);
+    log(`── ${players[cur].name} のターン${turnNo} ── ドロー(山札${players[cur].deck.length})`);
+    render();
+    if (await checkDeckOut()) return;
+    await showBanner(cur === myIdx ? "あなたのターン" : "相手のターン", 900);
+    if (token !== gameToken) return;
+
+    // メインフェイズ(召喚・セット・罠・JOKER・表示形式変更)
+    for (;;) {
+      if (winner !== null || token !== gameToken) return;
+      oPhase = { phase: "ymain", actor: cur }; render();
+      const a = await decision(cur, "ymain");
+      if (token !== gameToken) return;
+      if (a.t === "end") break;
+      await applyYMain(cur, a);
+      if (winner !== null) return;
+      render();
+    }
+
+    // バトルフェイズ(先攻1ターン目はなし)。攻撃可能0体なら無操作で自動遷移(各駅停車)
+    if (!(turnNo === 1 && cur === firstP)) {
+      oPhase = { phase: "ybattle", actor: cur }; render();
+      for (;;) {
+        if (winner !== null || token !== gameToken) return;
+        if (!players[cur].field.some(f => !f.down && f.pos === "atk" && !f.attacked)) {
+          log(`${players[cur].name}: 攻撃可能なモンスターなし`);
+          await wait(600);
+          break;
+        }
+        oPhase = { phase: "ybattle", actor: cur }; render();
+        const a = await decision(cur, "yattack");
+        if (token !== gameToken) return;
+        if (a.t === "end") break;
+        await yResolveAttack(cur, a);
+        if (winner !== null || token !== gameToken) return;
+        render();
+      }
+    } else {
+      log("先攻1ターン目はバトルフェイズなし");
+      await wait(450);
+    }
+    if (winner !== null || token !== gameToken) return;
+
+    render();
+    await wait(450);
+    oPhase = null;
+    if (cur === secondP) turnNo++;
+    cur = 1 - cur;
+  }
+}
+
+async function applyYMain(pi, a) {
+  const p = players[pi];
+  switch (a.t) {
+    case "summon": {   // 通常召喚(表側攻撃)or セット(裏側守備)。1ターン1回、生贄は sacs で
+      const c = handById(pi, a.card);
+      if (!c || c.joker || ySummoned || p.field.length >= 5) return;
+      const sacs = (a.sacs || []).map(id => fieldById(pi, id)).filter(Boolean);
+      if (sacs.reduce((s, f) => s + yTribVal(f), 0) < yTribNeed(YR(c))) return;
+      for (const f of sacs) { p.field = p.field.filter(x => x !== f); p.grave.push(f.card); }
+      if (sacs.length) log(`${p.name}: ${sacs.map(f => cardLabel(f.card)).join(" ")} を生贄に捧げた`);
+      removeFromHand(p, c);
+      ySummoned = true;
+      const down = a.pos === "set";
+      p.field.push({ card: c, pos: down ? "def" : "atk", down, attacked: false, posed: false, fresh: true });
+      if (down) { sfx("land"); log(`${p.name}: モンスターを裏側守備表示でセット`); }
+      else {
+        sfx(YR(c) >= 11 ? "trigger" : "summon");
+        log(`${p.name}: ${cardLabel(c)} を${sacs.length ? "生贄召喚" : "召喚"}!(攻守${YR(c)})`);
+        if (c.suit === 2) { yDraw(pi, 1); log(`${p.name}: ♦叡智 — 1ドロー`); await checkDeckOut(); }
+      }
+      return;
+    }
+    case "trapset": {   // 罠として伏せる(何枚でも・最大5)
+      const c = handById(pi, a.card);
+      if (!c || c.joker || p.traps.length >= 5) return;
+      removeFromHand(p, c);
+      p.traps.push({ card: c });
+      sfx("land");
+      log(`${p.name}: カードを罠として伏せた`);
+      return;
+    }
+    case "pos": {   // 表示形式変更・反転召喚(1体1ターン1回、出したターンは不可)
+      const f = fieldById(pi, a.cre);
+      if (!f || f.fresh || f.posed) return;
+      f.posed = true;
+      if (f.down) {
+        f.down = false; f.pos = "atk";
+        sfx("summon");
+        await showBanner("反転召喚!", 1000, f.card);
+        log(`${p.name}: 反転召喚! ${cardLabel(f.card)}(攻守${YR(f.card)})`);
+        if (f.card.suit === 2) { yDraw(pi, 1); log(`${p.name}: ♦叡智 — 1ドロー`); await checkDeckOut(); }
+      } else {
+        f.pos = f.pos === "atk" ? "def" : "atk";
+        log(`${p.name}: ${cardLabel(f.card)} を${f.pos === "atk" ? "攻撃" : "守備"}表示に変更`);
+      }
+      return;
+    }
+    case "revive": {   // 死者蘇生
+      const jk = handById(pi, a.jk);
+      const c = p.grave.find(x => x.id === a.pick && !x.joker);
+      if (!jk || !jk.joker || !c || p.field.length >= 5) return;
+      spendJoker(pi, jk, "死者蘇生");
+      p.grave = p.grave.filter(x => x.id !== c.id);
+      p.field.push({ card: c, pos: "atk", down: false, attacked: false, posed: false, fresh: true });
+      log(`${p.name}: ${cardLabel(c)} が墓地から蘇った!(攻守${YR(c)})`);
+      if (c.suit === 2) { yDraw(pi, 1); log(`${p.name}: ♦叡智 — 1ドロー`); await checkDeckOut(); }
+      return;
+    }
+    case "pot": {   // 強欲な壺
+      const jk = handById(pi, a.jk);
+      if (!jk || !jk.joker) return;
+      spendJoker(pi, jk, "強欲な壺");
+      yDraw(pi, 2);
+      log(`${p.name}: 2枚ドロー(山札${p.deck.length})`);
+      await checkDeckOut();
+      return;
+    }
+  }
+}
+
+async function yResolveAttack(pi, a) {
+  const p = players[pi], def = 1 - pi, o = players[def];
+  const atk = fieldById(pi, a.cre);
+  if (!atk || atk.down || atk.pos !== "atk" || atk.attacked) return;
+  const target = a.tt === "cre" ? fieldById(def, a.tv) : null;
+  if (a.tt === "cre" && !target) return;
+  if (a.tt === "player" && o.field.length) return;   // モンスターがいる間は直接攻撃不可
+  atk.attacked = true;
+  const aR = YR(atk.card);
+  sfx("attack");
+  log(`${p.name}: ${cardLabel(atk.card)} で ${target ? (target.down ? "裏側のモンスター" : cardLabel(target.card)) : "プレイヤー"} に攻撃!`);
+  render();
+
+  // 罠: 攻撃モンスターの数字が罠の数字以下なら発動できる(1回の攻撃に1枚)
+  if (o.traps.some(t => YR(t.card) >= aR)) {
+    const td = await decision(def, "ytrap", { atkId: atk.card.id, tt: a.tt, tv: a.tv });
+    if (winner !== null) return;
+    if (td.t === "trap") {
+      const trap = o.traps.find(t => t.card.id === td.id && YR(t.card) >= aR);
+      if (trap) {
+        o.traps = o.traps.filter(t => t !== trap);
+        o.grave.push(trap.card);
+        sfx("trigger");
+        await showBanner(`罠発動! ${TRAP_NAME[trap.card.suit]}`, 1200, trap.card);
+        log(`${o.name}: 罠 ${cardLabel(trap.card)}【${TRAP_NAME[trap.card.suit]}】を発動!`);
+        switch (trap.card.suit) {
+          case 0: destroy(pi, atk); break;
+          case 1: yHeal(def, YR(trap.card)); break;
+          case 2: yMill(pi, aR); break;
+          case 3: atk.pos = "def"; log(`${cardLabel(atk.card)} は守備表示になった`); break;
+        }
+        render();
+        await checkDeckOut();
+        return;   // 攻撃は止まる
+      }
+    }
+  }
+
+  if (!target) {   // 直接攻撃
+    yMill(def, aR);
+    sfx("clash");
+    log(`ダイレクトアタック! ${aR}ダメージ`);
+    render();
+    await checkDeckOut();
+    return;
+  }
+
+  // 裏側ならリバース(公開)
+  if (target.down) {
+    target.down = false;
+    sfx("summon");
+    await showBanner("リバース!", 1000, target.card);
+    log(`リバース! ${cardLabel(target.card)}(守${YR(target.card)})`);
+    if (target.card.suit === 2) {
+      yDraw(def, 1); log(`${o.name}: ♦叡智 — 1ドロー`);
+      if (await checkDeckOut()) return;
+    }
+    render();
+  }
+
+  const bR = YR(target.card);
+  if (target.pos === "atk") {
+    log(`戦闘: ${cardLabel(atk.card)}(攻${aR}) vs ${cardLabel(target.card)}(攻${bR})`);
+    await showBattleFx(atk, target, aR < bR, bR < aR);
+    if (aR > bR) { yDestroyByBattle(def, target); yMill(def, aR - bR); }
+    else if (aR < bR) { yDestroyByBattle(pi, atk); yMill(pi, bR - aR); }
+    else { yDestroyByBattle(def, target); yDestroyByBattle(pi, atk); log("相討ち!"); }
+  } else {
+    log(`戦闘: ${cardLabel(atk.card)}(攻${aR}) vs 守備表示 ${cardLabel(target.card)}(守${bR})`);
+    await showBattleFx(atk, target, false, bR < aR);
+    if (aR > bR) {
+      yDestroyByBattle(def, target);
+      if (atk.card.suit === 0) { yMill(def, aR - bR); log(`♠貫通! 超過${aR - bR}ダメージ`); }
+    } else if (aR < bR) {
+      yMill(pi, bR - aR);
+      log(`守備が上回った! 反射${bR - aR}ダメージ`);
+    } else log("互角 — 両者とも破壊されない");
+  }
+  render();
+  await checkDeckOut();
+}
+
+/* ===== 遊戯王のAI ===== */
+function aiYMain(pi) {
+  const p = players[pi], o = players[1 - pi];
+  const jk = p.hand.find(c => c.joker);
+  if (jk) {
+    const best = [...p.grave].filter(c => !c.joker).sort((a, b) => YR(b) - YR(a))[0];
+    if (best && YR(best) >= 9 && p.field.length < 5) return { t: "revive", jk: jk.id, pick: best.id };
+    if (p.hand.length <= 3 && p.deck.length >= 15) return { t: "pot", jk: jk.id };
+  }
+  const mons = p.hand.filter(c => !c.joker);
+  if (!ySummoned && p.field.length < 5 && mons.length) {
+    // 生贄召喚: 生贄に払う数字の合計 < 出す数字 なら最大級を出す(♣は2体分として優先)
+    for (const c of [...mons].sort((a, b) => YR(b) - YR(a))) {
+      const need = yTribNeed(YR(c));
+      if (!need) break;
+      const pool = [...p.field].sort((a, b) => (yTribVal(b) - yTribVal(a)) || (YR(a.card) - YR(b.card)));
+      const sacs = [];
+      let val = 0, cost = 0;
+      for (const f of pool) {
+        if (val >= need) break;
+        sacs.push(f); val += yTribVal(f); cost += YR(f.card);
+      }
+      if (val >= need && cost < YR(c)) return { t: "summon", card: c.id, pos: "atk", sacs: sacs.map(f => f.card.id) };
+    }
+    // 下級: 相手の表側攻撃の最大値に勝てるか5以上なら表側攻撃、弱ければ裏側セット
+    const lows = mons.filter(c => yTribNeed(YR(c)) === 0);
+    if (lows.length) {
+      const myBest = [...lows].sort((a, b) => YR(b) - YR(a))[0];
+      const oppAtk = Math.max(0, ...o.field.filter(f => !f.down && f.pos === "atk").map(f => YR(f.card)));
+      if (YR(myBest) >= oppAtk || YR(myBest) >= 5) return { t: "summon", card: myBest.id, pos: "atk", sacs: [] };
+      return { t: "summon", card: [...lows].sort((a, b) => YR(a) - YR(b))[0].id, pos: "set", sacs: [] };
+    }
+  }
+  // 罠: 2枚まで。数字9以上が手札に2枚以上あれば、2番目に強いのを伏せる
+  if (p.traps.length < 2 && p.hand.length >= 3) {
+    const highs = mons.filter(c => YR(c) >= 9).sort((a, b) => YR(b) - YR(a));
+    if (highs.length >= 2) return { t: "trapset", card: highs[1].id };
+  }
+  // 反転召喚: 裏の7以上を表に
+  const flip = p.field.find(f => f.down && !f.fresh && !f.posed && YR(f.card) >= 7);
+  if (flip) return { t: "pos", cre: flip.card.id };
+  return { t: "end" };
+}
+
+function aiYAttack(pi) {
+  const p = players[pi], o = players[1 - pi];
+  const ready = p.field.filter(f => !f.down && f.pos === "atk" && !f.attacked).sort((a, b) => YR(b.card) - YR(a.card));
+  if (!ready.length) return { t: "end" };
+  if (!o.field.length) return { t: "attack", cre: ready[0].card.id, tt: "player" };
+  for (const f of ready) {
+    const a = YR(f.card);
+    const t1 = o.field.filter(t => !t.down && t.pos === "atk" && YR(t.card) < a).sort((x, y) => YR(y.card) - YR(x.card))[0];
+    if (t1) return { t: "attack", cre: f.card.id, tt: "cre", tv: t1.card.id };
+    const t2 = o.field.filter(t => !t.down && t.pos === "def" && YR(t.card) < a).sort((x, y) => YR(y.card) - YR(x.card))[0];
+    if (t2) return { t: "attack", cre: f.card.id, tt: "cre", tv: t2.card.id };
+    const t3 = o.field.find(t => t.down);
+    if (t3 && a >= 8) return { t: "attack", cre: f.card.id, tt: "cre", tv: t3.card.id };
+  }
+  return { t: "end" };
+}
+
+function aiYTrap(pi, ctx) {
+  const p = players[pi];
+  const atk = fieldById(1 - pi, ctx.atkId);
+  if (!atk) return { t: "pass" };
+  const a = YR(atk.card);
+  const eligible = p.traps.filter(t => YR(t.card) >= a);
+  if (!eligible.length) return { t: "pass" };
+  if (!(a >= 7 || (ctx.tt === "player" && a >= 4))) return { t: "pass" };
+  const pick = su => eligible.filter(t => t.card.suit === su).sort((x, y) => YR(x.card) - YR(y.card))[0];
+  const t = pick(0) || pick(2) || pick(3) || (p.grave.length >= 5 ? pick(1) : null);
+  return t ? { t: "trap", id: t.card.id } : { t: "pass" };
+}
+
+/* 遊戯王: 手札クリック(自分のメインフェイズ) */
+async function onHandClickY(c) {
+  const p = players[myIdx];
+  if (!oPhase || oPhase.phase !== "ymain") return;
+  if (c.joker) {
+    const grave = p.grave.filter(x => !x.joker);
+    const v = await choose("JOKER", [
+      { label: "死者蘇生: 墓地のモンスター1体を表側攻撃表示で特殊召喚", value: "revive", disabled: !grave.length || p.field.length >= 5 },
+      { label: "強欲な壺: カードを2枚ドロー", value: "pot", disabled: p.deck.length < 3 },
+      { label: "キャンセル", value: null },
+    ], c);
+    if (v === "revive") {
+      const pick = await chooseCard("死者蘇生: 蘇らせるモンスターを選ぶ", grave, "", "キャンセル");
+      if (pick) act({ k: "ymain", t: "revive", jk: c.id, pick: pick.id });
+    } else if (v === "pot") act({ k: "ymain", t: "pot", jk: c.id });
+    return;
+  }
+  const need = yTribNeed(YR(c));
+  const canNS = !ySummoned && p.field.length < 5;
+  const tribOk = p.field.reduce((s, f) => s + yTribVal(f), 0) >= need;
+  const v = await choose(`${cardLabel(c)}(攻守${YR(c)})`, [
+    { label: `表側攻撃表示で召喚${need ? `(生贄${need}体)` : ""}`, value: "atk", primary: true, disabled: !canNS || !tribOk },
+    { label: `裏側守備表示でセット${need ? `(生贄${need}体)` : ""}`, value: "set", disabled: !canNS || !tribOk },
+    { label: `罠として伏せる【${TRAP_NAME[c.suit]}】(数字${YR(c)}以下の攻撃に発動可)`, value: "trap", disabled: p.traps.length >= 5 },
+    { label: "キャンセル", value: null },
+  ], c, `召喚・セットは1ターン1回(罠は何枚でも)。${need ? `生贄${need}体が必要(♣は2体分)` : "生贄なしで出せる"}`);
+  if (v === "trap") { act({ k: "ymain", t: "trapset", card: c.id }); return; }
+  if (v !== "atk" && v !== "set") return;
+  let sacs = [];
+  if (need) {
+    const sel = await chooseMulti(`生贄を${need}体分選ぶ(♣は2体分)`, p.field.map(f => f.card),
+      sel2 => {
+        const val = sel2.reduce((s, x) => s + (x.suit === 3 ? 2 : 1), 0);
+        return { text: `生贄価値 ${val}/${need}`, ok: val >= need };
+      }, "生贄に捧げて出す", "キャンセル");
+    if (!sel) return;
+    sacs = sel.map(x => x.id);
+  }
+  act({ k: "ymain", t: "summon", card: c.id, pos: v === "set" ? "set" : "atk", sacs });
+}
+
+/* 遊戯王: 自分のモンスタークリック(メインフェイズ=表示形式変更) */
+async function onPosClickY(f) {
+  const label = f.down
+    ? `反転召喚する(表側攻撃表示で公開${f.card.suit === 2 ? "・♦叡智で1ドロー" : ""})`
+    : `${f.pos === "atk" ? "守備" : "攻撃"}表示に変更する`;
+  const v = await choose("表示形式の変更(1体につき1ターン1回・出したターンは不可)", [
+    { label, value: "go", primary: true },
+    { label: "キャンセル", value: null },
+  ], f.card);
+  if (v === "go") act({ k: "ymain", t: "pos", cre: f.card.id });
 }
 
 /* 多重ブロックの戦闘解決:
@@ -1383,6 +1785,9 @@ function aiDecide(pi, kind, ctx) {
     return { k: "block", blocker: b ? b.card.id : null };
   }
   if (kind === "omain") return { k: "omain", ...aiOMain(pi) };
+  if (kind === "ymain") return { k: "ymain", ...aiYMain(pi) };
+  if (kind === "yattack") return { k: "yattack", ...aiYAttack(pi) };
+  if (kind === "ytrap") return { k: "ytrap", ...aiYTrap(pi, ctx) };
   if (kind === "oattacks") return { k: "oattacks", list: aiOAttacks(pi) };
   if (kind === "oblocks") {
     // ブロックフェイズの呪文: 大物アタッカーをスピアで除去
@@ -1721,6 +2126,35 @@ function humanPrompt(pi, kind, ctx) {
     render();
     return;
   }
+  if (kind === "ymain") {
+    uiMain = true;
+    setHint("メインフェイズ: 手札クリック=召喚/セット/罠/JOKER、自分のモンスタークリック=表示形式変更・反転召喚");
+    render();
+    return;
+  }
+  if (kind === "yattack") {
+    uiMain = true; selAttacker = null;
+    setHint("バトルフェイズ: 攻撃表示の自分のモンスター→相手モンスター(裏側も可)の順にクリック。相手モンスター0体なら相手エリアで直接攻撃");
+    render();
+    return;
+  }
+  if (kind === "ytrap") {
+    const atk = fieldById(1 - pi, ctx.atkId);
+    const aR = atk ? YR(atk.card) : 0;
+    const eligible = players[pi].traps.filter(t => YR(t.card) >= aR);
+    const tCre = ctx.tt === "cre" ? fieldById(pi, ctx.tv) : null;
+    const tgt = ctx.tt === "player" ? "あなたへの直接攻撃"
+      : tCre ? `あなたの${tCre.down ? "裏側モンスター" : cardLabel(tCre.card)}への攻撃` : "攻撃";
+    const opts = eligible.map(t => ({
+      label: `${cardLabel(t.card)}【${TRAP_NAME[t.card.suit]}】— ${TRAP_DESC[t.card.suit]}`,
+      value: t.card.id,
+    }));
+    opts.push({ label: "発動しない", value: null });
+    choose("罠を発動する?", opts, atk ? atk.card : null,
+      `相手の ${atk ? cardLabel(atk.card) : "?"}(攻${aR}) が攻撃: <b>${tgt}</b>`)
+      .then(v => act(v === null ? { k: "ytrap", t: "pass" } : { k: "ytrap", t: "trap", id: v }));
+    return;
+  }
   if (kind === "mull") {
     choose("後攻フリーマリガン", [
       { label: `引き直す(手札${players[pi].hand.length}枚を山札に戻してシャッフルし、${players[pi].hand.length}枚引き直す)`, value: true, primary: true },
@@ -1956,6 +2390,7 @@ async function onHandClickO(c) {
 async function onHandClick(c) {
   if (!uiMain || winner !== null) return;
   if (ruleMode === "original") return onHandClickO(c);
+  if (ruleMode === "yugi") return onHandClickY(c);
   const p = players[myIdx], o = players[1 - myIdx];
   const opts = [];
   if (c.joker) {
@@ -2035,6 +2470,11 @@ async function onHandClick(c) {
 
 document.getElementById("btn-end").addEventListener("click", () => {
   if (!uiMain || winner !== null) return;
+  if (ruleMode === "yugi" && oPhase) {
+    if (oPhase.phase === "ymain") act({ k: "ymain", t: "end" });
+    else if (oPhase.phase === "ybattle") { act({ k: "yattack", t: "end" }); selAttacker = null; }
+    return;
+  }
   if (ruleMode === "original" && oPhase) {
     if (oPhase.phase === "attack") { act({ k: "oattacks", list: pendingAttacks }); pendingAttacks = []; selAttacker = null; }
     else if (oPhase.phase === "main1" || oPhase.phase === "main2") act({ k: "omain", t: "done" });
@@ -2047,6 +2487,15 @@ document.getElementById("enemy-side").addEventListener("click", (e) => {
   if (!uiMain || selAttacker === null || winner !== null) return;
   if (e.target.closest(".card") && (e.target.closest("#e-field") || e.target.closest("#e-shields"))) return;
   const atk = players[myIdx].field[selAttacker];
+  if (ruleMode === "yugi") {
+    // バトルフェイズ: 相手モンスターが0体のときのみ直接攻撃
+    if (!oPhase || oPhase.phase !== "ybattle") return;
+    if (!atk || atk.down || atk.pos !== "atk" || atk.attacked) { selAttacker = null; render(); return; }
+    if (players[1 - myIdx].field.length) return;
+    act({ k: "yattack", t: "attack", cre: atk.card.id, tt: "player" });
+    selAttacker = null;
+    return;
+  }
   if (ruleMode === "original") {
     // アタックフェイズ: 本体攻撃を割り当て(複数可)
     if (!oPhase || oPhase.phase !== "attack") return;
@@ -2245,7 +2694,10 @@ function cardEl(c, opts = {}) {
     el.className = "card" + (opts.sm ? " sm" : "") + (c.suit === 1 || c.suit === 2 ? " red" : "");
     el.innerHTML = `<span class="rk">${RANK_LABEL[c.rank]}</span><span class="st-s">${SUITS[c.suit]}</span><span class="st-b">${SUITS[c.suit]}</span>`;
   }
-  if (opts.pt) el.innerHTML += `<span class="pt">${opts.pz ? 0 : c.rank}/${c.rank}</span>`;
+  if (opts.pt) el.innerHTML += opts.yr
+    ? `<span class="pt">${YR(c)}/${YR(c)}</span>`
+    : `<span class="pt">${opts.pz ? 0 : c.rank}/${c.rank}</span>`;
+  if (opts.rmark) el.innerHTML += `<span class="rmark">R</span>`;
   if (opts.dmg > 0) el.innerHTML += `<span class="dmgb">-${opts.dmg}</span>`;
   return el;
 }
@@ -2254,15 +2706,24 @@ function render() {
   if (!players) return;
   const me = players[myIdx], en = players[1 - myIdx];
   const original = ruleMode === "original";
-  const PHASE_NAME = { untap: "アンタップ", main1: "第1メイン", attack: "アタック", block: "ブロック", battle: "戦闘", main2: "第2メイン", clean: "クリンナップ" };
+  const yugi = ruleMode === "yugi";
+  const duema = ruleMode === "duema";
+  const PHASE_NAME = { untap: "アンタップ", main1: "第1メイン", attack: "アタック", block: "ブロック", battle: "戦闘", main2: "第2メイン", clean: "クリンナップ",
+                       ydraw: "ドロー", ymain: "メイン", ybattle: "バトル" };
   document.getElementById("turn-ind").textContent =
     winner !== null ? "" :
     `ターン${turnNo} — ${players[turnP].name}の番` +
-    (original && oPhase ? `【${PHASE_NAME[oPhase.phase] || ""}】` : "");
+    ((original || yugi) && oPhase ? `【${PHASE_NAME[oPhase.phase] || ""}】` : "");
 
-  // シールド行はオリジナルルールでは非表示
+  // シールド行はマジックルールでは非表示、遊戯王では罠ゾーンとして使う
   for (const id of ["e-sh-label", "e-shields", "m-sh-label", "m-shields"]) {
     document.getElementById(id).style.display = original ? "none" : "";
+  }
+  document.getElementById("e-sh-label").textContent = yugi ? "罠ゾーン" : "シールド";
+  document.getElementById("m-sh-label").textContent = yugi ? "罠ゾーン" : "シールド";
+  // マナゾーンは遊戯王では非表示
+  for (const id of ["e-ld-label", "e-lands", "m-ld-label", "m-lands"]) {
+    document.getElementById(id).style.display = yugi ? "none" : "";
   }
 
   // フェイズトラッカー(全フェイズがターン側の行動: 自ターン=オレンジ、相手ターン=青)
@@ -2290,14 +2751,30 @@ function render() {
   document.getElementById("e-deck").textContent = en.deck.length;
   document.getElementById("e-hand").textContent = en.hand.length;
   document.getElementById("e-grave").textContent = en.grave.length;
-  document.getElementById("e-mana").textContent = `マナ ${untappedLands(en).length}/${en.lands.length}`;
+  document.getElementById("e-mana").textContent = yugi ? "" : `マナ ${untappedLands(en).length}/${en.lands.length}`;
   document.getElementById("m-deck").textContent = me.deck.length;
   document.getElementById("m-grave").textContent = me.grave.length;
-  document.getElementById("m-mana").textContent = `マナ ${untappedLands(me).length}/${me.lands.length}`;
+  document.getElementById("m-mana").textContent = yugi ? "" : `マナ ${untappedLands(me).length}/${me.lands.length}`;
+
+  // 遊戯王: シールド行を罠ゾーンとして描画(自分は表+Rマーク、相手は裏)
+  if (yugi) {
+    for (const [id, pl] of [["e-shields", en], ["m-shields", me]]) {
+      const z = document.getElementById(id); z.innerHTML = "";
+      pl.traps.forEach(t => {
+        z.appendChild(pl === me ? cardEl(t.card, { sm: true, rmark: true }) : cardEl(null, { back: true, sm: true }));
+      });
+      if (!pl.traps.length) {
+        const w = document.createElement("span");
+        w.style.cssText = "font-size:10px;color:var(--dim);align-self:center";
+        w.textContent = "(罠なし)";
+        z.appendChild(w);
+      }
+    }
+  }
 
   // シールド(攻撃対象選択中は、相手のシールドを直接クリックして割る位置を選ぶ)
-  const targeting = uiMain && selAttacker !== null && winner === null;
-  for (const [id, pl] of [["e-shields", en], ["m-shields", me]]) {
+  const targeting = duema && uiMain && selAttacker !== null && winner === null;
+  if (!yugi) for (const [id, pl] of [["e-shields", en], ["m-shields", me]]) {
     const z = document.getElementById(id); z.innerHTML = "";
     pl.shields.forEach((c, i) => {
       if (c) {
@@ -2343,13 +2820,27 @@ function render() {
   // バトルゾーン(敵)
   const ef = document.getElementById("e-field"); ef.innerHTML = "";
   en.field.forEach(f => {
+    const yDef = yugi && (f.down || f.pos === "def");
     const slot = document.createElement("div");
-    slot.className = "slot" + (f.tapped ? " tapped" : "");
-    const el = cardEl(f.card, { pt: true, dmg: f.dmg, pz: f.pz });
+    slot.className = "slot" + ((yugi ? yDef : f.tapped) ? " tapped" : "");
+    const el = yugi
+      ? (f.down ? cardEl(null, { back: true }) : cardEl(f.card, { pt: true, yr: true }))
+      : cardEl(f.card, { pt: true, dmg: f.dmg, pz: f.pz });
     el.dataset.cid = f.card.id;
-    if (f.tapped) el.classList.add("tapped");
-    if (f.sick) el.classList.add("sick");
-    if (!original && uiMain && selAttacker !== null && f.tapped) {
+    if (yugi ? yDef : f.tapped) el.classList.add("tapped");
+    if (!yugi && f.sick) el.classList.add("sick");
+    if (yugi && f.attacked) el.classList.add("spent");
+    // 遊戯王: 自分のバトルフェイズで攻撃対象に選べる(裏側も可)
+    if (yugi && uiMain && oPhase && oPhase.phase === "ybattle" && selAttacker !== null) {
+      el.classList.add("targetable");
+      el.addEventListener("click", () => {
+        const atk = me.field[selAttacker];
+        if (!atk || atk.down || atk.pos !== "atk" || atk.attacked) { selAttacker = null; render(); return; }
+        act({ k: "yattack", t: "attack", cre: atk.card.id, tt: "cre", tv: f.card.id });
+        selAttacker = null;
+      });
+    }
+    if (duema && uiMain && selAttacker !== null && f.tapped) {
       el.classList.add("targetable");
       el.addEventListener("click", () => {
         const atk = me.field[selAttacker];
@@ -2393,13 +2884,28 @@ function render() {
   // バトルゾーン(自分)
   const mf = document.getElementById("m-field"); mf.innerHTML = "";
   me.field.forEach((f, idx) => {
+    const yDef = yugi && (f.down || f.pos === "def");
     const slot = document.createElement("div");
-    slot.className = "slot" + (f.tapped ? " tapped" : "");
-    const el = cardEl(f.card, { pt: true, dmg: f.dmg, pz: f.pz });
+    slot.className = "slot" + ((yugi ? yDef : f.tapped) ? " tapped" : "");
+    const el = yugi
+      ? (f.down ? cardEl(f.card, { rmark: true }) : cardEl(f.card, { pt: true, yr: true }))
+      : cardEl(f.card, { pt: true, dmg: f.dmg, pz: f.pz });
     el.dataset.cid = f.card.id;
-    if (f.tapped) el.classList.add("tapped");
-    if (f.sick) el.classList.add("sick");
-    if (!original && uiMain && winner === null && !f.tapped && !f.sick) {
+    if (yugi ? yDef : f.tapped) el.classList.add("tapped");
+    if (!yugi && f.sick) el.classList.add("sick");
+    if (yugi && f.attacked) el.classList.add("spent");
+    if (yugi && uiMain && oPhase && winner === null) {
+      // メイン: 表示形式変更・反転召喚 / バトル: 攻撃モンスター選択
+      if (oPhase.phase === "ymain" && !f.fresh && !f.posed) {
+        el.classList.add("selectable");
+        el.addEventListener("click", () => onPosClickY(f));
+      } else if (oPhase.phase === "ybattle" && !f.down && f.pos === "atk" && !f.attacked) {
+        el.classList.add("selectable");
+        if (selAttacker === idx) el.classList.add("attacking");
+        el.addEventListener("click", () => { selAttacker = selAttacker === idx ? null : idx; render(); });
+      }
+    }
+    if (duema && uiMain && winner === null && !f.tapped && !f.sick) {
       el.classList.add("selectable");
       if (selAttacker === idx) el.classList.add("attacking");
       el.addEventListener("click", () => {
@@ -2454,8 +2960,9 @@ function render() {
 
   // 手札(アタック/ブロック指定中はクリック不可)
   const handOk = uiMain && winner === null &&
-    (!original || !oPhase || oPhase.phase === "main1" || oPhase.phase === "main2" ||
-     (oPhase.phase === "block" && oPhase.actor === myIdx));
+    (yugi ? (oPhase && oPhase.phase === "ymain")
+     : (!original || !oPhase || oPhase.phase === "main1" || oPhase.phase === "main2" ||
+        (oPhase.phase === "block" && oPhase.actor === myIdx)));
   const hz = document.getElementById("hand-zone"); hz.innerHTML = "";
   me.hand.forEach(c => {
     const el = cardEl(c);
@@ -2466,7 +2973,14 @@ function render() {
   // フェイズ移行ボタン(ターン終了に至るボタンはオレンジ)
   const btn = document.getElementById("btn-end");
   btn.disabled = !(uiMain && winner === null);
-  if (original && oPhase) {
+  if (yugi && oPhase) {
+    const skipBattle = turnNo === 1 && turnP === firstP;
+    btn.textContent = {
+      ymain: skipBattle ? "メインを終えてターンエンド" : "メインを終えてバトルへ",
+      ybattle: "バトルを終えてターンエンド",
+    }[oPhase.phase] || "―";
+    btn.classList.toggle("final", oPhase.phase === "ybattle" || (oPhase.phase === "ymain" && skipBattle));
+  } else if (original && oPhase) {
     btn.textContent = {
       main1: "第1メインを終えてアタックへ",
       attack: `攻撃を確定(${pendingAttacks.length}件)`,
@@ -2479,7 +2993,12 @@ function render() {
     btn.classList.remove("final");
   }
 
-  if (!original && uiMain && selAttacker !== null) {
+  if (yugi && uiMain && selAttacker !== null && oPhase && oPhase.phase === "ybattle") {
+    setHint(en.field.length
+      ? "攻撃対象を選択: 相手のモンスターをクリック(裏側も攻撃できる)"
+      : "攻撃対象を選択: 相手エリアをクリックで直接攻撃(数字ぶん山札を削る)");
+  }
+  if (duema && uiMain && selAttacker !== null) {
     setHint(shieldCount(en) > 0
       ? "攻撃対象を選択: 割りたい相手シールドをクリック or タップ中の敵クリーチャー"
       : "攻撃対象を選択: 相手エリアをクリックでとどめ! or タップ中の敵クリーチャー");
@@ -2549,13 +3068,14 @@ window.addEventListener("resize", () => requestAnimationFrame(drawArrows));
 /* ================= 開始 ================= */
 function setRule(r) {
   ruleMode = r;
-  document.getElementById("rule-duema").classList.toggle("on", r === "duema");
-  document.getElementById("rule-original").classList.toggle("on", r === "original");
-  document.getElementById("rules-duema").style.display = r === "duema" ? "" : "none";
-  document.getElementById("rules-original").style.display = r === "original" ? "" : "none";
+  for (const m of ["duema", "original", "yugi"]) {
+    document.getElementById("rule-" + m).classList.toggle("on", r === m);
+    document.getElementById("rules-" + m).style.display = r === m ? "" : "none";
+  }
 }
 document.getElementById("rule-duema").addEventListener("click", () => setRule("duema"));
 document.getElementById("rule-original").addEventListener("click", () => setRule("original"));
+document.getElementById("rule-yugi").addEventListener("click", () => setRule("yugi"));
 
 document.getElementById("btn-mute").addEventListener("click", () => {
   muted = !muted;
