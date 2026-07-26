@@ -87,10 +87,10 @@
   .card.spent { filter: grayscale(.5) brightness(.75); }
   /* ポケカ: エネルギーと進化段数 */
   .echips { display: flex; gap: 2px; justify-content: center; margin-top: 3px; font-size: 13px; line-height: 1; }
-  .echips .red { color: var(--red); }
-  .echips span { background: var(--paper); border-radius: 4px; padding: 1px 2px; box-shadow: 0 1px 2px rgba(0,0,0,.4); }
+  .echips span { background: var(--paper); color: var(--ink); border-radius: 4px; padding: 1px 2px; box-shadow: 0 1px 2px rgba(0,0,0,.4); }
+  .echips span.red { color: var(--red); }
   .card .stk {
-    position: absolute; left: 2px; bottom: 2px; font-size: 9px; font-weight: 800;
+    position: absolute; right: 2px; top: 2px; font-size: 9px; font-weight: 800;
     background: rgba(38,36,31,.85); color: var(--gold); border-radius: 4px; padding: 1px 3px;
   }
   .card.back {
@@ -208,10 +208,10 @@
   .pb-tick.active { transform: scale(1.3); border-color: currentColor; box-shadow: 0 0 12px currentColor; background: #1a2733; }
   #btn-end.final { background: #e8842c; color: var(--ink); }
 
-  .rulesel { display: flex; gap: 8px; justify-content: center; margin-bottom: 14px; }
+  .rulesel { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
   .rulesel button {
-    background: rgba(251,248,239,.12); color: var(--paper); font-size: 13px;
-    border: 1px solid rgba(251,248,239,.25); padding: 8px 16px;
+    background: rgba(251,248,239,.12); color: var(--paper); font-size: 14px;
+    border: 1px solid rgba(251,248,239,.25); padding: 10px 8px; white-space: nowrap;
   }
   .rulesel button.on { background: var(--gold); color: var(--ink); border-color: var(--gold); }
   .card.assigned { outline: 2px solid var(--gold); }
@@ -416,7 +416,7 @@
       54枚フルデッキ(4色×13+JOKER2枚)同士の1対1。<b>初手5枚・マナなし・サイド6枚</b>。手札にたねが無ければ強制引き直し(そのたび相手が1枚ドロー)。先攻後攻はランダム、<b>先攻の1ターン目はワザを使えない</b>。敗者の手札は公開される。<br><br>
       <b>勝利条件は3つ</b>: ①サイド6枚を取り切る ②相手の場からポケモンがいなくなる ③相手の山札切れ(0枚で即敗北)<br><br>
       <b>進化ライン = 数字の帯</b>: <b>2〜6=たね</b>(そのまま出せる)→ <b>7〜10=1進化</b> → <b>J/Q/K=2進化</b>(同スートの下の段に重ねる。ダメージは引き継ぎ)。<b>A=伝説のたね</b>: いきなり出せる攻守14、ただし倒されるとサイドを2枚取られる。進化は1体1ターン1回、場に出したターンは不可<br>
-      <b>HP=数字×2、ワザのダメージ=数字</b>。ダメージは回復しない。<b>弱点</b>: ♠→♥→♦→♣→♠の輪で、弱点を突くとダメージ2倍<br>
+      <b>HP=数字×2、ワザのダメージ=数字</b>。ダメージは回復しない。<b>相性</b>: ♥&gt;♣(精神&gt;肉体)/♣&gt;♦(土&gt;セラミック)/♦&gt;♠(剛性&gt;剣)/♠&gt;♥(悪意&gt;良心)。有利ならダメージ2倍、不利なら-3<br>
       <b>エネルギー</b>: 手札を1ターン1枚、ポケモンに付けられる(スートが色)。ワザには<b>たね1個/1進化2個/2進化3個/A4個</b>のエネルギーが必要(うち1個は自スート)<br>
       <b>フェイズ</b>: ドロー → メイン(ベンチ・進化・エネルギー・にげる・JOKER)→ <b>バトル場の1体がワザを1回</b>(相手のバトル場だけを攻撃)→ エンド<br>
       <b>きぜつ</b>: エネルギーごとトラッシュ。倒した側は自分のサイドを1枚(Aは2枚)手札に回収。ベンチから昇格(出せなければ敗北)<br>
@@ -1583,7 +1583,11 @@ const pIsBasic = c => !c.joker && (c.rank <= 6 || c.rank === 1);
 const pHP = c => PR(c) * 2;
 const pEnergyNeed = c => c.rank === 1 ? 4 : pStage(c) + 1;
 const pRetreatCost = c => c.rank === 1 ? 2 : pStage(c) + 1;
-const pWeak = (atkSuit, defSuit) => ((defSuit + 1) % 4) === atkSuit;   // 守備側スートの次のスートが弱点
+/* 相性: ♥>♣(精神>肉体) ♣>♦(土>セラミック) ♦>♠(剛性>剣) ♠>♥(悪意>良心)。有利=2倍、不利=-3 */
+const P_ADV = { 1: 3, 3: 2, 2: 0, 0: 1 };   // 攻撃側スート → 有利な相手スート
+const pAdv = (atkSuit, defSuit) => P_ADV[atkSuit] === defSuit;
+const pDamage = (at, dt) => Math.max(0, PR(at) * (pAdv(at.suit, dt.suit) ? 2 : 1) - (pAdv(dt.suit, at.suit) ? 3 : 0));
+const pMatchText = (at, dt) => pAdv(at.suit, dt.suit) ? "(相性有利・2倍!)" : pAdv(dt.suit, at.suit) ? "(相性不利・-3)" : "";
 let pkEnergyUsed = false, pkRetreatUsed = false;
 
 const pkTop = pk => pk.stack[pk.stack.length - 1];
@@ -1773,10 +1777,9 @@ async function resolvePAttack(pi) {
   const atk = p.active, def = o.active;
   if (!atk || !def || !pkCanAttack(atk)) return;
   const at = pkTop(atk), dt = pkTop(def);
-  const weak = pWeak(at.suit, dt.suit);
-  const dmg = PR(at) * (weak ? 2 : 1);
+  const dmg = pDamage(at, dt);
   sfx("attack");
-  log(`${p.name}: ${cardLabel(at)} のワザ! ${cardLabel(dt)} に${dmg}ダメージ${weak ? "(弱点2倍!)" : ""}`);
+  log(`${p.name}: ${cardLabel(at)} のワザ! ${cardLabel(dt)} に${dmg}ダメージ${pMatchText(at, dt)}`);
   def.dmg += dmg;
   await showBattleFx({ card: at }, { card: dt }, false, def.dmg >= pHP(dt));
   if (def.dmg < pHP(dt)) { render(); return; }
@@ -2581,9 +2584,9 @@ function humanPrompt(pi, kind, ctx) {
   if (kind === "pattack") {
     const p = players[pi], o = players[1 - pi];
     const at = pkTop(p.active), dt = pkTop(o.active);
-    const dmg = PR(at) * (pWeak(at.suit, dt.suit) ? 2 : 1);
+    const dmg = pDamage(at, dt);
     choose("バトルフェイズ", [
-      { label: `${cardLabel(at)} のワザ! → ${cardLabel(dt)} に${dmg}ダメージ${pWeak(at.suit, dt.suit) ? "(弱点2倍!)" : ""}`, value: "attack", primary: true },
+      { label: `${cardLabel(at)} のワザ! → ${cardLabel(dt)} に${dmg}ダメージ${pMatchText(at, dt)}`, value: "attack", primary: true },
       { label: "ワザを使わずターンエンド", value: "end" },
     ], at, `相手の ${cardLabel(dt)}: 残りHP ${pHP(dt) - o.active.dmg}/${pHP(dt)}`)
       .then(v => act({ k: "pattack", t: v }));
@@ -3208,10 +3211,12 @@ function pokeCardEl(pk, opts) {
   const slot = document.createElement("div");
   slot.className = "slot";
   const el = cardEl(t, { sm: opts.sm });
+  if (opts.sm) el.classList.add("land");   // ベンチはスートを大きく表示
   el.dataset.cid = t.id;
   const hp = pHP(t);
   el.innerHTML += `<span class="pt">${Math.max(0, hp - pk.dmg)}/${hp}</span>`;
   if (pk.stack.length > 1) el.innerHTML += `<span class="stk">${pk.stack.length - 1}進</span>`;
+  if (pk.dmg > 0) el.innerHTML += `<span class="dmgb"${pk.stack.length > 1 ? ' style="top:16px"' : ""}>-${pk.dmg}</span>`;
   slot.appendChild(el);
   if (pk.energy.length) {
     const ch = document.createElement("div");
@@ -3670,7 +3675,32 @@ function startCpu() {
 document.getElementById("btn-cpu").addEventListener("click", startCpu);
 document.getElementById("btn-host").addEventListener("click", hostRoom);
 document.getElementById("btn-join").addEventListener("click", () => joinRoom(document.getElementById("join-code").value));
-document.getElementById("btn-again").addEventListener("click", () => location.reload());
+document.getElementById("btn-again").addEventListener("click", () => {
+  // reloadせずタイトルに戻す(環境によってはreloadで白画面になるため)
+  gameToken++;                                   // 走行中の非同期処理を無効化
+  if (transport) { try { transport.stop(); } catch (e) {} transport = null; }
+  players = null; winner = null; oPhase = null; paySel = null;
+  uiMain = false; selAttacker = null; selTargetAtt = null;
+  declaredAttacks = []; activeBlocks = []; pendingAttacks = []; pendingBlocks = [];
+  inbox.length = 0; pendingResolve = null;
+  logLines = [];
+  document.getElementById("log").innerHTML = "";
+  document.getElementById("turn-ind").textContent = "";
+  document.getElementById("hint").textContent = "";
+  for (const id of ["e-shields", "e-lands", "e-field", "m-field", "m-lands", "m-shields", "hand-zone"]) {
+    document.getElementById(id).innerHTML = "";
+  }
+  const svg = document.getElementById("arrows");
+  if (svg) [...svg.querySelectorAll("path.arrowline")].forEach(el => el.remove());
+  document.getElementById("result-overlay").classList.remove("show");
+  document.getElementById("wait-overlay").classList.remove("show");
+  document.getElementById("modal").classList.remove("show");
+  document.getElementById("app").classList.remove("shake");
+  document.getElementById("my-side").classList.remove("defeated");
+  document.getElementById("enemy-side").classList.remove("defeated");
+  document.getElementById("btn-end").disabled = true;
+  document.getElementById("title-overlay").classList.add("show");
+});
 
 window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("btn-mute").textContent = muted ? "🔇" : "🔊";
