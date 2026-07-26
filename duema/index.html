@@ -381,7 +381,7 @@
       <button id="rule-original">マジックルール</button>
     </div>
     <div class="body" id="rules-original" style="display:none">
-      54枚フルデッキ(4色×13+JOKER2枚)同士の1対1。<b>シールドなし・勝利条件はデッキアウトのみ</b>(山札0枚で即敗北・両者同時なら引き分け)。先攻後攻はランダム、後攻は1回フリーマリガン可。敗者の手札は公開される。<br><br>
+      54枚フルデッキ(4色×13+JOKER2枚)同士の1対1。<b>初手7枚・シールドなし・勝利条件はデッキアウトのみ</b>(山札0枚で即敗北・両者同時なら引き分け)。先攻後攻はランダム、後攻は1回フリーマリガン可。<b>先攻の1ターン目はアンタップ&ドローを飛ばす</b>。敗者の手札は公開される。<br><br>
       <b>フェイズ進行</b>(毎ターン): ☀→⚚→⚔→⛨→✦→⚚→☽<br>
       ☀<b>アンタップ&amp;ドロー</b> → ⚚<b>第1メイン</b>(土地・JOKER呪文・召喚)→ ⚔<b>アタック</b>(攻撃を全て宣言)→ ⛨<b>ブロック</b>(<b>相手が</b>ブロック指定+JOKER呪文も使える)→ ✦<b>戦闘解決</b> → ⚚<b>第2メイン</b> → ☽<b>クリンナップ</b>(ダメージ回復)=ターン終了<br><br>
       <b>攻撃</b>: タップ中の敵クリーチャー(1体につき攻撃1つ)か、プレイヤー本体(複数可)。通ると数字ぶん相手の山札が墓地へ<br>
@@ -528,9 +528,10 @@ function wantsMulligan(hand) {
 }
 function doMulligan(pi) {
   const p = players[pi];
+  const n = p.hand.length;
   p.deck.push(...p.hand);
   shuffle(p.deck);
-  p.hand = p.deck.splice(0, 5);
+  p.hand = p.deck.splice(0, n);
 }
 
 /* ================= 基本ユーティリティ ================= */
@@ -882,8 +883,8 @@ async function runGame(seed) {
   ];
   for (const p of players) {
     if (ruleMode === "duema") p.shields = p.deck.splice(0, 6);
-    else p.shields = [];                       // オリジナル: シールドなし
-    p.hand = p.deck.splice(0, 5);
+    else p.shields = [];                       // マジック: シールドなし
+    p.hand = p.deck.splice(0, ruleMode === "duema" ? 5 : 7);
   }
   oPhase = null; declaredAttacks = []; activeBlocks = []; pendingAttacks = []; pendingBlocks = []; selTargetAtt = null;
   firstP = rng() < 0.5 ? 0 : 1;
@@ -962,15 +963,19 @@ async function checkDeckOut(causerPi) {
 async function runOriginalTurns(token, secondP) {
   let cur = firstP;
   while (winner === null) {
-    // ☀アンタップフェイズ(自分の土地とクリーチャーをアンタップ+ドロー・自動)
+    // ☀アンタップフェイズ(アンタップ+ドロー・自動)。先攻1ターン目はスキップ
     oPhase = { phase: "untap", actor: cur };
     turnP = cur;
     landPlayedThisTurn = false;
     selAttacker = null; pendingAttacks = []; pendingBlocks = []; selTargetAtt = null;
-    players[cur].lands.forEach(l => { l.tapped = false; });
-    players[cur].field.forEach(f => { f.tapped = false; f.sick = false; f.pz = false; });
-    players[cur].hand.push(players[cur].deck.pop());
-    log(`── ${players[cur].name} のターン${turnNo} ── アンタップ&ドロー(山札${players[cur].deck.length})`);
+    if (turnNo === 1 && cur === firstP) {
+      log(`── ${players[cur].name} のターン1 ── 先攻はアンタップフェイズを飛ばす`);
+    } else {
+      players[cur].lands.forEach(l => { l.tapped = false; });
+      players[cur].field.forEach(f => { f.tapped = false; f.sick = false; f.pz = false; });
+      players[cur].hand.push(players[cur].deck.pop());
+      log(`── ${players[cur].name} のターン${turnNo} ── アンタップ&ドロー(山札${players[cur].deck.length})`);
+    }
     render();
     if (await checkDeckOut()) return;
     await showBanner(cur === myIdx ? "あなたのターン" : "相手のターン", 900);
@@ -1654,7 +1659,7 @@ function humanPrompt(pi, kind, ctx) {
   }
   if (kind === "oblocks") {
     uiMain = true; pendingBlocks = []; selTargetAtt = null;
-    setHint("ブロックフェイズ: ⚔の敵→自分のクリーチャーの順にクリック(1体の攻撃に複数ブロック可)。JOKER呪文も使える");
+    setHint("ブロックフェイズ: ブロックさせる自分のクリーチャー→相手の⚔の順にクリック(1体の攻撃に複数ブロック可)。♥瞬速召喚・JOKER呪文も使える");
     render();
     return;
   }
@@ -2309,15 +2314,16 @@ function render() {
           render();
         });
       }
-      // 自分のブロックフェイズ: 攻撃クリーチャーを選ぶ
-      if (uiMain && oPhase && oPhase.phase === "block" && declAtkSet.has(f.card.id)) {
+      // 自分のブロックフェイズ: 選択中のブロッカーでブロックする攻撃クリーチャーを選ぶ
+      if (uiMain && oPhase && oPhase.phase === "block" && declAtkSet.has(f.card.id) && selTargetAtt !== null) {
         const at = declaredAttacks.find(a => a.cre === f.card.id);
         const aliveA = at && (at.tt !== "cre" || fieldById(myIdx, at.tv));
         if (aliveA) {
           el.classList.add("targetable");
-          if (selTargetAtt === f.card.id) el.classList.add("attacking");
           el.addEventListener("click", () => {
-            selTargetAtt = selTargetAtt === f.card.id ? null : f.card.id;
+            if (pendingBlocks.some(b => b.blocker === selTargetAtt)) { selTargetAtt = null; render(); return; }
+            pendingBlocks.push({ attacker: f.card.id, blocker: selTargetAtt });
+            selTargetAtt = null;
             render();
           });
         }
@@ -2363,7 +2369,7 @@ function render() {
           });
         }
       }
-      // ブロックフェイズ: ブロッカーの割り当て/解除
+      // ブロックフェイズ: まず自分のブロッカーを選ぶ(選択中は金色パルス)
       if (uiMain && oPhase && oPhase.phase === "block") {
         if (blockerSet.has(f.card.id)) {
           el.classList.add("assigned");
@@ -2371,13 +2377,11 @@ function render() {
             pendingBlocks = pendingBlocks.filter(b => b.blocker !== f.card.id);
             render();
           });
-        } else if (selTargetAtt !== null && !f.tapped) {
+        } else if (!f.tapped) {
           el.classList.add("selectable");
+          if (selTargetAtt === f.card.id) el.classList.add("attacking");
           el.addEventListener("click", () => {
-            // 1ブロッカーは1攻撃のみ(1つの攻撃を複数でブロックするのは可)
-            if (pendingBlocks.some(b => b.blocker === f.card.id)) { selTargetAtt = null; render(); return; }
-            pendingBlocks.push({ attacker: selTargetAtt, blocker: f.card.id });
-            selTargetAtt = null;
+            selTargetAtt = selTargetAtt === f.card.id ? null : f.card.id;
             render();
           });
         }
