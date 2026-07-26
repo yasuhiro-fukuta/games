@@ -136,6 +136,15 @@
   #btn-end { background: var(--gold); color: var(--ink); }
   button:disabled { opacity: .35; cursor: default; }
   .controls .hint { font-size: 11px; color: var(--dim); }
+  /* マナ支払いモードのトグル(盤面右下)と手動支払い */
+  #btn-paymode {
+    margin-left: auto; padding: 6px 12px; font-size: 11px;
+    background: rgba(251,248,239,.12); color: var(--paper); border: 1px solid rgba(251,248,239,.3);
+  }
+  #btn-paymode.manual { background: var(--gold); color: var(--ink); border-color: var(--gold); }
+  #btn-paycancel { padding: 9px 14px; background: rgba(251,248,239,.15); color: var(--paper); }
+  .card.payselect { outline: 3px solid var(--gold); transform: translateY(-4px); }
+  .card.tapped.payselect { transform: rotate(90deg) scale(.94) translateY(-4px); }
 
   input[type="text"] {
     font-family: inherit; font-size: 14px; padding: 9px 12px; border-radius: 8px;
@@ -355,7 +364,9 @@
     <div class="zone" id="hand-zone"></div>
     <div class="controls">
       <button id="btn-end" disabled>ターン終了</button>
+      <button id="btn-paycancel" style="display:none">支払いキャンセル</button>
       <span class="hint" id="hint"></span>
+      <button id="btn-paymode" title="マナコストの支払い方法">支払: 自動</button>
     </div>
   </div>
 
@@ -436,9 +447,9 @@
       <b>JOKER</b>(すべて0マナ+追加コスト、2枚入り):<br>
       ・モックスジョーカー: 相手より土地が少ないときのみ、4色マナが出る0マナアーティファクトとして置ける(セット権不要)<br>
       ・♠スペードスピア: 自クリーチャー1体生贄 → クリーチャー1体破壊<br>
-      ・♥ハートデザイア: シールドを見て、1枚を手札1枚と入れ替える<br>
-      ・♦ダイヤクラック: 自シールド1枚生贄 → 相手シールド1枚破壊(両方Sトリガーあり)<br>
-      ・♣クローバーミル: 自土地1枚生贄 → 相手の山札の半分(端数切り上げ)を墓地に送る<br>
+      ・♥ハートブレイク: 自分の山札を♥が捲れるまで墓地へ落とし、捲れた♥の数字ぶん相手の山札を墓地へ(♥が出なければ自滅!)<br>
+      ・♦ダイヤリコール: 手札の♦カード1枚捨てる → 3枚ドロー<br>
+      ・♣クローバーウィル: 自分の♣土地1枚を手札に戻す → 手札のカード1枚をアンタップ状態で土地にセット(セット権不要)<br>
       <b>タイミング</b>: 召喚・JOKER呪文・土地セットは、自分のターン中ならいつでも(攻撃後でも)可能<br>
       <b>勝利条件</b>: シールド0の相手に攻撃を通す(ダイレクトアタック)。山札切れは敗北<br>
       <b>後攻補正</b>: 後攻は1回だけフリーマリガン(手札5枚を山札に戻して引き直し)できる
@@ -518,8 +529,11 @@ let rng = Math.random;
 
 /* ================= 状態 ================= */
 let players, turnP, turnNo, landPlayedThisTurn, winner, firstP;
-let ruleMode = "duema";          // 'duema' | 'original' | 'yugi'
+let ruleMode = "duema";          // 'duema' | 'original' | 'yugi' | 'poke'
 let ySummoned = false;           // 遊戯王: このターン通常召喚/セットを使ったか
+let manualPay = false;           // マナ支払い: 手動モード(ローカル設定。選んだ土地はアクションに載る)
+try { manualPay = localStorage.getItem("duema-manualpay") === "1"; } catch (e) {}
+let paySel = null;               // 手動支払い中: {need, suit, sel:Set, done(ids), cancel()}
 let oPhase = null;               // オリジナル: {phase:'main'|'attack'|'summon'|'block'|'battle', actor}
 let declaredAttacks = [];        // オリジナル: 宣言済み攻撃 [{cre, tt, tv}]
 let activeBlocks = [];           // 確定済みブロック(矢印表示用)
@@ -585,6 +599,38 @@ function canPay(p, suit, total) {
   if (ls.length < total) return false;
   return ls.some(l => l.card.joker || l.card.suit === suit);
 }
+/* 手動支払い: 指定idの土地をタップ。無効(枚数不足・色なし・タップ済み等)なら false → 自動にフォールバック */
+function payWith(p, suit, total, ids) {
+  if (!ids || ids.length !== total || new Set(ids).size !== ids.length) return false;
+  const ls = ids.map(id => p.lands.find(l => l.card.id === id));
+  if (ls.some(l => !l || l.tapped)) return false;
+  if (!ls.some(l => l.card.joker || l.card.suit === suit)) return false;
+  ls.forEach(l => l.tapped = true);
+  return true;
+}
+
+/* 手動モード時の土地選択UI。決定→ids配列 / キャンセル→null */
+function requestPays(suit, need) {
+  return new Promise(res => {
+    paySel = {
+      need, suit, sel: new Set(),
+      done: ids => { paySel = null; res(ids); },
+      cancel: () => { paySel = null; res(null); render(); },
+    };
+    setHint(`マナ支払い: タップする土地を${need}枚クリック(${SUITS[suit]}かJOKERを1枚以上含む)→ 決定`);
+    render();
+  });
+}
+function paySelValid() {
+  if (!paySel) return false;
+  const p = players[myIdx];
+  if (paySel.sel.size !== paySel.need) return false;
+  return [...paySel.sel].some(id => {
+    const l = p.lands.find(x => x.card.id === id);
+    return l && (l.card.joker || l.card.suit === paySel.suit);
+  });
+}
+
 function pay(p, suit, total) {
   const ls = untappedLands(p);
   const colored = ls.find(l => !l.card.joker && l.card.suit === suit) || ls.find(l => l.card.joker);
@@ -612,11 +658,11 @@ function playLand(pi, c) {
   log(c.joker ? `${p.name}: モックスジョーカーを置いた(4色マナ・セット権消費なし)`
               : `${p.name}: ${cardLabel(c)} を土地に置いた`);
 }
-function summon(pi, c, free, reduction = 0) {
+function summon(pi, c, free, reduction = 0, pays) {
   const p = players[pi];
   removeFromHand(p, c);
   const remaining = free ? 0 : Math.max(0, costOf(c) - reduction);
-  if (remaining > 0) pay(p, c.suit, remaining);
+  if (remaining > 0 && !payWith(p, c.suit, remaining, pays)) pay(p, c.suit, remaining);
   p.field.push({ card: c, tapped: false, sick: true, dmg: 0 });
   if (c.rank < 11) sfx("summon");   // 絵札は降臨演出側で鳴らす
   log(`${p.name}: ${cardLabel(c)} を召喚${free ? "(コストなし!)" : `(${remaining}マナ)`} — ${c.rank}/${c.rank}`);
@@ -1583,55 +1629,60 @@ async function applyMainO(pi, a) {
       destroy(1 - pi, fieldById(1 - pi, a.tgt));
       return;
     }
-    case "cwill": {   // ♣土地1枚を手札に戻す → 手札のカード1枚を土地としてアンタップでセット(セット権消費なし)
-      spendJoker(pi, handById(pi, a.jk), "クローバーウィル");
-      const bl = landById(pi, a.land);
-      if (!bl || bl.card.joker || bl.card.suit !== 3) return;
-      p.lands = p.lands.filter(l => l !== bl);
-      p.hand.push(bl.card);
-      const sc = handById(pi, a.set);
-      if (sc && !sc.joker) {
-        removeFromHand(p, sc);
-        p.lands.push({ card: sc, tapped: false });
-        log(`${p.name}: ♣土地 ${cardLabel(bl.card)} を手札に戻し、${cardLabel(sc)} をアンタップで土地にセットした`);
-      } else {
-        log(`${p.name}: ♣土地 ${cardLabel(bl.card)} を手札に戻した`);
-      }
-      return;
-    }
-    case "drecall": { // ♦カード1枚捨てる → 3枚ドロー
-      spendJoker(pi, handById(pi, a.jk), "ダイヤリコール");
-      const disc = handById(pi, a.disc);
-      if (!disc || disc.joker || disc.suit !== 2) return;
-      removeFromHand(p, disc);
-      p.grave.push(disc);
-      for (let i = 0; i < 3 && p.deck.length; i++) p.hand.push(p.deck.pop());
-      log(`${p.name}: ${cardLabel(disc)} を捨てて3枚ドロー(山札${p.deck.length})`);
-      render();
-      await checkDeckOut();
-      return;
-    }
-    case "hbreak": {  // ♥が捲れるまで自分の山札を墓地へ → その数字ぶん相手の山札を墓地へ
-      spendJoker(pi, handById(pi, a.jk), "ハートブレイク");
-      let heart = null, count = 0;
-      while (p.deck.length) {
-        const c = p.deck.pop();
-        p.grave.push(c);
-        count++;
-        if (!c.joker && c.suit === 1) { heart = c; break; }
-      }
-      log(`自分の山札から${count}枚が墓地へ` + (heart ? `(♥${RANK_LABEL[heart.rank]}が捲れた!)` : "(♥は出なかった…)"));
-      if (heart) {
-        const n = heart.rank;
-        const milled = o.deck.splice(Math.max(0, o.deck.length - n), n);
-        o.grave.push(...milled);
-        log(`${o.name}の山札${milled.length}枚が墓地へ`);
-      }
-      render();
-      await checkDeckOut();   // 両者同時0なら引き分け
-      return;
-    }
+    case "cwill": await castCwill(pi, a); return;
+    case "drecall": await castDrecall(pi, a); return;
+    case "hbreak": await castHbreak(pi, a); return;
   }
+}
+
+/* ===== JOKER呪文の実体(デュエマ・マジック共通) ===== */
+async function castCwill(pi, a) {   // ♣土地1枚を手札に戻す → 手札のカード1枚を土地としてアンタップでセット(セット権消費なし)
+  const p = players[pi];
+  spendJoker(pi, handById(pi, a.jk), "クローバーウィル");
+  const bl = landById(pi, a.land);
+  if (!bl || bl.card.joker || bl.card.suit !== 3) return;
+  p.lands = p.lands.filter(l => l !== bl);
+  p.hand.push(bl.card);
+  const sc = handById(pi, a.set);
+  if (sc && !sc.joker) {
+    removeFromHand(p, sc);
+    p.lands.push({ card: sc, tapped: false });
+    log(`${p.name}: ♣土地 ${cardLabel(bl.card)} を手札に戻し、${cardLabel(sc)} をアンタップで土地にセットした`);
+  } else {
+    log(`${p.name}: ♣土地 ${cardLabel(bl.card)} を手札に戻した`);
+  }
+}
+async function castDrecall(pi, a) { // ♦カード1枚捨てる → 3枚ドロー
+  const p = players[pi];
+  spendJoker(pi, handById(pi, a.jk), "ダイヤリコール");
+  const disc = handById(pi, a.disc);
+  if (!disc || disc.joker || disc.suit !== 2) return;
+  removeFromHand(p, disc);
+  p.grave.push(disc);
+  for (let i = 0; i < 3 && p.deck.length; i++) p.hand.push(p.deck.pop());
+  log(`${p.name}: ${cardLabel(disc)} を捨てて3枚ドロー(山札${p.deck.length})`);
+  render();
+  await checkDeckOut();
+}
+async function castHbreak(pi, a) {  // ♥が捲れるまで自分の山札を墓地へ → その数字ぶん相手の山札を墓地へ
+  const p = players[pi], o = players[1 - pi];
+  spendJoker(pi, handById(pi, a.jk), "ハートブレイク");
+  let heart = null, count = 0;
+  while (p.deck.length) {
+    const c = p.deck.pop();
+    p.grave.push(c);
+    count++;
+    if (!c.joker && c.suit === 1) { heart = c; break; }
+  }
+  log(`自分の山札から${count}枚が墓地へ` + (heart ? `(♥${RANK_LABEL[heart.rank]}が捲れた!)` : "(♥は出なかった…)"));
+  if (heart) {
+    const n = heart.rank;
+    const milled = o.deck.splice(Math.max(0, o.deck.length - n), n);
+    o.grave.push(...milled);
+    log(`${o.name}の山札${milled.length}枚が墓地へ`);
+  }
+  render();
+  await checkDeckOut();   // 両者同時0なら引き分け
 }
 
 /* オリジナルの召喚(相手ターンの召喚フェイズ・召喚酔いなし) */
@@ -1648,7 +1699,7 @@ async function applySummonO(pi, a) {
     p.grave.push(s.card);
   }
   if (sacs.length) log(`${p.name}: ${sacs.map(f => cardLabel(f.card)).join(" ")} を生贄に捧げた(コスト-${reduction})`);
-  summon(pi, c, false, reduction);
+  summon(pi, c, false, reduction, a.pays);
   p.field[p.field.length - 1].sick = c.suit !== 0;   // ♠は速攻(召喚酔いなし)
 }
 
@@ -1669,7 +1720,7 @@ async function applyMainAction(pi, a) {
         p.grave.push(s.card);
       }
       if (sacs.length) log(`${p.name}: ${sacs.map(f => cardLabel(f.card)).join(" ")} を生贄に捧げた(コスト-${reduction})`);
-      summon(pi, c, false, reduction);
+      summon(pi, c, false, reduction, a.pays);
       return false;
     }
     case "spear": {
@@ -1678,40 +1729,9 @@ async function applyMainAction(pi, a) {
       destroy(1 - pi, fieldById(1 - pi, a.tgt));
       return false;
     }
-    case "desire": {
-      spendJoker(pi, handById(pi, a.jk), "ハートデザイア");
-      const shIdx = p.shields.findIndex(c => c && c.id === a.sh);
-      const hd = handById(pi, a.hd);
-      const sh = p.shields[shIdx];
-      removeFromHand(p, hd);
-      p.shields[shIdx] = hd;
-      p.hand.push(sh);
-      log(pi === myIdx ? `シールドの ${cardLabel(sh)} と手札の ${cardLabel(hd)} を入れ替えた`
-                       : `${p.name}はシールド1枚と手札1枚を入れ替えた`);
-      return false;
-    }
-    case "crack": {
-      spendJoker(pi, handById(pi, a.jk), "ダイヤクラック");
-      // 生贄にする自分のシールド位置も、破壊する相手のシールド位置も、唱えた側が選ぶ
-      const s1 = await decision(pi, "shield", { owner: pi, why: "生贄" });
-      await breakShieldAt(pi, s1.slot);
-      if (winner === null && shieldCount(o) > 0) {
-        const s2 = await decision(pi, "shield", { owner: 1 - pi, why: "破壊" });
-        await breakShieldAt(1 - pi, s2.slot);
-      }
-      return false;
-    }
-    case "mill": {
-      spendJoker(pi, handById(pi, a.jk), "クローバーミル");
-      const sac = landById(pi, a.sac);
-      p.lands = p.lands.filter(l => l !== sac);
-      p.grave.push(sac.card);
-      const n = Math.ceil(o.deck.length / 2);
-      const milled = o.deck.splice(o.deck.length - n, n);
-      o.grave.push(...milled);
-      log(`${p.name}は ${cardLabel(sac.card)} を生贄に、${o.name} の山札の半分 ${n}枚を墓地に送った!`);
-      return false;
-    }
+    case "cwill": await castCwill(pi, a); return false;
+    case "drecall": await castDrecall(pi, a); return false;
+    case "hbreak": await castHbreak(pi, a); return false;
     case "attack": await attackFlow(pi, a.cre, a.tt, a.tv); return false;
     case "end": log(`${p.name}: ターン終了`); return true;
     default: console.warn("unknown action", a); return false;
@@ -1874,22 +1894,26 @@ function aiJokerAction(pi) {
     const tgt = [...o.field].sort((a, b) => b.card.rank - a.card.rank)[0];
     return { t: "spear", jk: jk.id, sac: mine[0].card.id, tgt: tgt.card.id };
   }
-  if (shieldCount(o) >= 1 && shieldCount(p) >= 2 && shieldCount(o) <= 3 &&
-      totalPower(pi) > totalPower(1 - pi)) return { t: "crack", jk: jk.id };
-  // ミル: 相手の山札の半分を墓地へ(山札切れ勝ちを狙う)
-  if (p.lands.length >= 4 && o.deck.length >= 6) {
-    const countBy = (lands, s) => lands.filter(l => !l.card.joker && l.card.suit === s).length;
-    const sac = [...p.lands].sort((a, b) => countBy(p.lands, b.card.suit) - countBy(p.lands, a.card.suit))[0];
-    if (sac) return { t: "mill", jk: jk.id, sac: sac.card.id };
-  }
-  // デザイア: シールドに埋まった強いカードを弱い手札と入れ替えて回収
-  if (shieldCount(p) >= 1) {
-    const others = p.hand.filter(c => c.id !== jk.id);
-    const shBest = p.shields.filter(Boolean).sort((a, b) => (b.joker ? 99 : b.rank) - (a.joker ? 99 : a.rank))[0];
-    const hdWorst = [...others].filter(c => !c.joker).sort((a, b) => a.rank - b.rank)[0];
-    if (shBest && hdWorst && (shBest.joker ? 99 : shBest.rank) >= hdWorst.rank + 4) {
-      return { t: "desire", jk: jk.id, sh: shBest.id, hd: hdWorst.id };
+  // クローバーウィル: ♣土地が2枚以上あり、マナゾーンに無いスートを手札から補充できるとき
+  const clubLands = p.lands.filter(l => !l.card.joker && l.card.suit === 3);
+  if (clubLands.length >= 2) {
+    const landSuits = new Set(p.lands.map(l => l.card.joker ? "*" : l.card.suit));
+    const fix = landSuits.has("*") ? null
+      : p.hand.filter(c => !c.joker && !landSuits.has(c.suit)).sort((a, b) => a.rank - b.rank)[0];
+    if (fix) {
+      const bounce = [...clubLands].sort((a, b) => (b.tapped - a.tapped) || (a.card.rank - b.card.rank))[0];
+      return { t: "cwill", jk: jk.id, land: bounce.card.id, set: fix.id };
     }
+  }
+  // ダイヤリコール: 手札が枯れてきたら♦1枚を3枚に変える
+  const dias = p.hand.filter(c => !c.joker && c.suit === 2).sort((a, b) => a.rank - b.rank);
+  if (dias.length && p.hand.filter(c => !c.joker).length <= 2 && p.deck.length >= 12) {
+    return { t: "drecall", jk: jk.id, disc: dias[0].id };
+  }
+  // ハートブレイク: 残り♥が多く、相手の山札が自分以下のとき
+  const heartsLeft = p.deck.filter(c => !c.joker && c.suit === 1).length;
+  if (heartsLeft >= 5 && p.deck.length >= 15 && o.deck.length <= p.deck.length) {
+    return { t: "hbreak", jk: jk.id };
   }
   return null;
 }
@@ -2188,7 +2212,7 @@ function humanPrompt(pi, kind, ctx) {
     choose(
       mine ? `${ctx.why}にする自分のシールドの位置を選ぶ` : `${ctx.why}する相手のシールドの位置を選ぶ`,
       opts, null,
-      mine ? "自分のシールドの中身はハートデザイアで確認・入れ替えできる" : "どの位置に何が入っているかは相手だけが知っている"
+      mine ? "自分のシールドの中身は自分にも見えない" : "どの位置に何が入っているかは相手だけが知っている"
     ).then(v => act({ k: "shield", slot: v }));
     return;
   }
@@ -2225,6 +2249,20 @@ function blockOutcomeText(attacker, b) {
   return "両者生存";
 }
 
+/* 召喚アクションの送信。手動支払いモードなら先に土地を選ばせ、選択をアクションに載せる */
+async function actSummon(kind, c, sacs) {
+  const red = (sacs || []).reduce((t, x) => t + x.rank, 0);
+  const remaining = Math.max(0, costOf(c) - red);
+  const a = { k: kind, t: "summon", card: c.id };
+  if (sacs) a.sacs = sacs.map(x => x.id);
+  if (manualPay && remaining > 0) {
+    const ids = await requestPays(c.suit, remaining);
+    if (!ids) return;
+    a.pays = ids;
+  }
+  act(a);
+}
+
 /* オリジナルルールの手札クリック(相手ターン中の自分のメインフェイズ) */
 async function onHandClickO(c) {
   const p = players[myIdx], o = players[1 - myIdx];
@@ -2248,7 +2286,7 @@ async function onHandClickO(c) {
       opts.push({ label: "キャンセル", value: null });
       const v = await choose(cardLabel(c), opts, c, "♥は瞬速: ブロックフェイズに召喚して、そのままブロックに参加できる");
       if (!uiMain) return;
-      if (v === "summon") act({ k: "oblocks", t: "summon", card: c.id });
+      if (v === "summon") await actSummon("oblocks", c);
       if (v === "sacsummon") {
         const sameSuit = p.field.filter(f => f.card.suit === c.suit).map(f => f.card);
         const sacs = await chooseMulti(
@@ -2264,7 +2302,7 @@ async function onHandClickO(c) {
           },
           "この生贄で召喚する", "キャンセル");
         if (!sacs) return;
-        act({ k: "oblocks", t: "summon", card: c.id, sacs: sacs.map(x => x.id) });
+        await actSummon("oblocks", c, sacs);
       }
       return;
     }
@@ -2327,7 +2365,7 @@ async function onHandClickO(c) {
       const v = await choose(cardLabel(c), opts, c, "召喚酔いなし: このターンからブロックできる");
       if (!uiMain) return;
       if (v === "land") act({ k: "omain", t: "land", card: c.id });
-      if (v === "summon") act({ k: "omain", t: "summon", card: c.id });
+      if (v === "summon") await actSummon("omain", c);
       if (v === "sacsummon") {
         const sameSuit = p.field.filter(f => f.card.suit === c.suit).map(f => f.card);
         const sacs = await chooseMulti(
@@ -2343,7 +2381,7 @@ async function onHandClickO(c) {
           },
           "この生贄で召喚する", "キャンセル");
         if (!sacs) return;
-        act({ k: "omain", t: "summon", card: c.id, sacs: sacs.map(x => x.id) });
+        await actSummon("omain", c, sacs);
       }
       return;
     }
@@ -2394,7 +2432,7 @@ async function onHandClickO(c) {
 
 /* 手札クリック → アクション構築(自分のメインフェイズのみ) */
 async function onHandClick(c) {
-  if (!uiMain || winner !== null) return;
+  if (!uiMain || winner !== null || paySel) return;
   if (ruleMode === "original") return onHandClickO(c);
   if (ruleMode === "yugi") return onHandClickY(c);
   const p = players[myIdx], o = players[1 - myIdx];
@@ -2405,12 +2443,12 @@ async function onHandClick(c) {
                 disabled: !(p.lands.length < o.lands.length) });
     opts.push({ label: "♠スペードスピア: 自クリーチャー1体生贄 → 相手クリーチャー1体破壊", value: "spear",
                 disabled: !p.field.length || !o.field.length });
-    opts.push({ label: "♥ハートデザイア: シールドを見て、1枚を手札1枚と入れ替える", value: "desire",
-                disabled: !others.length || !shieldCount(p) });
-    opts.push({ label: "♦ダイヤクラック: 自シールド1枚生贄 → 相手シールド1枚破壊(両方Sトリガー)", value: "crack",
-                disabled: !shieldCount(p) || !shieldCount(o) });
-    opts.push({ label: "♣クローバーミル: 自土地1枚生贄 → 相手の山札の半分を墓地へ", value: "mill",
-                disabled: !p.lands.length || !o.deck.length });
+    opts.push({ label: "♥ハートブレイク: 自分の山札を♥が捲れるまで墓地へ → その数字ぶん相手の山札を墓地へ", value: "hbreak",
+                disabled: !p.deck.length });
+    opts.push({ label: "♦ダイヤリコール: 手札の♦カード1枚捨てる → 3枚ドロー", value: "drecall",
+                disabled: !p.hand.some(x => !x.joker && x.suit === 2) });
+    opts.push({ label: "♣クローバーウィル: 自分の♣土地1枚を手札に戻す → 手札1枚をアンタップで土地にセット", value: "cwill",
+                disabled: !p.lands.some(l => !l.card.joker && l.card.suit === 3) });
   } else {
     opts.push({ label: `土地に置く(${SUITS[c.suit]}マナ)`, value: "land", disabled: landPlayedThisTurn });
     opts.push({
@@ -2432,7 +2470,7 @@ async function onHandClick(c) {
   const v = await choose(cardLabel(c), opts, c, note);
   if (!uiMain) return;   // 選んでいる間に状況が変わった場合
   if (v === "land") act({ k: "main", t: "land", card: c.id });
-  if (v === "summon") act({ k: "main", t: "summon", card: c.id });
+  if (v === "summon") await actSummon("main", c);
   if (v === "sacsummon") {
     const sameSuit = p.field.filter(f => f.card.suit === c.suit).map(f => f.card);
     const sacs = await chooseMulti(
@@ -2449,7 +2487,7 @@ async function onHandClick(c) {
       },
       "この生贄で召喚する", "キャンセル");
     if (!sacs) return;
-    act({ k: "main", t: "summon", card: c.id, sacs: sacs.map(x => x.id) });
+    await actSummon("main", c, sacs);
   }
   if (v === "spear") {
     const sc = await chooseCard("スペードスピア: 生贄にする自分のクリーチャー", p.field.map(f => f.card), "", "キャンセル");
@@ -2458,23 +2496,25 @@ async function onHandClick(c) {
     if (!tc) return;
     act({ k: "main", t: "spear", jk: c.id, sac: sc.id, tgt: tc.id });
   }
-  if (v === "desire") {
-    const sh = await chooseCard("ハートデザイア: シールドを確認 — 手札と入れ替える1枚を選ぶ", p.shields.filter(Boolean), "これがあなたのシールドの中身", "キャンセル");
-    if (!sh) return;
-    const hd = await chooseCard("ハートデザイア: 代わりにシールドへ入れる手札を選ぶ", p.hand.filter(x => x.id !== c.id), "", "キャンセル");
-    if (!hd) return;
-    act({ k: "main", t: "desire", jk: c.id, sh: sh.id, hd: hd.id });
+  if (v === "hbreak") act({ k: "main", t: "hbreak", jk: c.id });
+  if (v === "drecall") {
+    const disc = await chooseCard("ダイヤリコール: 捨てる♦カードを選ぶ", p.hand.filter(x => !x.joker && x.suit === 2), "", "キャンセル");
+    if (!disc) return;
+    act({ k: "main", t: "drecall", jk: c.id, disc: disc.id });
   }
-  if (v === "crack") act({ k: "main", t: "crack", jk: c.id });
-  if (v === "mill") {
-    const sc = await chooseCard("クローバーミル: 生贄にする自分の土地", p.lands.map(l => l.card),
-      `相手の山札 ${o.deck.length}枚の半分(${Math.ceil(o.deck.length / 2)}枚)を墓地に送る`, "キャンセル");
+  if (v === "cwill") {
+    const clubLands = p.lands.filter(l => !l.card.joker && l.card.suit === 3);
+    const bl = await chooseCard("クローバーウィル: 手札に戻す自分の♣土地", clubLands.map(l => l.card), "", "キャンセル");
+    if (!bl) return;
+    const cand = p.hand.filter(x => !x.joker && x.id !== c.id).concat([bl]);
+    const sc = await chooseCard("クローバーウィル: アンタップで土地にセットするカード", cand, "戻した♣も選べる", "キャンセル");
     if (!sc) return;
-    act({ k: "main", t: "mill", jk: c.id, sac: sc.id });
+    act({ k: "main", t: "cwill", jk: c.id, land: bl.id, set: sc.id });
   }
 }
 
 document.getElementById("btn-end").addEventListener("click", () => {
+  if (paySel) { if (paySelValid()) paySel.done([...paySel.sel]); return; }
   if (!uiMain || winner !== null) return;
   if (ruleMode === "yugi" && oPhase) {
     if (oPhase.phase === "ymain") act({ k: "ymain", t: "end" });
@@ -2516,6 +2556,21 @@ document.getElementById("enemy-side").addEventListener("click", (e) => {
   act({ k: "main", t: "attack", cre: atk.card.id, tt: "player" });
   selAttacker = null;
 });
+
+document.getElementById("btn-paycancel").addEventListener("click", () => { if (paySel) paySel.cancel(); });
+document.getElementById("btn-paymode").addEventListener("click", () => {
+  if (paySel) return;   // 支払い操作中はトグル不可
+  manualPay = !manualPay;
+  try { localStorage.setItem("duema-manualpay", manualPay ? "1" : "0"); } catch (e) {}
+  render();
+});
+/* 手動支払い中は土地と決定・キャンセル以外のクリックを遮断する */
+document.getElementById("app").addEventListener("click", e => {
+  if (!paySel) return;
+  if (e.target.closest("#m-lands") || e.target.closest("#btn-end") || e.target.closest("#btn-paycancel")) return;
+  e.stopPropagation();
+  e.preventDefault();
+}, true);
 
 /* ================= トランスポート ================= */
 class LocalTransport {
@@ -2810,7 +2865,7 @@ function render() {
     }
   }
 
-  // 土地
+  // 土地(手動支払い中は自分のアンタップ土地をクリックで選ぶ)
   for (const [id, p] of [["e-lands", en], ["m-lands", me]]) {
     const z = document.getElementById(id); z.innerHTML = "";
     p.lands.forEach(l => {
@@ -2819,6 +2874,15 @@ function render() {
       const el = cardEl(l.card, { sm: true });
       el.classList.add("land");
       if (l.tapped) el.classList.add("tapped");
+      if (paySel && p === me && !l.tapped) {
+        el.classList.add("targetable");
+        if (paySel.sel.has(l.card.id)) el.classList.add("payselect");
+        el.addEventListener("click", () => {
+          if (paySel.sel.has(l.card.id)) paySel.sel.delete(l.card.id);
+          else if (paySel.sel.size < paySel.need) paySel.sel.add(l.card.id);
+          render();
+        });
+      }
       slot.appendChild(el); z.appendChild(slot);
     });
   }
@@ -2979,7 +3043,17 @@ function render() {
   // フェイズ移行ボタン(ターン終了に至るボタンはオレンジ)
   const btn = document.getElementById("btn-end");
   btn.disabled = !(uiMain && winner === null);
-  if (yugi && oPhase) {
+  document.getElementById("btn-paycancel").style.display = paySel ? "" : "none";
+  const pm = document.getElementById("btn-paymode");
+  pm.style.display = (duema || original) ? "" : "none";
+  pm.textContent = `支払: ${manualPay ? "手動" : "自動"}`;
+  pm.classList.toggle("manual", manualPay);
+  pm.disabled = !!paySel;
+  if (paySel) {
+    btn.textContent = `支払い決定(${paySel.sel.size}/${paySel.need})`;
+    btn.disabled = !paySelValid();
+    btn.classList.remove("final");
+  } else if (yugi && oPhase) {
     const skipBattle = turnNo === 1 && turnP === firstP;
     btn.textContent = {
       ymain: skipBattle ? "メインを終えてターンエンド" : "メインを終えてバトルへ",
