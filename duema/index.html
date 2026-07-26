@@ -74,6 +74,9 @@
   .card.sm .rk { font-size: 11px; padding: 3px 0 0 4px; }
   .card.sm .st-s { font-size: 9px; padding: 0 0 0 4px; }
   .card.sm .st-b { font-size: 19px; margin-top: 0; }
+  /* 土地: スートが主役なので大きく1つだけ表示 */
+  .card.sm.land .st-s { display: none; }
+  .card.sm.land .st-b { font-size: 30px; margin-top: -2px; }
   .card.back {
     background: repeating-linear-gradient(135deg, #35507e, #35507e 4px, #2a406a 4px, #2a406a 8px);
     border-color: #1d2c49;
@@ -384,7 +387,7 @@
       54枚フルデッキ(4色×13+JOKER2枚)同士の1対1。<b>初手7枚・シールドなし・勝利条件はデッキアウトのみ</b>(山札0枚で即敗北・両者同時なら引き分け)。先攻後攻はランダム、後攻は1回フリーマリガン可。<b>先攻の1ターン目はアンタップ&ドローを飛ばす</b>。敗者の手札は公開される。<br><br>
       <b>フェイズ進行</b>(毎ターン): ☀→⚚→⚔→⛨→✦→⚚→☽<br>
       ☀<b>アンタップ&amp;ドロー</b> → ⚚<b>第1メイン</b>(土地・JOKER呪文・召喚)→ ⚔<b>アタック</b>(攻撃を全て宣言)→ ⛨<b>ブロック</b>(<b>相手が</b>ブロック指定+JOKER呪文も使える)→ ✦<b>戦闘解決</b> → ⚚<b>第2メイン</b> → ☽<b>クリンナップ</b>(ダメージ回復)=ターン終了<br><br>
-      <b>攻撃</b>: タップ中の敵クリーチャー(1体につき攻撃1つ)か、プレイヤー本体(複数可)。通ると数字ぶん相手の山札が墓地へ<br>
+      <b>攻撃</b>: タップ中の敵クリーチャーか、プレイヤー本体。どちらも複数のクリーチャーで攻撃できる。本体に通ると数字ぶん相手の山札が墓地へ<br>
       <b>多重ブロック可</b>: 1体の攻撃を複数のクリーチャーでブロックできる。攻撃側のダメージは<b>数字の大きいブロッカーへ優先して致死分ずつ割り振られ</b>、余りは次へ(例: ♥Qを♠3と♦8でブロック→♦8に8点、♠3に4点)。ブロッカー全員のパワーが攻撃側に返る<br>
       <b>ダメージはクリンナップまで蓄積</b>(数字以上で破壊)。<b>召喚酔いあり</b>(出したターンは攻撃不可)。<b>タップ状態で戦闘フェイズを終えたクリーチャーはパワー0</b>(アンタップで回復)。Aの絵札特効(+13/+0)あり<br><br>
       <b>スート能力</b>: ♠<b>速攻</b>(召喚酔いしない)/ ♥<b>瞬速</b>(相手のブロックフェイズに召喚できる)/ ♦<b>警戒</b>(各戦闘フェイズ後にアンタップ)/ ♣<b>トランプル</b>(余剰戦闘ダメージが当初の攻撃対象へ)<br><br>
@@ -1595,17 +1598,31 @@ function aiOMain(pi) {   // 相手ターン中のメイン: 土地→呪文→�
 function aiOAttacks(pi) {
   const p = players[pi], o = players[1 - pi];
   const list = [];
-  const taken = new Set();   // クリーチャー1体につき攻撃1つまで
-  for (const f of [...p.field].filter(f => !f.tapped && !f.sick).sort((a, b) => b.card.rank - a.card.rank)) {
-    if (oneSidedByBlocker(pi, f)) continue;   // 一方的に討たれるなら攻撃しない
-    const t = o.field.find(t => {
-      if (!t.tapped || taken.has(t.card.id)) return false;
-      const n = battleNumbers(f, t);
-      return n.bDies && !n.aDies;
-    });
-    if (t) { taken.add(t.card.id); list.push({ cre: f.card.id, tt: "cre", tv: t.card.id }); }
-    else list.push({ cre: f.card.id, tt: "player" });   // 本体は複数可
+  const avail = [...p.field].filter(f => !f.tapped && !f.sick && !oneSidedByBlocker(pi, f));
+  const used = new Set();
+  // タップ中の敵は数字の大きい順に狙う。1体で足りなければ複数体がかりで仕留める
+  for (const t of [...o.field].filter(t => t.tapped).sort((a, b) => b.card.rank - a.card.rank)) {
+    const need = t.card.rank - (t.dmg || 0);
+    const cand = avail.filter(f => !used.has(f.card.id) && !battleNumbers(f, t).aDies);
+    // 単騎で討てる最小の1体を優先。無ければ大きい順に足して合計致死を狙う
+    const solo = [...cand].sort((a, b) => a.card.rank - b.card.rank)
+      .find(f => battleNumbers(f, t).ap >= need);
+    let combo = solo ? [solo] : [];
+    if (!combo.length) {
+      let sum = 0;
+      for (const f of [...cand].sort((a, b) => b.card.rank - a.card.rank)) {
+        combo.push(f); sum += battleNumbers(f, t).ap;
+        if (sum >= need) break;
+      }
+      if (sum < need) combo = [];   // 討ち切れないなら深追いしない
+    }
+    for (const f of combo) {
+      used.add(f.card.id);
+      list.push({ cre: f.card.id, tt: "cre", tv: t.card.id });
+    }
   }
+  // 残りは本体へ
+  for (const f of avail) if (!used.has(f.card.id)) list.push({ cre: f.card.id, tt: "player" });
   return list;
 }
 
@@ -2255,7 +2272,6 @@ function render() {
 
   // オリジナル: 割り当て状況のセット
   const pendAtkSet = new Set(pendingAttacks.map(a => a.cre));
-  const pendTvSet = new Set(pendingAttacks.filter(a => a.tt === "cre").map(a => a.tv));
   const declAtkSet = new Set(declaredAttacks.map(a => a.cre));
   const blockedSet = new Set(pendingBlocks.map(b => b.attacker));
   const blockerSet = new Set(pendingBlocks.map(b => b.blocker));
@@ -2307,6 +2323,7 @@ function render() {
       const slot = document.createElement("div");
       slot.className = "slot" + (l.tapped ? " tapped" : "");
       const el = cardEl(l.card, { sm: true });
+      el.classList.add("land");
       if (l.tapped) el.classList.add("tapped");
       slot.appendChild(el); z.appendChild(slot);
     });
@@ -2333,8 +2350,8 @@ function render() {
     if (original) {
       // 攻撃宣言中のクリーチャーには⚔マーク
       if (declAtkSet.has(f.card.id)) el.innerHTML += `<span class="atkmark">⚔️</span>`;
-      // 自分のアタックフェイズ: タップ中の敵(未指定)をターゲットにできる(1体1攻撃まで)
-      if (uiMain && oPhase && oPhase.phase === "attack" && selAttacker !== null && f.tapped && !pendTvSet.has(f.card.id)) {
+      // 自分のアタックフェイズ: タップ中の敵をターゲットにできる(同じ対象への複数攻撃も可)
+      if (uiMain && oPhase && oPhase.phase === "attack" && selAttacker !== null && f.tapped) {
         el.classList.add("targetable");
         el.addEventListener("click", () => {
           const atk = me.field[selAttacker];
@@ -2457,7 +2474,7 @@ function render() {
       : "攻撃対象を選択: 相手エリアをクリックでとどめ! or タップ中の敵クリーチャー");
   }
   if (original && uiMain && oPhase && oPhase.phase === "attack" && selAttacker !== null) {
-    setHint("攻撃対象を選択: タップ中の敵クリーチャー(1体1攻撃まで) or 相手エリア(本体・複数可)");
+    setHint("攻撃対象を選択: タップ中の敵クリーチャー or 相手エリア(本体)。同じ対象に複数のクリーチャーで攻撃できる");
   }
 
   requestAnimationFrame(drawArrows);
