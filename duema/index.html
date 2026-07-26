@@ -1437,6 +1437,7 @@ function aiChooseBlock(defPi, attacker) {
 
 function aiPickLand(pi) {
   const p = players[pi];
+  if (p.hand.length <= 1) return null;   // 手札が最後の1枚ならセットランドしない
   const hand = p.hand.filter(c => !c.joker);
   if (!hand.length) {
     // モックスジョーカー: 相手より土地が少ないときのみ置ける
