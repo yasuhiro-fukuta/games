@@ -418,9 +418,9 @@
       <b>JOKER</b>(0マナ+追加コスト。メイン、呪文はブロックフェイズでも可):<br>
       ・モックスジョーカー: 相手より土地が少ないときのみ置ける4色マナの0マナアーティファクト(セット権不要・メインのみ)<br>
       ・♠スペードスピア: 自分の♠クリーチャー1体生贄 → 相手クリーチャー1体破壊<br>
-      ・♥ハートデザイア: 手札の♥カード1枚捨てる → 墓地から好きな1枚を手札へ<br>
-      ・♦ダイヤクラック: 自分の♦土地1枚生贄 → 相手の土地1枚破壊<br>
-      ・♣クローバーミル: 自分の山札を♣が捲れるまで墓地へ落とし、捲れた♣の数字ぶん相手の山札を墓地へ(♣が出なければ自滅!)
+      ・♥ハートブレイク: 自分の山札を♥が捲れるまで墓地へ落とし、捲れた♥の数字ぶん相手の山札を墓地へ(♥が出なければ自滅!)<br>
+      ・♦ダイヤリコール: 手札の♦カード1枚捨てる → 3枚ドロー<br>
+      ・♣クローバーウィル: 自分の♣土地1枚を手札に戻す → 手札のカード1枚をアンタップ状態で土地にセット(セット権不要)
     </div>
     <div class="body" id="rules-duema">
       54枚フルデッキ(4色×13+JOKER2枚)同士、シールド6枚の1対1。先攻後攻はランダム。<br><br>
@@ -1583,39 +1583,46 @@ async function applyMainO(pi, a) {
       destroy(1 - pi, fieldById(1 - pi, a.tgt));
       return;
     }
-    case "desire": {  // 手札の♥カード1枚捨てる → 墓地から1枚回収
-      spendJoker(pi, handById(pi, a.jk), "ハートデザイア");
+    case "cwill": {   // ♣土地1枚を手札に戻す → 手札のカード1枚を土地としてアンタップでセット(セット権消費なし)
+      spendJoker(pi, handById(pi, a.jk), "クローバーウィル");
+      const bl = landById(pi, a.land);
+      if (!bl || bl.card.joker || bl.card.suit !== 3) return;
+      p.lands = p.lands.filter(l => l !== bl);
+      p.hand.push(bl.card);
+      const sc = handById(pi, a.set);
+      if (sc && !sc.joker) {
+        removeFromHand(p, sc);
+        p.lands.push({ card: sc, tapped: false });
+        log(`${p.name}: ♣土地 ${cardLabel(bl.card)} を手札に戻し、${cardLabel(sc)} をアンタップで土地にセットした`);
+      } else {
+        log(`${p.name}: ♣土地 ${cardLabel(bl.card)} を手札に戻した`);
+      }
+      return;
+    }
+    case "drecall": { // ♦カード1枚捨てる → 3枚ドロー
+      spendJoker(pi, handById(pi, a.jk), "ダイヤリコール");
       const disc = handById(pi, a.disc);
+      if (!disc || disc.joker || disc.suit !== 2) return;
       removeFromHand(p, disc);
       p.grave.push(disc);
-      const pick = p.grave.find(c => c.id === a.pick);
-      p.grave = p.grave.filter(c => c.id !== a.pick);
-      p.hand.push(pick);
-      log(pi === myIdx ? `捨て札: ${cardLabel(disc)} / 回収: ${cardLabel(pick)}` : `${p.name}は墓地から1枚回収した`);
+      for (let i = 0; i < 3 && p.deck.length; i++) p.hand.push(p.deck.pop());
+      log(`${p.name}: ${cardLabel(disc)} を捨てて3枚ドロー(山札${p.deck.length})`);
+      render();
+      await checkDeckOut();
       return;
     }
-    case "crack": {   // ♦土地1枚生贄 → 相手の土地1枚破壊
-      spendJoker(pi, handById(pi, a.jk), "ダイヤクラック");
-      const sac = landById(pi, a.sac), tgt = landById(1 - pi, a.tgt);
-      p.lands = p.lands.filter(l => l !== sac);
-      p.grave.push(sac.card);
-      o.lands = o.lands.filter(l => l !== tgt);
-      o.grave.push(tgt.card);
-      log(`土地破壊: ${cardLabel(sac.card)} を生贄に、${o.name} の ${cardLabel(tgt.card)} を破壊`);
-      return;
-    }
-    case "mill": {    // ♣が捲れるまで自分の山札を墓地へ → その数字ぶん相手の山札を墓地へ
-      spendJoker(pi, handById(pi, a.jk), "クローバーミル");
-      let clover = null, count = 0;
+    case "hbreak": {  // ♥が捲れるまで自分の山札を墓地へ → その数字ぶん相手の山札を墓地へ
+      spendJoker(pi, handById(pi, a.jk), "ハートブレイク");
+      let heart = null, count = 0;
       while (p.deck.length) {
         const c = p.deck.pop();
         p.grave.push(c);
         count++;
-        if (!c.joker && c.suit === 3) { clover = c; break; }
+        if (!c.joker && c.suit === 1) { heart = c; break; }
       }
-      log(`自分の山札から${count}枚が墓地へ` + (clover ? `(♣${RANK_LABEL[clover.rank]}が捲れた!)` : "(♣は出なかった…)"));
-      if (clover) {
-        const n = clover.rank;
+      log(`自分の山札から${count}枚が墓地へ` + (heart ? `(♥${RANK_LABEL[heart.rank]}が捲れた!)` : "(♥は出なかった…)"));
+      if (heart) {
+        const n = heart.rank;
         const milled = o.deck.splice(Math.max(0, o.deck.length - n), n);
         o.grave.push(...milled);
         log(`${o.name}の山札${milled.length}枚が墓地へ`);
@@ -1963,23 +1970,26 @@ function aiOMain(pi) {   // 相手ターン中のメイン: 土地→呪文→�
     if (spades.length && oppStrong && oppStrong.card.rank >= 7 && spades[0].card.rank <= oppStrong.card.rank - 4) {
       return { t: "spear", jk: jk.id, sac: spades[0].card.id, tgt: oppStrong.card.id };
     }
-    // クラック: 土地優勢時に相手の色をつぶす
-    const diaLand = p.lands.find(l => !l.card.joker && l.card.suit === 2);
-    if (diaLand && o.lands.length >= 3 && p.lands.length > o.lands.length) {
-      const countBy = s => o.lands.filter(l => !l.card.joker && l.card.suit === s).length;
-      const tgt = [...o.lands].filter(l => !l.card.joker).sort((a, b) => countBy(a.card.suit) - countBy(b.card.suit))[0] || o.lands[0];
-      return { t: "crack", jk: jk.id, sac: diaLand.card.id, tgt: tgt.card.id };
+    // クローバーウィル: ♣土地が2枚以上あり、マナゾーンに無いスートを手札から補充できるとき
+    const clubLands = p.lands.filter(l => !l.card.joker && l.card.suit === 3);
+    if (clubLands.length >= 2) {
+      const landSuits = new Set(p.lands.map(l => l.card.joker ? "*" : l.card.suit));
+      const fix = landSuits.has("*") ? null
+        : p.hand.filter(c => !c.joker && !landSuits.has(c.suit)).sort((a, b) => a.rank - b.rank)[0];
+      if (fix) {
+        const bounce = [...clubLands].sort((a, b) => (b.tapped - a.tapped) || (a.card.rank - b.card.rank))[0];
+        return { t: "cwill", jk: jk.id, land: bounce.card.id, set: fix.id };
+      }
     }
-    // デザイア: 墓地の大物を♥1枚で回収
-    const hearts = p.hand.filter(c => !c.joker && c.suit === 1).sort((a, b) => a.rank - b.rank);
-    const graveBest = [...p.grave].filter(c => !c.joker).sort((a, b) => b.rank - a.rank)[0];
-    if (hearts.length && graveBest && graveBest.rank >= 10 && hearts[0].rank < graveBest.rank) {
-      return { t: "desire", jk: jk.id, disc: hearts[0].id, pick: graveBest.id };
+    // ダイヤリコール: 手札が枯れてきたら♦1枚を3枚に変える
+    const dias = p.hand.filter(c => !c.joker && c.suit === 2).sort((a, b) => a.rank - b.rank);
+    if (dias.length && p.hand.filter(c => !c.joker).length <= 2 && p.deck.length >= 12) {
+      return { t: "drecall", jk: jk.id, disc: dias[0].id };
     }
-    // ミル: 残り♣が多く、相手の山札が自分以下のとき
-    const cloversLeft = p.deck.filter(c => !c.joker && c.suit === 3).length;
-    if (cloversLeft >= 5 && p.deck.length >= 15 && o.deck.length <= p.deck.length) {
-      return { t: "mill", jk: jk.id };
+    // ハートブレイク: 残り♥が多く、相手の山札が自分以下のとき
+    const heartsLeft = p.deck.filter(c => !c.joker && c.suit === 1).length;
+    if (heartsLeft >= 5 && p.deck.length >= 15 && o.deck.length <= p.deck.length) {
+      return { t: "hbreak", jk: jk.id };
     }
   }
   // 召喚(出せる限り最強から)。♥は瞬速のため相手のブロックフェイズまで温存する
@@ -2260,16 +2270,16 @@ async function onHandClickO(c) {
     }
     const opts = [];
     const spades = p.field.filter(f => f.card.suit === 0);
-    const hearts = p.hand.filter(x => !x.joker && x.suit === 1);
-    const diaLands = p.lands.filter(l => !l.card.joker && l.card.suit === 2);
+    const clubLands = p.lands.filter(l => !l.card.joker && l.card.suit === 3);
+    const dias = p.hand.filter(x => !x.joker && x.suit === 2);
     opts.push({ label: "♠スペードスピア: 自分の♠クリーチャー1体生贄 → 相手クリーチャー1体破壊(攻撃クリーチャーも!)", value: "spear",
                 disabled: !spades.length || !o.field.length });
-    opts.push({ label: "♥ハートデザイア: 手札の♥カード1枚捨てる → 墓地から1枚回収", value: "desire",
-                disabled: !hearts.length || !p.grave.length });
-    opts.push({ label: "♦ダイヤクラック: 自分の♦土地1枚生贄 → 相手の土地1枚破壊", value: "crack",
-                disabled: !diaLands.length || !o.lands.length });
-    opts.push({ label: "♣クローバーミル: 自分の山札を♣が捲れるまで墓地へ → その数字ぶん相手の山札を墓地へ", value: "mill",
+    opts.push({ label: "♥ハートブレイク: 自分の山札を♥が捲れるまで墓地へ → その数字ぶん相手の山札を墓地へ", value: "hbreak",
                 disabled: !p.deck.length });
+    opts.push({ label: "♦ダイヤリコール: 手札の♦カード1枚捨てる → 3枚ドロー", value: "drecall",
+                disabled: !dias.length });
+    opts.push({ label: "♣クローバーウィル: 自分の♣土地1枚を手札に戻す → 手札1枚をアンタップで土地にセット", value: "cwill",
+                disabled: !clubLands.length });
     opts.push({ label: "キャンセル", value: null });
     const v = await choose(cardLabel(c), opts, c, "ブロックフェイズ: JOKER呪文で迎撃できる(モックス・召喚は不可)");
     if (!uiMain) return;
@@ -2280,22 +2290,20 @@ async function onHandClickO(c) {
       if (!tc) return;
       act({ k: "oblocks", t: "spear", jk: c.id, sac: sc.id, tgt: tc.id });
     }
-    if (v === "desire") {
-      const disc = await chooseCard("ハートデザイア: 捨てる♥カードを選ぶ", p.hand.filter(x => !x.joker && x.suit === 1), "", "キャンセル");
+    if (v === "hbreak") act({ k: "oblocks", t: "hbreak", jk: c.id });
+    if (v === "drecall") {
+      const disc = await chooseCard("ダイヤリコール: 捨てる♦カードを選ぶ", dias, "", "キャンセル");
       if (!disc) return;
-      const sorted = [...p.grave].sort((a, b) => (a.joker ? 99 : a.suit * 20 + a.rank) - (b.joker ? 99 : b.suit * 20 + b.rank));
-      const pick = await chooseCard("ハートデザイア: 墓地から回収するカード", sorted, "", "キャンセル");
-      if (!pick) return;
-      act({ k: "oblocks", t: "desire", jk: c.id, disc: disc.id, pick: pick.id });
+      act({ k: "oblocks", t: "drecall", jk: c.id, disc: disc.id });
     }
-    if (v === "crack") {
-      const sc = await chooseCard("ダイヤクラック: 生贄にする自分の♦土地", p.lands.filter(l => !l.card.joker && l.card.suit === 2).map(l => l.card), "", "キャンセル");
+    if (v === "cwill") {
+      const bl = await chooseCard("クローバーウィル: 手札に戻す自分の♣土地", clubLands.map(l => l.card), "", "キャンセル");
+      if (!bl) return;
+      const cand = p.hand.filter(x => !x.joker && x.id !== c.id).concat([bl]);
+      const sc = await chooseCard("クローバーウィル: アンタップで土地にセットするカード", cand, "戻した♣も選べる", "キャンセル");
       if (!sc) return;
-      const tc = await chooseCard("ダイヤクラック: 破壊する相手の土地", o.lands.map(l => l.card), "", "キャンセル");
-      if (!tc) return;
-      act({ k: "oblocks", t: "crack", jk: c.id, sac: sc.id, tgt: tc.id });
+      act({ k: "oblocks", t: "cwill", jk: c.id, land: bl.id, set: sc.id });
     }
-    if (v === "mill") act({ k: "oblocks", t: "mill", jk: c.id });
     return;
   }
   if (oPhase && (oPhase.phase === "main1" || oPhase.phase === "main2") && oPhase.actor === myIdx) {
@@ -2340,20 +2348,20 @@ async function onHandClickO(c) {
       return;
     }
     const opts = [];
+    const clubLands = p.lands.filter(l => !l.card.joker && l.card.suit === 3);
+    const dias = p.hand.filter(x => !x.joker && x.suit === 2);
     {
       const spades = p.field.filter(f => f.card.suit === 0);
-      const hearts = p.hand.filter(x => !x.joker && x.suit === 1);
-      const diaLands = p.lands.filter(l => !l.card.joker && l.card.suit === 2);
       opts.push({ label: "モックスジョーカー: 4色マナが出る0マナアーティファクトとして置く(相手より土地が少ないときのみ・セット権不要)", value: "land",
                 disabled: !(p.lands.length < o.lands.length) });
       opts.push({ label: "♠スペードスピア: 自分の♠クリーチャー1体生贄 → 相手クリーチャー1体破壊", value: "spear",
                   disabled: !spades.length || !o.field.length });
-      opts.push({ label: "♥ハートデザイア: 手札の♥カード1枚捨てる → 墓地から1枚回収", value: "desire",
-                  disabled: !hearts.length || !p.grave.length });
-      opts.push({ label: "♦ダイヤクラック: 自分の♦土地1枚生贄 → 相手の土地1枚破壊", value: "crack",
-                  disabled: !diaLands.length || !o.lands.length });
-      opts.push({ label: "♣クローバーミル: 自分の山札を♣が捲れるまで墓地へ → その数字ぶん相手の山札を墓地へ", value: "mill",
+      opts.push({ label: "♥ハートブレイク: 自分の山札を♥が捲れるまで墓地へ → その数字ぶん相手の山札を墓地へ", value: "hbreak",
                   disabled: !p.deck.length });
+      opts.push({ label: "♦ダイヤリコール: 手札の♦カード1枚捨てる → 3枚ドロー", value: "drecall",
+                  disabled: !dias.length });
+      opts.push({ label: "♣クローバーウィル: 自分の♣土地1枚を手札に戻す → 手札1枚をアンタップで土地にセット", value: "cwill",
+                  disabled: !clubLands.length });
     }
     opts.push({ label: "キャンセル", value: null });
     const v = await choose(cardLabel(c), opts, c, "JOKER呪文と土地は自分のメインフェイズで");
@@ -2366,22 +2374,20 @@ async function onHandClickO(c) {
       if (!tc) return;
       act({ k: "omain", t: "spear", jk: c.id, sac: sc.id, tgt: tc.id });
     }
-    if (v === "desire") {
-      const disc = await chooseCard("ハートデザイア: 捨てる♥カードを選ぶ", p.hand.filter(x => !x.joker && x.suit === 1), "", "キャンセル");
+    if (v === "hbreak") act({ k: "omain", t: "hbreak", jk: c.id });
+    if (v === "drecall") {
+      const disc = await chooseCard("ダイヤリコール: 捨てる♦カードを選ぶ", dias, "", "キャンセル");
       if (!disc) return;
-      const sorted = [...p.grave].sort((a, b) => (a.joker ? 99 : a.suit * 20 + a.rank) - (b.joker ? 99 : b.suit * 20 + b.rank));
-      const pick = await chooseCard("ハートデザイア: 墓地から回収するカード", sorted, "", "キャンセル");
-      if (!pick) return;
-      act({ k: "omain", t: "desire", jk: c.id, disc: disc.id, pick: pick.id });
+      act({ k: "omain", t: "drecall", jk: c.id, disc: disc.id });
     }
-    if (v === "crack") {
-      const sc = await chooseCard("ダイヤクラック: 生贄にする自分の♦土地", p.lands.filter(l => !l.card.joker && l.card.suit === 2).map(l => l.card), "", "キャンセル");
+    if (v === "cwill") {
+      const bl = await chooseCard("クローバーウィル: 手札に戻す自分の♣土地", clubLands.map(l => l.card), "", "キャンセル");
+      if (!bl) return;
+      const cand = p.hand.filter(x => !x.joker && x.id !== c.id).concat([bl]);
+      const sc = await chooseCard("クローバーウィル: アンタップで土地にセットするカード", cand, "戻した♣も選べる", "キャンセル");
       if (!sc) return;
-      const tc = await chooseCard("ダイヤクラック: 破壊する相手の土地", o.lands.map(l => l.card), "", "キャンセル");
-      if (!tc) return;
-      act({ k: "omain", t: "crack", jk: c.id, sac: sc.id, tgt: tc.id });
+      act({ k: "omain", t: "cwill", jk: c.id, land: bl.id, set: sc.id });
     }
-    if (v === "mill") act({ k: "omain", t: "mill", jk: c.id });
     return;
   }
 }
