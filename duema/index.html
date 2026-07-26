@@ -1437,7 +1437,7 @@ function aiChooseBlock(defPi, attacker) {
 
 function aiPickLand(pi) {
   const p = players[pi];
-  if (p.hand.length <= 1) return null;   // 手札が最後の1枚ならセットランドしない
+  if (p.hand.length <= 2) return null;   // 手札が2枚以下ならセットランドしない
   const hand = p.hand.filter(c => !c.joker);
   if (!hand.length) {
     // モックスジョーカー: 相手より土地が少ないときのみ置ける
@@ -1599,7 +1599,17 @@ function aiOMain(pi) {   // 相手ターン中のメイン: 土地→呪文→�
 function aiOAttacks(pi) {
   const p = players[pi], o = players[1 - pi];
   const list = [];
-  const avail = [...p.field].filter(f => !f.tapped && !f.sick && !oneSidedByBlocker(pi, f));
+  const all = [...p.field].filter(f => !f.tapped && !f.sick);
+  // 特攻ジャッジ: 相手はブロッカー数までしか攻撃を止められない。
+  // 必ず通る「小さい順 x体」(x = 自軍攻撃可能数 - 相手のアンタップ数)の合計が
+  // 相手の山札以上なら、討ち取られようと全軍で本体攻撃(デッキアウトが確定する)
+  const x = all.length - o.field.filter(f => !f.tapped).length;
+  if (x > 0 && o.deck.length > 0) {
+    const asc = [...all].sort((a, b) => a.card.rank - b.card.rank);
+    const sum = asc.slice(0, x).reduce((s, f) => s + f.card.rank, 0);
+    if (sum >= o.deck.length) return all.map(f => ({ cre: f.card.id, tt: "player" }));
+  }
+  const avail = all.filter(f => !oneSidedByBlocker(pi, f));
   const used = new Set();
   // タップ中の敵は数字の大きい順に狙う。1体で足りなければ複数体がかりで仕留める
   for (const t of [...o.field].filter(t => t.tapped).sort((a, b) => b.card.rank - a.card.rank)) {
