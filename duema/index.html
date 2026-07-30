@@ -342,13 +342,11 @@
   <!-- オリジナルルール: フェイズトラッカー -->
   <div id="phasebar" style="display:none">
     <div class="pb-ticks">
-      <span class="pb-tick" id="pb-untap" title="アンタップ&ドロー">☀</span>
-      <span class="pb-tick" id="pb-main1" title="第1メイン(土地・呪文・召喚)">⚚</span>
-      <span class="pb-tick" id="pb-attack" title="アタック(宣言)">⚔</span>
-      <span class="pb-tick" id="pb-block" title="ブロック(相手が対応・JOKER呪文可)">⛨</span>
+      <span class="pb-tick" id="pb-untap" title="クリンナップ&アンタップ&ドロー">☀</span>
+      <span class="pb-tick" id="pb-attack" title="アタック(土地・呪文・召喚+攻撃宣言)">⚔</span>
+      <span class="pb-tick" id="pb-block" title="ブロック(相手が対応・♥瞬速可)">⛨</span>
       <span class="pb-tick" id="pb-battle" title="戦闘解決">✦</span>
-      <span class="pb-tick" id="pb-main2" title="第2メイン(土地・呪文・召喚)">⚚</span>
-      <span class="pb-tick" id="pb-clean" title="クリンナップ(ダメージ回復・ターン終了)">☽</span>
+      <span class="pb-tick" id="pb-main2" title="メイン(土地・呪文・召喚・ターン終了)">⚚</span>
     </div>
   </div>
 
@@ -440,11 +438,11 @@
     </div>
     <div class="body" id="rules-original" style="display:none">
       54枚フルデッキ(4色×13+JOKER2枚)同士の1対1。<b>初手7枚・シールドなし・勝利条件はデッキアウトのみ</b>(山札0枚で即敗北・両者同時なら引き分け)。先攻後攻はランダム、後攻は1回フリーマリガン可。<b>先攻の1ターン目はアンタップ&ドローを飛ばす</b>。敗者の手札は公開される。<br><br>
-      <b>フェイズ進行</b>(毎ターン): ☀→⚚→⚔→⛨→✦→⚚→☽<br>
-      ☀<b>アンタップ&amp;ドロー</b> → ⚚<b>第1メイン</b>(土地・呪文・召喚)→ ⚔<b>アタック</b>(攻撃を全て宣言)→ ⛨<b>ブロック</b>(<b>相手が</b>ブロック指定+♥の瞬速も使える)→ ✦<b>戦闘解決</b> → ⚚<b>第2メイン</b> → ☽<b>クリンナップ</b>(ダメージ回復)=ターン終了<br><br>
+      <b>フェイズ進行</b>(毎ターン): ☀→⚔→⛨→✦→⚚<br>
+      ☀<b>クリンナップ&amp;アンタップ&amp;ドロー</b>(敵味方全ての戦闘ダメージ回復→アンタップ→ドロー)→ ⚔<b>アタック</b>(<b>土地・呪文・召喚も可能</b>+攻撃を全て宣言)→ ⛨<b>ブロック</b>(<b>相手が</b>ブロック指定+♥の瞬速も使える)→ ✦<b>戦闘解決</b> → ⚚<b>メイン</b>(土地・呪文・召喚)=ターン終了<br><br>
       <b>攻撃</b>: タップ中の敵クリーチャーか、プレイヤー本体。どちらも複数のクリーチャーで攻撃できる。本体に通ると数字ぶん相手の山札が墓地へ<br>
       <b>多重ブロック可</b>: 1体の攻撃を複数のクリーチャーでブロックできる。攻撃側のダメージは<b>数字の大きいブロッカーへ優先して致死分ずつ割り振られ</b>、余りは次へ(例: ♥Qを♠3と♦8でブロック→♦8に8点、♠3に4点)。ブロッカー全員のパワーが攻撃側に返る<br>
-      <b>ダメージはクリンナップまで蓄積</b>(数字以上で破壊)。<b>召喚酔いあり</b>(出したターンは攻撃不可)。<b>タップ状態で戦闘フェイズを終えたクリーチャーはパワー0</b>(アンタップで回復)<br><br>
+      <b>ダメージは次のクリンナップ(次ターンのアンタップ直前)まで蓄積</b>(数字以上で破壊)。<b>召喚酔いあり</b>(出したターンは攻撃不可)。<b>タップ状態で戦闘フェイズを終えたクリーチャーはパワー0</b>(アンタップで回復)<br><br>
       <b>A(エース)はクリーチャーではなく呪文</b>(コストは通常通り 自スート1+無指定1。土地にもできる):<br>
       ・♥A【瞬速】: 対象のパワーX以下のクリーチャー1体を山札の一番上に戻す(X=自分の墓地の枚数)<br>
       ・♣A: 自分の土地X枚を選んで手札に加える<br>
@@ -452,7 +450,7 @@
       ・♠A: 自分の山札の上からX枚を墓地に落とす → 全クリーチャーは-X/-X(X点のダメージとして処理)<br><br>
       <b>スート能力</b>: ♠<b>挑戦</b>(攻撃時、アンタップの敵1体を強制的にブロックへ参加させる。複数ブロック時は挑戦対象へ最優先でダメージ)/ ♥<b>瞬速</b>(相手のブロックフェイズに召喚できる)/ ♦<b>警戒</b>(各戦闘フェイズ後にアンタップ)/ ♣<b>速攻</b>(召喚酔いしない)<br>
       <b>挑戦の操作</b>: ♠アタッカーを選ぶ → アンタップの敵をクリックで挑戦対象を指定 → 本体かタップ中の敵をクリックで攻撃先を確定(挑戦を使わないなら直接攻撃先をクリック)<br><br>
-      <b>JOKER</b>: モックスジョーカーのみ — 相手より土地が少ないときのみ置ける4色マナの0マナアーティファクト(セット権不要・メインのみ)
+      <b>JOKER</b>: モックスジョーカーのみ — <b>相手より土地が少ないときのみ唱えられる0マナの呪文</b>。効果: このターンの土地セット権が+1される
     </div>
     <div class="body" id="rules-duema">
       54枚フルデッキ(4色×13+JOKER2枚)同士、シールド6枚の1対1。先攻後攻はランダム。<br><br>
@@ -549,7 +547,8 @@ function mulberry32(seed) {
 let rng = Math.random;
 
 /* ================= 状態 ================= */
-let players, turnP, turnNo, landPlayedThisTurn, winner, firstP;
+let players, turnP, turnNo, winner, firstP;
+let landSetUsed = 0, landSetMax = 1;   // 土地セット権(モックスジョーカーで+1される)
 let ruleMode = "duema";          // 'duema' | 'original' | 'yugi' | 'poke'
 let ySummoned = false;           // 遊戯王: このターン通常召喚/セットを使ったか
 let manualPay = false;           // マナ支払い: 手動モード(ローカル設定。選んだ土地はアクションに載る)
@@ -675,7 +674,7 @@ function playLand(pi, c) {
   const p = players[pi];
   removeFromHand(p, c);
   p.lands.push({ card: c, tapped: false });
-  if (!c.joker) landPlayedThisTurn = true;   // モックスジョーカーは1ターン1枚制限の別枠
+  if (!c.joker) landSetUsed++;   // デュエマのモックスジョーカーは1ターン1枚制限の別枠
   sfx("land");
   log(c.joker ? `${p.name}: モックスジョーカーを置いた(4色マナ・セット権消費なし)`
               : `${p.name}: ${cardLabel(c)} を土地に置いた`);
@@ -910,7 +909,7 @@ function startTurn(pi) {
   const p = players[pi];
   p.lands.forEach(l => l.tapped = false);
   p.field.forEach(f => { f.tapped = false; f.sick = false; });
-  landPlayedThisTurn = false;
+  landSetUsed = 0; landSetMax = 1;
   selAttacker = null;
   if (p.deck.length === 0) { win(1 - pi, `${p.name} は山札切れ`); return false; }
   p.hand.push(p.deck.pop());
@@ -985,7 +984,7 @@ async function runGame(seed) {
   oPhase = null; declaredAttacks = []; activeBlocks = []; pendingAttacks = []; pendingBlocks = []; selTargetAtt = null; provSel = null;
   firstP = rng() < 0.5 ? 0 : 1;
   turnP = firstP; turnNo = 1;
-  landPlayedThisTurn = false;
+  landSetUsed = 0; landSetMax = 1;
   winner = null; uiMain = false; selAttacker = null;
   logLines = [];
   inbox.length = 0; pendingResolve = null;
@@ -1074,46 +1073,36 @@ async function checkDeckOut(causerPi) {
 async function runOriginalTurns(token, secondP) {
   let cur = firstP;
   while (winner === null) {
-    // ☀アンタップフェイズ(アンタップ+ドロー・自動)。先攻1ターン目はスキップ
+    // ☀クリンナップ&アンタップフェイズ(全ダメージ回復+アンタップ+ドロー・自動)。先攻1ターン目はスキップ
     oPhase = { phase: "untap", actor: cur };
     turnP = cur;
-    landPlayedThisTurn = false;
-    selAttacker = null; pendingAttacks = []; pendingBlocks = []; selTargetAtt = null;
+    landSetUsed = 0; landSetMax = 1;
+    selAttacker = null; provSel = null; pendingAttacks = []; pendingBlocks = []; selTargetAtt = null;
     if (turnNo === 1 && cur === firstP) {
       log(`── ${players[cur].name} のターン1 ── 先攻はアンタップフェイズを飛ばす`);
     } else {
+      players.forEach(p => p.field.forEach(f => { f.dmg = 0; }));   // クリンナップ: 敵味方すべての戦闘ダメージを回復
       players[cur].lands.forEach(l => { l.tapped = false; });
       players[cur].field.forEach(f => { f.tapped = false; f.sick = false; f.pz = false; });
       players[cur].hand.push(players[cur].deck.pop());
-      log(`── ${players[cur].name} のターン${turnNo} ── アンタップ&ドロー(山札${players[cur].deck.length})`);
+      log(`── ${players[cur].name} のターン${turnNo} ── クリンナップ&アンタップ&ドロー(山札${players[cur].deck.length})`);
     }
     render();
     if (await checkDeckOut()) return;
     await showBanner(cur === myIdx ? "あなたのターン" : "相手のターン", 900);
     if (token !== gameToken) return;
 
-    // ⚚第1メインフェイズ(土地・JOKER呪文・召喚)
+    // ⚔アタックフェイズ(第1メインを兼ねる: 土地・呪文・召喚も可能+攻撃の一括宣言)
+    let ad = { list: [] };
     for (;;) {
       if (winner !== null || token !== gameToken) return;
-      oPhase = { phase: "main1", actor: cur }; render();
-      const a = await decision(cur, "omain");
+      oPhase = { phase: "attack", actor: cur }; render();
+      const a = await decision(cur, "oattacks");
       if (token !== gameToken) return;
-      if (a.t === "done") break;
+      if (a.t === "attacks") { ad = a; break; }
       await applyMainO(cur, a);
       if (winner !== null) return;
       render();
-    }
-
-    // ⚔アタックフェイズ(攻撃を一括宣言)。攻撃可能なクリーチャーが0体なら無操作で自動遷移
-    oPhase = { phase: "attack", actor: cur }; render();
-    let ad = { list: [] };
-    if (players[cur].field.some(f => !f.tapped && !f.sick)) {
-      ad = await decision(cur, "oattacks");
-      if (token !== gameToken) return;
-    } else {
-      log(`${players[cur].name}: 攻撃可能なクリーチャーなし`);
-      await wait(600);
-      if (token !== gameToken) return;
     }
     declaredAttacks = (ad.list || []).filter(x => fieldById(cur, x.cre));
     for (const at of declaredAttacks) fieldById(cur, at.cre).tapped = true;
@@ -1217,13 +1206,6 @@ async function runOriginalTurns(token, secondP) {
       if (winner !== null) return;
       render();
     }
-
-    // ☽クリンナップフェイズ(全クリーチャーのダメージ回復・自動)=ターン終了
-    oPhase = { phase: "clean", actor: cur };
-    players.forEach(p => p.field.forEach(f => { f.dmg = 0; }));
-    render();
-    await wait(450);
-    if (winner !== null || token !== gameToken) return;
 
     oPhase = null;
     if (cur === secondP) turnNo++;
@@ -2066,7 +2048,20 @@ async function battleO(aPi, aCre, bPi, bCre) {
 async function applyMainO(pi, a) {
   const p = players[pi], o = players[1 - pi];
   switch (a.t) {
-    case "land": playLand(pi, handById(pi, a.card)); return;
+    case "land": {
+      const c = handById(pi, a.card);
+      if (!c || c.joker || landSetUsed >= landSetMax) return;   // マジックのJOKERは土地にならない
+      playLand(pi, c);
+      return;
+    }
+    case "mox": {   // モックスジョーカー: 相手より土地が少ないときのみ唱えられる0マナ呪文。土地セット権+1
+      const jk = handById(pi, a.jk);
+      if (!jk || !jk.joker || p.lands.length >= o.lands.length) return;
+      spendJoker(pi, jk, "モックスジョーカー");
+      landSetMax++;
+      log(`${p.name}: このターンの土地セット権が+1された(使用${landSetUsed}/${landSetMax})`);
+      return;
+    }
     case "summon": await applySummonO(pi, a); return;
     // ===== Aの呪文(マジック): コストは通常通り(自スート1+無指定1)。唱えたAは墓地へ =====
     case "aceh": {  // ♥A(瞬速): 対象のパワーX以下のクリーチャー1体を山札の一番上へ。X=自分の墓地の枚数(このAを含む)
@@ -2316,7 +2311,11 @@ function aiDecide(pi, kind, ctx) {
   if (kind === "ymain") return { k: "ymain", ...aiYMain(pi) };
   if (kind === "yattack") return { k: "yattack", ...aiYAttack(pi) };
   if (kind === "ytrap") return { k: "ytrap", ...aiYTrap(pi, ctx) };
-  if (kind === "oattacks") return { k: "oattacks", list: aiOAttacks(pi) };
+  if (kind === "oattacks") {
+    const m = aiOMain(pi);   // アタックフェイズはメインを兼ねる: 土地・呪文・召喚を先に
+    if (m.t !== "done") return { k: "oattacks", ...m };
+    return { k: "oattacks", t: "attacks", list: aiOAttacks(pi) };
+  }
   if (kind === "oblocks") {
     const p = players[pi];
     const attackers2 = declaredAttacks.map(at => fieldById(1 - pi, at.cre)).filter(Boolean);
@@ -2419,7 +2418,7 @@ function aiMainAction(pi) {
   const p = players[pi], o = players[1 - pi];
   const sp = aiJokerAction(pi);
   if (sp) return sp;
-  if (!landPlayedThisTurn) {
+  if (landSetUsed < landSetMax) {
     const c = aiPickLand(pi);
     if (c) return { t: "land", card: c.id };
   }
@@ -2477,9 +2476,17 @@ function oneSidedByBlocker(pi, atkCre) {   // 相手のアンタップに一方�
 
 function aiOMain(pi) {   // 相手ターン中のメイン: 土地→呪文→召喚→done
   const p = players[pi], o = players[1 - pi];
-  if (!landPlayedThisTurn) {
+  if (landSetUsed < landSetMax) {
     const c = aiPickLand(pi);
-    if (c) return { t: "land", card: c.id };
+    if (c && !c.joker) return { t: "land", card: c.id };   // マジックではJOKERを土地にできない
+  }
+  // モックスジョーカー(0マナ呪文): 土地が相手より少なく、セット権を使い切っているなら+1
+  {
+    const jk = p.hand.find(c => c.joker);
+    if (jk && p.lands.length < o.lands.length && landSetUsed >= landSetMax &&
+        p.hand.filter(c => !c.joker).length >= 2) {
+      return { t: "mox", jk: jk.id };
+    }
   }
   // ♦A: 盤面差があるならドローに変える
   const aceD = p.hand.find(c => !c.joker && c.rank === 1 && c.suit === 2);
@@ -2637,8 +2644,9 @@ function humanPrompt(pi, kind, ctx) {
     return;
   }
   if (kind === "oattacks") {
-    uiMain = true; pendingAttacks = []; selAttacker = null; provSel = null;
-    setHint("アタックフェイズ: 自分のクリーチャー→対象(タップ中の敵 or 相手エリア)の順にクリック。確定すると相手がブロック");
+    uiMain = true;
+    pendingAttacks = pendingAttacks.filter(a => { const f = fieldById(myIdx, a.cre); return f && !f.tapped; });
+    setHint("アタックフェイズ(メイン兼用): 手札クリック=土地・呪文・召喚 / クリーチャー→対象クリックで攻撃を組み、ボタンで確定");
     render();
     return;
   }
@@ -2865,7 +2873,8 @@ async function onHandClickO(c) {
     }
     return;
   }
-  if (oPhase && (oPhase.phase === "main1" || oPhase.phase === "main2") && oPhase.actor === myIdx) {
+  if (oPhase && (oPhase.phase === "attack" || oPhase.phase === "main2") && oPhase.actor === myIdx) {
+    const mk = oPhase.phase === "attack" ? "oattacks" : "omain";
     if (!c.joker && c.rank === 1) {
       // A: クリーチャーではなくスート別の呪文
       const desc = {
@@ -2875,18 +2884,18 @@ async function onHandClickO(c) {
         0: "自分の山札の上からX枚墓地へ → 全クリーチャーに-X/-X",
       }[c.suit];
       const v = await choose(`${cardLabel(c)}(呪文)`, [
-        { label: `土地に置く(${SUITS[c.suit]}マナ)`, value: "land", disabled: landPlayedThisTurn },
+        { label: `土地に置く(${SUITS[c.suit]}マナ)`, value: "land", disabled: landSetUsed >= landSetMax },
         { label: `呪文を唱える(コスト${costOf(c)}) — ${desc}`, value: "spell", primary: true, disabled: !canPay(p, c.suit, costOf(c)) },
         { label: "キャンセル", value: null },
       ], c, "Aはクリーチャーとして召喚できない");
       if (!uiMain) return;
-      if (v === "land") act({ k: "omain", t: "land", card: c.id });
-      if (v === "spell") await aceSpellUI(c, "omain");
+      if (v === "land") act({ k: mk, t: "land", card: c.id });
+      if (v === "spell") await aceSpellUI(c, mk);
       return;
     }
     if (!c.joker) {
       // 通常カード: 土地 or 召喚(J/Q/Kは生贄召喚も)
-      const opts = [{ label: `土地に置く(${SUITS[c.suit]}マナ)`, value: "land", disabled: landPlayedThisTurn }];
+      const opts = [{ label: `土地に置く(${SUITS[c.suit]}マナ)`, value: "land", disabled: landSetUsed >= landSetMax }];
       opts.push({
         label: `召喚する — コスト${costOf(c)}(${SUITS[c.suit]}1+無指定${c.rank}) ${c.rank}/${c.rank}`,
         value: "summon", primary: true, disabled: !canPay(p, c.suit, costOf(c)),
@@ -2903,8 +2912,8 @@ async function onHandClickO(c) {
       opts.push({ label: "キャンセル", value: null });
       const v = await choose(cardLabel(c), opts, c, "召喚酔いなし: このターンからブロックできる");
       if (!uiMain) return;
-      if (v === "land") act({ k: "omain", t: "land", card: c.id });
-      if (v === "summon") await actSummon("omain", c);
+      if (v === "land") act({ k: mk, t: "land", card: c.id });
+      if (v === "summon") await actSummon(mk, c);
       if (v === "sacsummon") {
         const sameSuit = p.field.filter(f => f.card.suit === c.suit).map(f => f.card);
         const sacs = await chooseMulti(
@@ -2920,18 +2929,18 @@ async function onHandClickO(c) {
           },
           "この生贄で召喚する", "キャンセル");
         if (!sacs) return;
-        await actSummon("omain", c, sacs);
+        await actSummon(mk, c, sacs);
       }
       return;
     }
-    // JOKERはモックスのみ(マジックルール)
+    // JOKERはモックスのみ(マジックルール): 0マナ呪文で土地セット権+1
     const v = await choose(cardLabel(c), [
-      { label: "モックスジョーカー: 4色マナが出る0マナアーティファクトとして置く(相手より土地が少ないときのみ・セット権不要)", value: "land",
+      { label: "モックスジョーカー(0マナ呪文): このターンの土地セット権+1(相手より土地が少ないときのみ)", value: "mox",
         disabled: !(p.lands.length < o.lands.length) },
       { label: "キャンセル", value: null },
     ], c, "マジックルールのJOKERはモックスジョーカーのみ");
     if (!uiMain) return;
-    if (v === "land") act({ k: "omain", t: "land", card: c.id });
+    if (v === "mox") act({ k: mk, t: "mox", jk: c.id });
     return;
   }
 }
@@ -2957,7 +2966,7 @@ async function onHandClick(c) {
     opts.push({ label: "♣クローバーウィル: 自分の♣土地1枚を手札に戻す → 手札1枚をアンタップで土地にセット", value: "cwill",
                 disabled: !p.lands.some(l => !l.card.joker && l.card.suit === 3) });
   } else {
-    opts.push({ label: `土地に置く(${SUITS[c.suit]}マナ)`, value: "land", disabled: landPlayedThisTurn });
+    opts.push({ label: `土地に置く(${SUITS[c.suit]}マナ)`, value: "land", disabled: landSetUsed >= landSetMax });
     opts.push({
       label: `召喚する — コスト${costOf(c)}(${SUITS[c.suit]}1+無指定${c.rank}) ${c.rank}/${c.rank}`,
       value: "summon", primary: true, disabled: !canPay(p, c.suit, costOf(c)),
@@ -2973,7 +2982,7 @@ async function onHandClick(c) {
     }
   }
   opts.push({ label: "キャンセル", value: null });
-  const note = landPlayedThisTurn && !c.joker ? "土地はこのターンすでに置いた" : "";
+  const note = landSetUsed >= landSetMax && !c.joker ? "土地はこのターンすでに置いた" : "";
   const v = await choose(cardLabel(c), opts, c, note);
   if (!uiMain) return;   // 選んでいる間に状況が変わった場合
   if (v === "land") act({ k: "main", t: "land", card: c.id });
@@ -3033,8 +3042,8 @@ document.getElementById("btn-end").addEventListener("click", () => {
     return;
   }
   if (ruleMode === "original" && oPhase) {
-    if (oPhase.phase === "attack") { act({ k: "oattacks", list: pendingAttacks }); pendingAttacks = []; selAttacker = null; provSel = null; }
-    else if (oPhase.phase === "main1" || oPhase.phase === "main2") act({ k: "omain", t: "done" });
+    if (oPhase.phase === "attack") { act({ k: "oattacks", t: "attacks", list: pendingAttacks }); pendingAttacks = []; selAttacker = null; provSel = null; }
+    else if (oPhase.phase === "main2") act({ k: "omain", t: "done" });
     else if (oPhase.phase === "block") { act({ k: "oblocks", t: "blocks", list: pendingBlocks }); pendingBlocks = []; selTargetAtt = null; }
     return;
   }
@@ -3305,7 +3314,7 @@ function render() {
   const yugi = ruleMode === "yugi";
   const duema = ruleMode === "duema";
   const poke = ruleMode === "poke";
-  const PHASE_NAME = { untap: "アンタップ", main1: "第1メイン", attack: "アタック", block: "ブロック", battle: "戦闘", main2: "第2メイン", clean: "クリンナップ",
+  const PHASE_NAME = { untap: "アンタップ", attack: "アタック", block: "ブロック", battle: "戦闘", main2: "メイン",
                        ydraw: "ドロー", ymain: "メイン", ybattle: "バトル",
                        pdraw: "ドロー", pmain: "メイン", pattack: "バトル" };
   document.getElementById("turn-ind").textContent =
@@ -3335,7 +3344,7 @@ function render() {
     const myTurn = turnP === myIdx;
     pb.classList.toggle("myturn", myTurn);
     const cp = oPhase ? oPhase.phase : null;
-    for (const [ph, id] of [["untap","pb-untap"],["main1","pb-main1"],["attack","pb-attack"],["block","pb-block"],["battle","pb-battle"],["main2","pb-main2"],["clean","pb-clean"]]) {
+    for (const [ph, id] of [["untap","pb-untap"],["attack","pb-attack"],["block","pb-block"],["battle","pb-battle"],["main2","pb-main2"]]) {
       const el = document.getElementById(id);
       const mine = ph === "block" ? !myTurn : myTurn;   // ブロックだけ相手の行動
       el.classList.toggle("orange", mine);
@@ -3615,7 +3624,7 @@ function render() {
   const handOk = uiMain && winner === null &&
     (poke ? (oPhase && oPhase.phase === "pmain")
      : yugi ? (oPhase && oPhase.phase === "ymain")
-     : (!original || !oPhase || oPhase.phase === "main1" || oPhase.phase === "main2" ||
+     : (!original || !oPhase || oPhase.phase === "attack" || oPhase.phase === "main2" ||
         (oPhase.phase === "block" && oPhase.actor === myIdx)));
   const hz = document.getElementById("hand-zone"); hz.innerHTML = "";
   me.hand.forEach(c => {
@@ -3650,10 +3659,9 @@ function render() {
     btn.classList.toggle("final", oPhase.phase === "ybattle" || (oPhase.phase === "ymain" && skipBattle));
   } else if (original && oPhase) {
     btn.textContent = {
-      main1: "第1メインを終えてアタックへ",
       attack: `攻撃を確定(${pendingAttacks.length}件)`,
       block: `ブロックを確定(${pendingBlocks.length}件)`,
-      main2: "第2メインを終えてターンエンド",
+      main2: "メインを終えてターンエンド",
     }[oPhase.phase] || "―";
     btn.classList.toggle("final", oPhase.phase === "main2");   // ターン終了に至るボタンはオレンジ
   } else {
