@@ -85,6 +85,11 @@
   }
   /* 遊戯王: 攻撃済みモンスター */
   .card.spent { filter: grayscale(.5) brightness(.75); }
+  /* マジック: ♦Aの+X/+X修整 */
+  .card .buffb {
+    position: absolute; right: 2px; top: 16px; font-size: 9px; font-weight: 800;
+    background: #2e7d32; color: var(--paper); border-radius: 4px; padding: 1px 3px;
+  }
   /* ポケカ: エネルギーと進化段数 */
   .echips { display: flex; gap: 2px; justify-content: center; margin-top: 3px; font-size: 13px; line-height: 1; }
   .echips span { background: var(--paper); color: var(--ink); border-radius: 4px; padding: 1px 2px; box-shadow: 0 1px 2px rgba(0,0,0,.4); }
@@ -439,15 +444,15 @@
     <div class="body" id="rules-original" style="display:none">
       54枚フルデッキ(4色×13+JOKER2枚)同士の1対1。<b>初手7枚・シールドなし・勝利条件はデッキアウトのみ</b>(山札0枚で即敗北・両者同時なら引き分け)。先攻後攻はランダム、後攻は1回フリーマリガン可。<b>先攻の1ターン目はアンタップ&ドローを飛ばす</b>。敗者の手札は公開される。<br><br>
       <b>フェイズ進行</b>(毎ターン): ☀→⚔→⛨→✦→⚚<br>
-      ☀<b>クリンナップ&amp;アンタップ&amp;ドロー</b>(敵味方全ての戦闘ダメージ回復→アンタップ→ドロー)→ ⚔<b>アタック</b>(<b>土地・呪文・召喚も可能</b>+攻撃を全て宣言)→ ⛨<b>ブロック</b>(<b>相手が</b>ブロック指定+♥の瞬速も使える)→ ✦<b>戦闘解決</b> → ⚚<b>メイン</b>(土地・呪文・召喚)=ターン終了<br><br>
+      ☀<b>クリンナップ&amp;アンタップ&amp;ドロー</b>(敵味方全ての戦闘ダメージ回復→アンタップ→ドロー)→ ⚔<b>アタック</b>(<b>土地・呪文・召喚も可能</b>+攻撃を全て宣言)→ ⛨<b>ブロック</b>(<b>相手が</b>ブロック指定+♥瞬速召喚・A呪文も使える)→ ✦<b>戦闘解決</b> → ⚚<b>メイン</b>(土地・呪文・召喚)=ターン終了<br><br>
       <b>攻撃</b>: タップ中の敵クリーチャーか、プレイヤー本体。どちらも複数のクリーチャーで攻撃できる。本体に通ると数字ぶん相手の山札が墓地へ<br>
       <b>多重ブロック可</b>: 1体の攻撃を複数のクリーチャーでブロックできる。攻撃側のダメージは<b>数字の大きいブロッカーへ優先して致死分ずつ割り振られ</b>、余りは次へ(例: ♥Qを♠3と♦8でブロック→♦8に8点、♠3に4点)。ブロッカー全員のパワーが攻撃側に返る<br>
       <b>ダメージは次のクリンナップ(次ターンのアンタップ直前)まで蓄積</b>(数字以上で破壊)。<b>召喚酔いあり</b>(出したターンは攻撃不可)。<b>タップ状態で戦闘フェイズを終えたクリーチャーはパワー0</b>(アンタップで回復)<br><br>
-      <b>A(エース)はクリーチャーではなく呪文</b>(コストは通常通り 自スート1+無指定1。土地にもできる):<br>
-      ・♥A【瞬速】: 対象のパワーX以下のクリーチャー1体を山札の一番上に戻す(X=自分の墓地の枚数)<br>
-      ・♣A: 自分の土地X枚を選んで手札に加える<br>
-      ・♦A: カードをX枚引く(X=相手のクリーチャー数-自分のクリーチャー数)<br>
-      ・♠A: 自分の山札の上からX枚を墓地に落とす → 全クリーチャーは-X/-X(X点のダメージとして処理)<br><br>
+      <b>A(エース)はクリーチャーではなくインスタント呪文</b>(コスト=自スート1マナ+Xマナ。相手のブロックフェイズでも唱えられる。土地にもできる):<br>
+      ・♥A: 墓地の上からX枚を山札に混ぜて切り直す(墓地の枚数が上限)<br>
+      ・♠A: 対象のクリーチャー1体にX点ダメージ<br>
+      ・♣A: 対象の自分の土地X枚を手札に戻す<br>
+      ・♦A: 対象のクリーチャー1体は+X/+Xの修整を受ける(次のクリンナップまで)<br><br>
       <b>スート能力</b>: ♠<b>挑戦</b>(攻撃時、アンタップの敵1体を強制的にブロックへ参加させる。複数ブロック時は挑戦対象へ最優先でダメージ)/ ♥<b>瞬速</b>(相手のブロックフェイズに召喚できる)/ ♦<b>警戒</b>(各戦闘フェイズ後にアンタップ)/ ♣<b>速攻</b>(召喚酔いしない)<br>
       <b>挑戦の操作</b>: ♠アタッカーを選ぶ → アンタップの敵をクリックで挑戦対象を指定 → 本体かタップ中の敵をクリックで攻撃先を確定(挑戦を使わないなら直接攻撃先をクリック)<br>
       <b>絵札(J/Q/K)の追加能力</b>: ♣<b>猪突</b>(2体以上のクリーチャーにはブロックされない)/ ♠<b>貫通</b>(余剰戦闘ダメージが当初の攻撃対象へ)/ ♦<b>飛行</b>(飛行を持たないクリーチャーにはブロックされない)/ ♥<b>絆魂</b>(与えたダメージぶん、墓地の上から山札に加えて切り直す。墓地の枚数が上限)<br><br>
@@ -734,9 +739,10 @@ function lifelink(pi, cre, dealt) {
 
 function battleNumbers(aCre, bCre) {
   const a = aCre.card, b = bCre.card;
-  const ap = aCre.pz ? 0 : a.rank + faceBonus(a, b);
-  const bp = bCre.pz ? 0 : b.rank + faceBonus(b, a);
-  const at = a.rank, bt = b.rank;
+  const ab = aCre.buff || 0, bb = bCre.buff || 0;   // ♦Aの+X/+X(クリンナップまで)
+  const ap = aCre.pz ? 0 : a.rank + ab + faceBonus(a, b);
+  const bp = bCre.pz ? 0 : b.rank + bb + faceBonus(b, a);
+  const at = a.rank + ab, bt = b.rank + bb;
   return {
     ap, at, bp, bt,
     aDies: (aCre.dmg || 0) + bp >= at,
@@ -1116,7 +1122,7 @@ async function runOriginalTurns(token, secondP) {
     if (turnNo === 1 && cur === firstP) {
       log(`── ${players[cur].name} のターン1 ── 先攻はアンタップフェイズを飛ばす`);
     } else {
-      players.forEach(p => p.field.forEach(f => { f.dmg = 0; }));   // クリンナップ: 敵味方すべての戦闘ダメージを回復
+      players.forEach(p => p.field.forEach(f => { f.dmg = 0; f.buff = 0; }));   // クリンナップ: 全ダメージ回復+修整の消滅
       players[cur].lands.forEach(l => { l.tapped = false; });
       players[cur].field.forEach(f => { f.tapped = false; f.sick = false; f.pz = false; });
       players[cur].hand.push(players[cur].deck.pop());
@@ -1153,7 +1159,7 @@ async function runOriginalTurns(token, secondP) {
     const preAlive = declaredAttacks.filter(at =>
       fieldById(cur, at.cre) && (at.tt !== "cre" || fieldById(def, at.tv)));
     const defCanAct = (preAlive.length && players[def].field.some(f => !f.tapped)) ||
-                      players[def].hand.some(c => !c.joker && c.suit === 1);   // ♥瞬速召喚と♥A呪文のみ
+                      players[def].hand.some(c => !c.joker && (c.suit === 1 || c.rank === 1));   // ♥瞬速召喚とA呪文(インスタント)
     oPhase = { phase: "block", actor: def }; render();
     if (defCanAct) {
       for (;;) {
@@ -1230,7 +1236,7 @@ async function runOriginalTurns(token, secondP) {
         log(`${players[def].name}: ${bls.map(b => cardLabel(b.card)).join(" ")} で ${cardLabel(atkCre.card)} をブロック!`);
         await battleMulti(cur, atkCre, def, bls, at);
       } else if (at.tt === "player") {
-        const n = atkCre.card.rank;
+        const n = atkCre.card.rank + (atkCre.buff || 0);
         const milled = players[def].deck.splice(Math.max(0, players[def].deck.length - n), n);
         players[def].grave.push(...milled);
         sfx("clash");
@@ -2084,25 +2090,25 @@ async function battleMulti(atkPi, atkCre, defPi, blockers, at) {
   const rest = blockers.filter(b => b !== provoked).sort((a, b) => b.card.rank - a.card.rank);
   const sorted = provoked ? [provoked, ...rest] : rest;
   const pierce = hasPierce(atkCre);   // ♠絵札の貫通: 各ブロッカーに致死分のみ、余剰は当初の対象へ
-  const initialPool = atkCre.pz ? 0 : atkCre.card.rank + faceBonus(atkCre.card, sorted[0].card);
+  const initialPool = atkCre.pz ? 0 : atkCre.card.rank + (atkCre.buff || 0) + faceBonus(atkCre.card, sorted[0].card);
   let pool = initialPool;
   const assigns = [];
   sorted.forEach((b, i) => {
-    const lethal = Math.max(0, b.card.rank - (b.dmg || 0));
+    const lethal = Math.max(0, b.card.rank + (b.buff || 0) - (b.dmg || 0));
     const last = i === sorted.length - 1;
     const assign = (last && !pierce) ? pool : Math.min(pool, lethal);
     b.dmg = (b.dmg || 0) + assign;
     pool -= assign;
     assigns.push(`${cardLabel(b.card)}に${assign}点`);
   });
-  const counter = blockers.reduce((s, b) => s + (b.pz ? 0 : b.card.rank + faceBonus(b.card, atkCre.card)), 0);
+  const counter = blockers.reduce((s, b) => s + (b.pz ? 0 : b.card.rank + (b.buff || 0) + faceBonus(b.card, atkCre.card)), 0);
   atkCre.dmg = (atkCre.dmg || 0) + counter;
   log(`割り振り: ${assigns.join("、")} / 反撃: ${cardLabel(atkCre.card)}に合計${counter}点`);
-  const atkDies = atkCre.dmg >= atkCre.card.rank;
-  const firstDies = sorted[0].dmg >= sorted[0].card.rank;
+  const atkDies = atkCre.dmg >= atkCre.card.rank + (atkCre.buff || 0);
+  const firstDies = sorted[0].dmg >= sorted[0].card.rank + (sorted[0].buff || 0);
   await showBattleFx(atkCre, sorted[0], atkDies, firstDies);
   for (const b of blockers) {
-    if (b.dmg >= b.card.rank) destroy(defPi, b);
+    if (b.dmg >= b.card.rank + (b.buff || 0)) destroy(defPi, b);
   }
   if (atkDies) destroy(atkPi, atkCre);
   let dealt = initialPool - pool;
@@ -2121,13 +2127,13 @@ async function battleMulti(atkPi, atkCre, defPi, blockers, at) {
         t.dmg = (t.dmg || 0) + pool;
         dealt += pool;
         log(`♠貫通! 余剰${pool}点 → ${cardLabel(t.card)}`);
-        if (t.dmg >= t.card.rank) destroy(defPi, t);
+        if (t.dmg >= t.card.rank + (t.buff || 0)) destroy(defPi, t);
       }
     }
   }
   // ♥絆魂(攻撃側・ブロッカー側とも)
   lifelink(atkPi, atkCre, dealt);
-  for (const b of blockers) lifelink(defPi, b, b.pz ? 0 : b.card.rank + faceBonus(b.card, atkCre.card));
+  for (const b of blockers) lifelink(defPi, b, b.pz ? 0 : b.card.rank + (b.buff || 0) + faceBonus(b.card, atkCre.card));
 }
 
 /* 1対1の一発勝負(蓄積ダメージなし) */
@@ -2156,6 +2162,83 @@ async function applyMainO(pi, a) {
       spendJoker(pi, jk, "モックスジョーカー");
       landSetMax++;
       log(`${p.name}: このターンの土地セット権が+1された(使用${landSetUsed}/${landSetMax})`);
+      return;
+    }
+    case "mishra": { // ミシュラズジョーカー: 0マナ呪文、1枚引く
+      const jk = handById(pi, a.jk);
+      if (!jk || !jk.joker) return;
+      spendJoker(pi, jk, "ミシュラズジョーカー");
+      if (p.deck.length) p.hand.push(p.deck.pop());
+      log(`${p.name}: 1枚ドロー(山札${p.deck.length})`);
+      render();
+      await checkDeckOut();
+      return;
+    }
+    case "lotus": {  // ロータスジョーカー: 相手より土地が少ないときセット権を使わずセット。タップで無色3点、ターン終了時に破壊
+      const jk = handById(pi, a.jk);
+      if (!jk || !jk.joker || p.lands.length >= o.lands.length) return;
+      removeFromHand(p, jk);
+      p.lands.push({ card: jk, tapped: false, lotus: true });
+      sfx("land");
+      log(`${p.name}: ロータスジョーカーをセットした(無色3マナ・ターン終了時に破壊)`);
+      return;
+    }
+    case "summon": await applySummonO(pi, a); return;
+    // ===== Aの呪文(マジック): すべてインスタント(瞬速)。コスト=自スート1マナ+Xマナ。解決後に墓地へ =====
+    case "aceh": {  // ♥A: 墓地の上からX枚を山札に混ぜてシャッフル(墓地の枚数が上限)
+      const c = handById(pi, a.card);
+      const X = Math.max(1, a.x | 0);
+      if (!c || c.joker || c.rank !== 1 || c.suit !== 1) return;
+      if (!castAceX(pi, a, c, 1 + X)) return;
+      const n = Math.min(X, p.grave.length);
+      if (n > 0) {
+        p.deck.push(...p.grave.splice(p.grave.length - n, n));
+        shuffle(p.deck);
+      }
+      log(`♥A: 墓地${n}枚を山札に混ぜて切り直した(山札${p.deck.length})`);
+      p.grave.push(c);
+      return;
+    }
+    case "aces": {  // ♠A: 対象のクリーチャー1体にX点ダメージ
+      const c = handById(pi, a.card);
+      const X = Math.max(1, a.x | 0);
+      if (!c || c.joker || c.rank !== 1 || c.suit !== 0) return;
+      const owner = fieldById(pi, a.tgt) ? pi : fieldById(1 - pi, a.tgt) ? 1 - pi : null;
+      const t = owner === null ? null : fieldById(owner, a.tgt);
+      if (!t) return;
+      if (!castAceX(pi, a, c, 1 + X)) return;
+      t.dmg = (t.dmg || 0) + X;
+      log(`♠A: ${cardLabel(t.card)} に${X}点ダメージ(蓄積${t.dmg})`);
+      if (t.dmg >= t.card.rank + (t.buff || 0)) destroy(owner, t);
+      p.grave.push(c);
+      render();
+      return;
+    }
+    case "acec": {  // ♣A: 対象の自分の土地X枚を手札に戻す
+      const c = handById(pi, a.card);
+      const ls = (a.lands || []).map(id => landById(pi, id)).filter(Boolean);
+      if (!c || c.joker || c.rank !== 1 || c.suit !== 3 || !ls.length) return;
+      if (!castAceX(pi, a, c, 1 + ls.length)) return;
+      for (const l of ls) {
+        p.lands = p.lands.filter(x => x !== l);
+        if (l.lotus) p.grave.push(l.card); else p.hand.push(l.card);   // ロータスは土地を離れると砕ける
+      }
+      log(`♣A: 土地${ls.length}枚を手札に戻した`);
+      p.grave.push(c);
+      return;
+    }
+    case "aced": {  // ♦A: 対象のクリーチャー1体に+X/+X(次のクリンナップまで)
+      const c = handById(pi, a.card);
+      const X = Math.max(1, a.x | 0);
+      if (!c || c.joker || c.rank !== 1 || c.suit !== 2) return;
+      const owner = fieldById(pi, a.tgt) ? pi : fieldById(1 - pi, a.tgt) ? 1 - pi : null;
+      const t = owner === null ? null : fieldById(owner, a.tgt);
+      if (!t) return;
+      if (!castAceX(pi, a, c, 1 + X)) return;
+      t.buff = (t.buff || 0) + X;
+      log(`♦A: ${cardLabel(t.card)} は+${X}/+${X}の修整を受けた(次のクリンナップまで)`);
+      p.grave.push(c);
+      render();
       return;
     }
     case "mishra": { // ミシュラズジョーカー: 0マナ呪文、1枚引く
@@ -2232,14 +2315,17 @@ async function applyMainO(pi, a) {
   }
 }
 
-/* A呪文の支払い共通処理(手動支払い対応) */
-function castAcePay(pi, a, c) {
+/* A呪文の支払い共通処理(コスト=自スート1+X。手動支払い対応)。支払えなければ false */
+function castAceX(pi, a, c, total) {
   const p = players[pi];
-  if (!payWith(p, c.suit, costOf(c), a.pays)) pay(p, c.suit, costOf(c));
+  if (!payWith(p, c.suit, total, a.pays)) {
+    if (!canPay(p, c.suit, total)) return false;
+    pay(p, c.suit, total);
+  }
   removeFromHand(p, c);
-  p.grave.push(c);
   sfx("joker");
-  log(`${p.name}: ${cardLabel(c)} の呪文を唱えた`);
+  log(`${p.name}: ${cardLabel(c)} の呪文を唱えた(コスト${total})`);
+  return true;
 }
 
 /* ===== JOKER呪文の実体(デュエマ・マジック共通) ===== */
@@ -2434,12 +2520,13 @@ function aiDecide(pi, kind, ctx) {
   if (kind === "oblocks") {
     const p = players[pi];
     const attackers2 = declaredAttacks.map(at => fieldById(1 - pi, at.cre)).filter(Boolean);
-    // ♥A(瞬速): 大物アタッカーを山札の一番上に戻す(X=墓地枚数+このA)
-    const aceH = p.hand.find(c => !c.joker && c.rank === 1 && c.suit === 1);
-    if (aceH && attackers2.length && canPay(p, 1, costOf(aceH))) {
+    // ♠A(インスタント): 大物アタッカーをX点火力で落とす
+    const aceS = p.hand.find(c => !c.joker && c.rank === 1 && c.suit === 0);
+    if (aceS && attackers2.length) {
       const big = [...attackers2].sort((a, b) => b.card.rank - a.card.rank)[0];
-      if (big.card.rank >= 6 && (big.pz ? 0 : big.card.rank) <= p.grave.length + 1) {
-        return { k: "oblocks", t: "aceh", card: aceH.id, tgt: big.card.id };
+      const need = Math.max(1, big.card.rank + (big.buff || 0) - (big.dmg || 0));
+      if (big.card.rank >= 6 && canPay(p, 0, 1 + need)) {
+        return { k: "oblocks", t: "aces", card: aceS.id, x: need, tgt: big.card.id };
       }
     }
     // ♥瞬速召喚: 攻撃が来ていれば、出せる♥を強い順に出して待ち伏せる(Aは呪文なので除外)
@@ -2613,16 +2700,20 @@ function aiOMain(pi) {   // 相手ターン中のメイン: 土地→呪文→�
       return { t: "mishra", jk: jk.id };
     }
   }
-  // ♦A: 盤面差があるならドローに変える
-  const aceD = p.hand.find(c => !c.joker && c.rank === 1 && c.suit === 2);
-  if (aceD && o.field.length - p.field.length >= 2 && p.deck.length >= 8 && canPay(p, 2, costOf(aceD))) {
-    return { t: "aced", card: aceD.id };
-  }
-  // ♠A: 自分の盤面が空で相手が並べているなら流す(自分の山札と相談)
+  // ♠A(インスタント): 相手の大物をX点火力で除去
   const aceS = p.hand.find(c => !c.joker && c.rank === 1 && c.suit === 0);
-  if (aceS && p.field.length === 0 && o.field.length >= 2 && canPay(p, 0, costOf(aceS))) {
-    const need = Math.max(...o.field.map(f => f.card.rank - (f.dmg || 0)));
-    if (p.deck.length - need >= 10) return { t: "aces", card: aceS.id, x: need };
+  if (aceS) {
+    const tgt = o.field.map(f => ({ f, need: Math.max(1, f.card.rank + (f.buff || 0) - (f.dmg || 0)) }))
+      .filter(x => x.f.card.rank >= 7 && x.need <= 6 && canPay(p, 0, 1 + x.need))
+      .sort((a, b) => b.f.card.rank - a.f.card.rank)[0];
+    if (tgt) return { t: "aces", card: aceS.id, x: tgt.need, tgt: tgt.f.card.id };
+  }
+  // ♥A: 山札が細くなったら墓地をX枚戻す
+  const aceH = p.hand.find(c => !c.joker && c.rank === 1 && c.suit === 1);
+  if (aceH && p.deck.length <= 12 && p.grave.length >= 6) {
+    let mx = 0;
+    for (let x = Math.min(10, p.grave.length); x >= 1; x--) if (canPay(p, 1, 1 + x)) { mx = x; break; }
+    if (mx >= 3) return { t: "aceh", card: aceH.id, x: mx };
   }
   // 召喚(出せる限り最強から)。♥は瞬速のため相手のブロックフェイズまで温存する。Aは呪文なので除外
   const s = p.hand.filter(c => !c.joker && c.rank !== 1 && c.suit !== 1 && canPay(p, c.suit, costOf(c))).sort((a, b) => b.rank - a.rank)[0];
@@ -2702,12 +2793,12 @@ function aiOBlocks(pi) {
   const list = [];
   const used = new Set();
   const freeAll = () => p.field.filter(f => !f.tapped && !used.has(f.card.id));
-  const effPow = (b, oppCard) => b.pz ? 0 : b.card.rank + faceBonus(b.card, oppCard);
+  const effPow = (b, oppCard) => b.pz ? 0 : b.card.rank + (b.buff || 0) + faceBonus(b.card, oppCard);
   for (const at of [...alive].sort((a, b) => (fieldById(atkPi, b.cre)?.card.rank || 0) - (fieldById(atkPi, a.cre)?.card.rank || 0))) {
     const atk = fieldById(atkPi, at.cre);
     if (!atk) continue;
     const free = () => hasFlying(atk) ? freeAll().filter(hasFlying) : freeAll();   // ♦飛行は飛行でしかブロックできない
-    const lethal = Math.max(0, atk.card.rank - (atk.dmg || 0));
+    const lethal = Math.max(0, atk.card.rank + (atk.buff || 0) - (atk.dmg || 0));
     // 1) 単体で討ち取って生き残るブロック
     const single = free().filter(x => { const n = battleNumbers(atk, x); return n.aDies && !n.bDies; })
       .sort((x, y) => x.card.rank - y.card.rank)[0];
@@ -2778,7 +2869,7 @@ function humanPrompt(pi, kind, ctx) {
   }
   if (kind === "oblocks") {
     uiMain = true; pendingBlocks = []; selTargetAtt = null;
-    setHint("ブロックフェイズ: ブロックさせる自分のクリーチャー→相手の⚔の順にクリック(1体の攻撃に複数ブロック可)。♥瞬速召喚・JOKER呪文も使える");
+    setHint("ブロックフェイズ: ブロックさせる自分のクリーチャー→相手の⚔の順にクリック(1体の攻撃に複数ブロック可)。♥瞬速召喚・A呪文(インスタント)も使える");
     render();
     return;
   }
@@ -2899,46 +2990,58 @@ function blockOutcomeText(attacker, b) {
   return "両者生存";
 }
 
-/* A呪文の送信(手動支払い対応) */
-async function actSpell(kind, c, body) {
+/* A呪文の送信(手動支払い対応・コスト可変) */
+async function actSpell(kind, c, body, cost) {
   const a = { k: kind, card: c.id, ...body };
   if (manualPay) {
-    const ids = await requestPays(c.suit, costOf(c));
+    const ids = await requestPays(c.suit, cost);
     if (!ids) return;
     a.pays = ids;
   }
   act(a);
 }
 
-/* A呪文のUIフロー(メイン/ブロックフェイズ共通) */
+/* X選択モーダル */
+async function chooseAceX(c, maxX, desc) {
+  if (maxX < 1) { setHint("マナが足りない"); return null; }
+  const opts = Array.from({ length: maxX }, (_, i) => ({ label: `X = ${i + 1}(コスト${i + 2})`, value: i + 1 }));
+  opts.push({ label: "キャンセル", value: null });
+  return await choose(`${cardLabel(c)}: Xを選ぶ — ${desc}`, opts, c);
+}
+
+/* A呪文のUIフロー(すべてインスタント: メイン/アタック/ブロックフェイズで使える) */
 async function aceSpellUI(c, kind) {
   const p = players[myIdx], o = players[1 - myIdx];
-  if (c.suit === 1) {        // ♥A(瞬速): パワーX以下を山札の一番上へ
-    const X = p.grave.length + 1;   // 解決時にこのAが墓地に置かれてから数える
-    const cands = [...o.field, ...p.field].filter(f => (f.pz ? 0 : f.card.rank) <= X);
-    const t = await chooseCard(`♥A: パワー${X}以下のクリーチャー1体を山札の一番上に戻す(X=墓地の枚数)`,
-      cands.map(f => f.card), cands.length ? "" : "対象にできるクリーチャーがいない", "キャンセル");
+  let affordX = 0;
+  for (let x = 13; x >= 1; x--) if (canPay(p, c.suit, 1 + x)) { affordX = x; break; }
+  if (c.suit === 1) {        // ♥A: 墓地の上からX枚を山札へ混ぜる
+    const X = await chooseAceX(c, Math.min(affordX, p.grave.length), "墓地の上からX枚を山札に混ぜて切り直す");
+    if (!X) return;
+    await actSpell(kind, c, { t: "aceh", x: X }, 1 + X);
+  } else if (c.suit === 0) { // ♠A: 対象にX点
+    const X = await chooseAceX(c, affordX, "対象のクリーチャー1体にX点ダメージ");
+    if (!X) return;
+    const t = await chooseCard("♠A: ダメージを与えるクリーチャー", [...o.field, ...p.field].map(f => f.card), "", "キャンセル");
     if (!t) return;
-    await actSpell(kind, c, { t: "aceh", tgt: t.id });
-  } else if (c.suit === 3) { // ♣A: 土地X枚を手札へ
-    const ls = await chooseMulti("♣A: 手札に加える自分の土地を選ぶ", p.lands.map(l => l.card),
-      sel => ({ text: `${sel.length}枚を手札に加える`, ok: sel.length >= 1 }), "手札に加える", "キャンセル");
+    await actSpell(kind, c, { t: "aces", x: X, tgt: t.id }, 1 + X);
+  } else if (c.suit === 2) { // ♦A: 対象に+X/+X
+    const X = await chooseAceX(c, affordX, "対象のクリーチャー1体は+X/+Xの修整を受ける(次のクリンナップまで)");
+    if (!X) return;
+    const t = await chooseCard("♦A: 修整を与えるクリーチャー", [...p.field, ...o.field].map(f => f.card), "", "キャンセル");
+    if (!t) return;
+    await actSpell(kind, c, { t: "aced", x: X, tgt: t.id }, 1 + X);
+  } else {                   // ♣A: 自分の土地X枚を手札へ
+    const ls = await chooseMulti("♣A: 手札に戻す自分の土地を選ぶ(X=選んだ枚数)", p.lands.map(l => l.card),
+      sel => ({
+        text: `X=${sel.length} → コスト${1 + sel.length}` + (sel.length && canPay(p, 3, 1 + sel.length) ? "" : sel.length ? " — <b>マナが足りない</b>" : ""),
+        ok: sel.length >= 1 && canPay(p, 3, 1 + sel.length),
+      }), "手札に戻す", "キャンセル");
     if (!ls) return;
-    await actSpell(kind, c, { t: "acec", lands: ls.map(x => x.id) });
-  } else if (c.suit === 2) { // ♦A: X=クリーチャー数の差だけドロー
-    await actSpell(kind, c, { t: "aced" });
-  } else {                   // ♠A: X枚セルフミル → 全体-X/-X
-    const maxX = Math.min(13, p.deck.length - 1);
-    if (maxX < 1) { setHint("山札が足りない"); return; }
-    const opts = Array.from({ length: maxX }, (_, i) => ({ label: `X = ${i + 1}`, value: i + 1 }));
-    opts.push({ label: "キャンセル", value: null });
-    const v = await choose("♠A: 山札の上から何枚墓地に落とす?(全クリーチャーに-X/-X)", opts, c);
-    if (!v) return;
-    await actSpell(kind, c, { t: "aces", x: v });
+    await actSpell(kind, c, { t: "acec", lands: ls.map(x => x.id) }, 1 + ls.length);
   }
 }
 
-/* 召喚アクションの送信。手動支払いモードなら先に土地を選ばせ、選択をアクションに載せる */
+/* 召喚アクションの送信。手動支払いモードなら先に土地を選ばせ、選択をアクションに載せる *//* 召喚アクションの送信。手動支払いモードなら先に土地を選ばせ、選択をアクションに載せる */
 async function actSummon(kind, c, sacs) {
   const red = (sacs || []).reduce((t, x) => t + x.rank, 0);
   const remaining = Math.max(0, costOf(c) - red);
@@ -2956,10 +3059,10 @@ async function actSummon(kind, c, sacs) {
 async function onHandClickO(c) {
   const p = players[myIdx], o = players[1 - myIdx];
   if (oPhase && oPhase.phase === "block" && oPhase.actor === myIdx) {
-    // ブロックフェイズ中は♥の瞬速(召喚・♥A呪文)のみ使える
+    // ブロックフェイズ中は♥の瞬速召喚と、A呪文(インスタント)が使える
     if (c.joker) { setHint("JOKERはブロックフェイズでは使えない"); return; }
-    if (c.suit !== 1) { setHint("ブロックフェイズで使えるのは♥(瞬速)のみ"); return; }
     if (c.rank === 1) { await aceSpellUI(c, "oblocks"); return; }
+    if (c.suit !== 1) { setHint("ブロックフェイズで使えるのは♥(瞬速)とA呪文(インスタント)のみ"); return; }
     {
       const opts = [{
         label: `瞬速で召喚する — コスト${costOf(c)}(${SUITS[c.suit]}1+無指定${c.rank}) ${c.rank}/${c.rank}`,
@@ -3004,16 +3107,16 @@ async function onHandClickO(c) {
     if (!c.joker && c.rank === 1) {
       // A: クリーチャーではなくスート別の呪文
       const desc = {
-        1: "対象のパワーX以下のクリーチャー1体を山札の一番上へ(X=自分の墓地の枚数)【瞬速】",
-        3: "自分の土地X枚を選んで手札に加える",
-        2: "カードをX枚引く(X=相手のクリーチャー数-自分のクリーチャー数)",
-        0: "自分の山札の上からX枚墓地へ → 全クリーチャーに-X/-X",
+        1: "墓地の上からX枚を山札に混ぜて切り直す(墓地の枚数が上限)",
+        0: "対象のクリーチャー1体にX点ダメージ",
+        3: "対象の自分の土地X枚を手札に戻す",
+        2: "対象のクリーチャー1体は+X/+Xの修整を受ける(次のクリンナップまで)",
       }[c.suit];
-      const v = await choose(`${cardLabel(c)}(呪文)`, [
+      const v = await choose(`${cardLabel(c)}(インスタント)`, [
         { label: `土地に置く(${SUITS[c.suit]}マナ)`, value: "land", disabled: landSetUsed >= landSetMax },
-        { label: `呪文を唱える(コスト${costOf(c)}) — ${desc}`, value: "spell", primary: true, disabled: !canPay(p, c.suit, costOf(c)) },
+        { label: `呪文を唱える(${SUITS[c.suit]}1マナ+Xマナ) — ${desc}`, value: "spell", primary: true, disabled: !canPay(p, c.suit, 2) },
         { label: "キャンセル", value: null },
-      ], c, "Aはクリーチャーとして召喚できない");
+      ], c, "Aはクリーチャーとして召喚できない。呪文は相手のブロックフェイズでも唱えられる(インスタント)");
       if (!uiMain) return;
       if (v === "land") act({ k: mk, t: "land", card: c.id });
       if (v === "spell") await aceSpellUI(c, mk);
@@ -3411,7 +3514,8 @@ function cardEl(c, opts = {}) {
   }
   if (opts.pt) el.innerHTML += opts.yr
     ? `<span class="pt">${YR(c)}/${YR(c)}</span>`
-    : `<span class="pt">${opts.pz ? 0 : c.rank}/${c.rank}</span>`;
+    : `<span class="pt">${(opts.pz ? 0 : c.rank + (opts.buff || 0))}/${c.rank + (opts.buff || 0)}</span>`;
+  if (opts.buff > 0) el.innerHTML += `<span class="buffb">+${opts.buff}</span>`;
   if (opts.rmark) el.innerHTML += `<span class="rmark">R</span>`;
   if (opts.dmg > 0) el.innerHTML += `<span class="dmgb">-${opts.dmg}</span>`;
   return el;
@@ -3594,7 +3698,7 @@ function render() {
     slot.className = "slot" + ((yugi ? yDef : f.tapped) ? " tapped" : "");
     const el = yugi
       ? (f.down ? cardEl(null, { back: true }) : cardEl(f.card, { pt: true, yr: true }))
-      : cardEl(f.card, { pt: true, dmg: f.dmg, pz: f.pz });
+      : cardEl(f.card, { pt: true, dmg: f.dmg, pz: f.pz, buff: f.buff });
     el.dataset.cid = f.card.id;
     if (yugi ? yDef : f.tapped) el.classList.add("tapped");
     if (!yugi && f.sick) el.classList.add("sick");
@@ -3685,7 +3789,7 @@ function render() {
     slot.className = "slot" + ((yugi ? yDef : f.tapped) ? " tapped" : "");
     const el = yugi
       ? (f.down ? cardEl(f.card, { rmark: true }) : cardEl(f.card, { pt: true, yr: true }))
-      : cardEl(f.card, { pt: true, dmg: f.dmg, pz: f.pz });
+      : cardEl(f.card, { pt: true, dmg: f.dmg, pz: f.pz, buff: f.buff });
     el.dataset.cid = f.card.id;
     if (yugi ? yDef : f.tapped) el.classList.add("tapped");
     if (!yugi && f.sick) el.classList.add("sick");
