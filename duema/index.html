@@ -311,6 +311,51 @@
     100% { opacity: 0; transform: translateX(var(--fxx, 0px)) translateY(70px) scale(1.7) rotate(24deg); filter: brightness(.6); }
   }
 
+  /* ===== ストーリーモード ===== */
+  #story-overlay { background: #000; z-index: 60; }
+  #story-overlay .panel { background: #0a0a0c; border: 1px solid #26232e; }
+  .story-screen { display: none; width: 100%; height: 100%; align-items: center; justify-content: center; flex-direction: column; }
+  .story-screen.on { display: flex; }
+  #story-canvas {
+    image-rendering: pixelated; width: min(92vw, 640px); background: #000;
+    outline: 1px solid #16141c;
+    animation: storyFlicker 6.5s infinite;
+  }
+  @keyframes storyFlicker {
+    0%, 100% { filter: brightness(1); }
+    47% { filter: brightness(1); } 48% { filter: brightness(.88); } 49% { filter: brightness(1); }
+    73% { filter: brightness(1); } 74% { filter: brightness(.92); } 75% { filter: brightness(1); }
+  }
+  #story-dialog {
+    display: none; width: min(92vw, 640px); min-height: 74px; margin-top: 10px;
+    background: rgba(2,2,4,.96); border: 1px solid #3a3644; border-radius: 4px;
+    color: #cfc9c2; font-size: 14px; line-height: 1.9; letter-spacing: .06em;
+    padding: 12px 16px; cursor: pointer; user-select: none;
+  }
+  #story-dialog.on { display: block; }
+  #story-dialog .adv { float: right; color: #6a6472; animation: advBlink 1s infinite; }
+  @keyframes advBlink { 50% { opacity: 0; } }
+  #story-fade {
+    position: absolute; inset: 0; background: #000; pointer-events: none;
+    opacity: 0; transition: opacity 1.6s ease; z-index: 5;
+  }
+  .story-title { color: #b9b2a6; font-size: 22px; letter-spacing: .35em; font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; }
+  .story-sub { color: #5d5866; font-size: 12px; letter-spacing: .25em; margin-top: 14px; }
+  .story-note { color: #6a6472; font-size: 11px; margin-top: 18px; letter-spacing: .1em; }
+  .story-btns { display: flex; flex-direction: column; gap: 10px; margin-top: 22px; align-items: center; }
+  .story-btns button { min-width: 240px; background: #16141c; color: #cfc9c2; border: 1px solid #3a3644; }
+  .story-btns button:hover { border-color: #8a8494; }
+  .story-btns button.dim { opacity: .35; }
+  #story-name-input {
+    background: #0c0b10; border: 1px solid #3a3644; color: #e5dfd8; font-size: 16px;
+    padding: 10px 14px; border-radius: 4px; text-align: center; letter-spacing: .15em; width: 240px;
+  }
+  #story-dpad { display: flex; gap: 6px; margin-top: 10px; }
+  #story-dpad button { padding: 8px 16px; background: #101016; color: #8d8798; border: 1px solid #2c2936; font-size: 14px; }
+  #story-quit { position: absolute; right: 12px; bottom: 10px; font-size: 10px; color: #3f3b49; cursor: pointer; letter-spacing: .1em; }
+  #story-quit:hover { color: #8d8798; }
+  #story-go-text, #story-tbc-text { color: #b9b2a6; font-size: 16px; letter-spacing: .2em; line-height: 2.6; text-align: center; font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; }
+
   @media (max-width: 560px) {
     .card { width: 42px; height: 58px; }
     .card .st-b { font-size: 22px; }
@@ -392,6 +437,47 @@
       </marker>
     </defs>
   </svg>
+</div>
+
+<!-- ストーリーモード -->
+<div class="overlay" id="story-overlay">
+  <div class="story-screen" id="story-select">
+    <div class="story-title">アリス・イン・アンダーランド</div>
+    <div class="story-sub">— ルールを選択 —</div>
+    <div class="story-btns">
+      <button id="story-rule-magic">マジックルール</button>
+      <button class="dim" disabled>デュエマルール(準備中)</button>
+      <button class="dim" disabled>遊戯王ルール(準備中)</button>
+      <button class="dim" disabled>ポケカルール(準備中)</button>
+      <button id="story-back">タイトルへ戻る</button>
+    </div>
+  </div>
+  <div class="story-screen" id="story-name">
+    <div class="story-title">名前を入力してください</div>
+    <div class="story-btns">
+      <input type="text" id="story-name-input" maxlength="10" placeholder="なまえ">
+      <button id="story-name-ok">決定</button>
+    </div>
+    <div class="story-note">その名は、夢の中で呼ばれ続ける。</div>
+  </div>
+  <div class="story-screen" id="story-field">
+    <canvas id="story-canvas" width="240" height="176"></canvas>
+    <div id="story-dialog"><span id="story-dialog-text"></span><span class="adv">▼</span></div>
+    <div id="story-dpad">
+      <button data-d="l">←</button><button data-d="u">↑</button><button data-d="d">↓</button><button data-d="r">→</button>
+    </div>
+    <div class="story-note">移動: 矢印キー / WASD。文はクリックで進む</div>
+    <div id="story-quit">— 目を覚ますのをあきらめる —</div>
+  </div>
+  <div class="story-screen" id="story-go">
+    <div id="story-go-text"></div>
+    <div class="story-btns"><button id="story-go-btn" style="display:none">タイトルへ</button></div>
+  </div>
+  <div class="story-screen" id="story-tbc">
+    <div id="story-tbc-text"></div>
+    <div class="story-btns"><button id="story-tbc-btn" style="display:none">タイトルへ</button></div>
+  </div>
+  <div id="story-fade"></div>
 </div>
 
 <!-- 汎用モーダル -->
@@ -484,6 +570,7 @@
     </div>
     <div class="start-row">
       <button id="btn-cpu">CPU対戦</button>
+      <button id="btn-story" style="background:#16141c;color:#cfc9c2;border:1px solid #3a3644">ストーリーモード</button>
       <button id="btn-host">オンライン対戦: 部屋を作る</button>
       <div class="joinrow">
         <input type="text" id="join-code" maxlength="5" placeholder="コード">
@@ -942,6 +1029,7 @@ function win(pi, reason) {
   revealHand(rh, 1 - pi);   // 敗者の手札は公開される
   setTimeout(() => {
     sfx(pi === myIdx ? "win" : "lose");
+    if (story.active) { storyBattleEnd(pi); return; }
     document.getElementById("result-overlay").classList.add("show");
   }, 700);
 }
@@ -1017,6 +1105,7 @@ async function runGame(seed) {
     { name: myIdx === 0 ? "あなた" : (mode === "cpu" ? "CPU" : "相手"), deck: shuffle(buildDeck(0)),   hand: [], shields: [], lands: [], field: [], grave: [], traps: [], active: null, bench: [] },
     { name: myIdx === 1 ? "あなた" : (mode === "cpu" ? "CPU" : "相手"), deck: shuffle(buildDeck(200)), hand: [], shields: [], lands: [], field: [], grave: [], traps: [], active: null, bench: [] },
   ];
+  if (story.active) { players[myIdx].name = story.name || "あなた"; players[1 - myIdx].name = "ウサギ紳士"; }
   for (const p of players) {
     if (ruleMode === "duema") p.shields = p.deck.splice(0, 6);
     else p.shields = [];                       // マジック・遊戯王: シールドなし
@@ -1093,7 +1182,10 @@ function drawGame(reason) {
   rh.innerHTML = "";
   revealHand(rh, 0);   // 引き分けは両者の手札を公開
   revealHand(rh, 1);
-  setTimeout(() => document.getElementById("result-overlay").classList.add("show"), 700);
+  setTimeout(() => {
+    if (story.active) { storyBattleEnd(-1); return; }
+    document.getElementById("result-overlay").classList.add("show");
+  }, 700);
 }
 
 /* デッキ0枚 = 即敗北。呪文解決後などに呼ぶ。ゲームが終わったら true */
@@ -3990,6 +4082,320 @@ function drawArrows() {
 }
 window.addEventListener("resize", () => requestAnimationFrame(drawArrows));
 
+/* ================= ストーリーモード(アリス・イン・アンダーランド) ================= */
+const story = { active: false, name: "", room: 1, state: "idle", px: 7, py: 8, rabbitDead: false };
+const ST = { T: 16, W: 15, H: 11, RX: 7, RY: 4, DX: 7 };   // タイル・部屋サイズ・ウサギ/ドア位置
+
+function storyShow(screen) {
+  document.getElementById("story-overlay").classList.add("show");
+  for (const id of ["story-select", "story-name", "story-field", "story-go", "story-tbc"]) {
+    document.getElementById(id).classList.toggle("on", id === screen);
+  }
+}
+function storyFade(toBlack, ms = 1600) {
+  const f = document.getElementById("story-fade");
+  f.style.transition = `opacity ${ms}ms ease`;
+  f.style.opacity = toBlack ? "1" : "0";
+  return new Promise(r => setTimeout(r, TEST_AUTO ? 1 : ms + 60));
+}
+function storySetFade(v) {
+  const f = document.getElementById("story-fade");
+  f.style.transition = "none";
+  f.style.opacity = v ? "1" : "0";
+  void f.offsetHeight;   // reflow
+}
+
+/* ---- 台詞 ---- */
+const STORY_LINES_1 = n => [
+  `お目覚めですか、${n}。`,
+  "いえ、その逆かもしれませんね。",
+  "大変申し上げにくいのですが、",
+  "あなたは今、永遠の眠りにいます。",
+  "このお部屋で、あるお方を倒すまで、その眠りは解けません。",
+  "その名を、アリス様と呼びます。",
+  "アリス様があなたを検知しました。それがあなたが呼ばれた理由です。",
+  "負けたものはこの夢の国で、アリス様の傀儡となります。",
+  "アリス様と闘っていただく試験官として。",
+  "私も、ずっと、ここにいます。",
+  "起きていた頃の記憶が、あいまいになるほど長く。",
+  "この世界であなたが死んでも、この部屋に蘇ります。",
+  "あなたのそばに置かれたトランプは、あなた自身です。",
+  "あなたの気力、知力、そして命そのものです。",
+  "ゲームを行い、その山札がつきたとき、あなたは死にます。そして、アリス様の手下となります。",
+  "…理解、できないでしょう。",
+  "私にも、時間がかかりました。",
+  "しかし、先ほどのことを一通り経験して理解しました。",
+  "あなたと同じように呼ばれ、そして殺され、アリス様の下僕となりました。",
+  "何度も殺されて、理解しました。",
+  "私はもう、助からないことに。",
+  "アリス様を倒してください。",
+  "アリス様に挑み、勝つことだけが、唯一の助かる道です。",
+  "わかりましたか。",
+  "それでは、まずは私を殺してください。",
+  "よろしくお願いいたします。",
+];
+const STORY_LINES_2 = [
+  "おめでとうございます。",
+  "あなたは選ばれました。",
+  "ほかの人達は、選ばれませんでした。",
+  "アリス様は、もっと奥におられます。",
+  "それでは、私を殺して先に進んでください。",
+  "よろしくお願いいたします。",
+];
+
+let stDq = [], stCb = null, stTyping = null, stFullLine = "";
+function storyDialog(lines, cb) {
+  story.state = "dialog";
+  stDq = [...lines]; stCb = cb || null;
+  document.getElementById("story-dialog").classList.add("on");
+  storyNextLine();
+}
+function storyNextLine() {
+  const el = document.getElementById("story-dialog-text");
+  if (!stDq.length) {
+    document.getElementById("story-dialog").classList.remove("on");
+    el.textContent = "";
+    story.state = "field";
+    const cb = stCb; stCb = null;
+    if (cb) cb();
+    return;
+  }
+  stFullLine = stDq.shift();
+  if (TEST_AUTO) { el.textContent = stFullLine; return; }
+  el.textContent = "";
+  let i = 0;
+  clearInterval(stTyping);
+  stTyping = setInterval(() => {
+    el.textContent = stFullLine.slice(0, ++i);
+    if (i >= stFullLine.length) { clearInterval(stTyping); stTyping = null; }
+  }, 32);
+}
+function storyAdvance() {
+  if (story.state !== "dialog") return;
+  if (stTyping) {
+    clearInterval(stTyping); stTyping = null;
+    document.getElementById("story-dialog-text").textContent = stFullLine;
+    return;
+  }
+  storyNextLine();
+}
+
+/* ---- フィールド描画 ---- */
+function storyDraw() {
+  const cv = document.getElementById("story-canvas");
+  const ctx = cv.getContext("2d");
+  const { T, W, H, RX, RY, DX } = ST;
+  ctx.fillStyle = "#000"; ctx.fillRect(0, 0, cv.width, cv.height);
+  // 床(かすかなムラ)
+  for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+    ctx.fillStyle = ((x * 31 + y * 17) % 7 === 0) ? "#141318" : "#0d0c11";
+    ctx.fillRect(x * T, y * T, T, T);
+  }
+  // 壁
+  ctx.fillStyle = "#1d1a24";
+  ctx.fillRect(0, 0, W * T, T); ctx.fillRect(0, (H - 1) * T, W * T, T);
+  ctx.fillRect(0, 0, T, H * T); ctx.fillRect((W - 1) * T, 0, T, H * T);
+  ctx.fillStyle = "#25212e";
+  for (let x = 0; x < W; x++) { ctx.fillRect(x * T + 2, 4, T - 4, 2); ctx.fillRect(x * T + 2, (H - 1) * T + 4, T - 4, 2); }
+  // 上のドア
+  ctx.fillStyle = "#0b0810"; ctx.fillRect(DX * T - 2, 0, T + 4, T);
+  ctx.fillStyle = "#39281f"; ctx.fillRect(DX * T, 1, T, T - 2);
+  ctx.fillStyle = "#241812"; ctx.fillRect(DX * T + 2, 3, T - 4, T - 5);
+  ctx.fillStyle = "#5d4a34"; ctx.fillRect(DX * T + T - 5, T / 2, 2, 2);   // ノブ
+  // 部屋2: 背後(下壁)にたくさんの扉。自分の後ろだけ開いている
+  if (story.room === 2) {
+    for (let x = 1; x <= W - 2; x += 2) {
+      ctx.fillStyle = "#2c2018"; ctx.fillRect(x * T + 1, (H - 1) * T + 1, T - 2, T - 2);
+      ctx.fillStyle = "#1b1310"; ctx.fillRect(x * T + 3, (H - 1) * T + 3, T - 6, T - 6);
+    }
+    ctx.fillStyle = "#000"; ctx.fillRect(DX * T + 1, (H - 1) * T + 1, T - 2, T - 2);   // 開いた扉
+  }
+  // ウサギ紳士 or 死体
+  const rx = RX * T, ry = RY * T;
+  if (!story.rabbitDead) {
+    ctx.fillStyle = "#e8e2d8"; ctx.fillRect(rx + 5, ry - 7, 2, 7); ctx.fillRect(rx + 9, ry - 7, 2, 7);   // 耳
+    ctx.fillStyle = "#efe9df"; ctx.fillRect(rx + 4, ry, 8, 7);   // 顔
+    ctx.fillStyle = "#3a3540"; ctx.fillRect(rx + 6, ry + 3, 1, 2); ctx.fillRect(rx + 9, ry + 3, 1, 2);   // 悲しげな目
+    ctx.fillStyle = "#181622"; ctx.fillRect(rx + 3, ry + 7, 10, 8);   // 黒いスーツ
+    ctx.fillStyle = "#5d5866"; ctx.fillRect(rx + 7, ry + 7, 2, 3);    // タイ
+  } else {
+    ctx.fillStyle = "#3d0a0c";
+    ctx.beginPath(); ctx.ellipse(rx + 8, ry + 12, 13, 6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#2a070a";
+    ctx.beginPath(); ctx.ellipse(rx + 12, ry + 13, 6, 3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#181622"; ctx.fillRect(rx - 2, ry + 9, 12, 6);   // 倒れたスーツ
+    ctx.fillStyle = "#efe9df"; ctx.fillRect(rx + 10, ry + 9, 6, 6);   // 顔
+    ctx.fillStyle = "#e8e2d8"; ctx.fillRect(rx + 16, ry + 10, 6, 1); ctx.fillRect(rx + 16, ry + 13, 6, 1);   // 垂れた耳
+  }
+  // プレイヤー(俺)
+  const px = story.px * ST.T, py = story.py * ST.T;
+  ctx.fillStyle = "#20242c"; ctx.fillRect(px + 4, py - 3, 8, 5);       // 髪(後頭部=前を向いている)
+  ctx.fillStyle = "#c9b394"; ctx.fillRect(px + 5, py + 2, 6, 3);       // 首すじ
+  ctx.fillStyle = "#2b3442"; ctx.fillRect(px + 3, py + 5, 10, 9);      // 上着
+  ctx.fillStyle = "#1d232e"; ctx.fillRect(px + 3, py + 11, 4, 3); ctx.fillRect(px + 9, py + 11, 4, 3);
+  // ビネット
+  const g = ctx.createRadialGradient(cv.width / 2, cv.height / 2, 30, cv.width / 2, cv.height / 2, 165);
+  g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,.82)");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, cv.width, cv.height);
+}
+
+function storyTileAt(x, y) {
+  const { W, H, RX, RY, DX } = ST;
+  if (y === 0 && x === DX) return "door";
+  if (x <= 0 || x >= W - 1 || y <= 0 || y >= H - 1) return "wall";
+  if (x === RX && y === RY && !story.rabbitDead) return "rabbit";
+  return "floor";
+}
+
+function storyMove(dx, dy) {
+  if (!story.active || story.state !== "field") return;
+  const nx = story.px + dx, ny = story.py + dy;
+  const t = storyTileAt(nx, ny);
+  if (t === "wall") return;
+  if (t === "rabbit") {
+    storyDialog(["それでは、私を殺してください。", "よろしくお願いいたします。"], storyStartBattle);
+    return;
+  }
+  if (t === "door") {
+    if (!story.rabbitDead) { storyDialog(["ドアは固く閉ざされている。"]); return; }
+    storyNextRoom();
+    return;
+  }
+  story.px = nx; story.py = ny;
+  storyDraw();
+}
+
+/* ---- 進行 ---- */
+async function storyEnterRoom(n) {
+  story.room = n; story.rabbitDead = false;
+  story.px = ST.RX; story.py = 8;
+  story.state = "fade";
+  storyShow("story-field");
+  storySetFade(1);
+  storyDraw();
+  await storyFade(false, 1800);
+  const lines = n === 1 ? STORY_LINES_1(story.name) : STORY_LINES_2;
+  storyDialog(lines, storyStartBattle);
+}
+
+function storyStartBattle() {
+  story.state = "battle";
+  document.getElementById("story-overlay").classList.remove("show");
+  ruleMode = "original";
+  mode = "cpu"; myIdx = 0;
+  ac();
+  if (transport) { try { transport.stop(); } catch (e) {} }
+  transport = new LocalTransport();
+  transport.start(onActionArrived);
+  runGame(Math.floor(Math.random() * 2 ** 31));
+}
+
+function storyBattleEnd(winnerPi) {
+  if (winnerPi === myIdx) {
+    story.rabbitDead = true;
+    story.state = "field";
+    storyShow("story-field");
+    storySetFade(1);
+    storyDraw();
+    storyFade(false, 1400).then(() => {
+      storyDialog(["……。", "ウサギ紳士は、静かに動かなくなった。", "部屋の奥で、ドアの錠が外れる音がした。"]);
+    });
+  } else {
+    story.state = "over";
+    storyShow("story-go");
+    const el = document.getElementById("story-go-text");
+    document.getElementById("story-go-btn").style.display = "none";
+    el.innerHTML = "";
+    storySetFade(0);
+    const lines = [`${story.name} は、死んだ。`, "そして、アリス様の傀儡となった。", "もう、目を覚ますことはない。"];
+    let i = 0;
+    const step = () => {
+      if (i < lines.length) {
+        el.innerHTML += (i ? "<br>" : "") + lines[i++];
+        setTimeout(step, TEST_AUTO ? 1 : 1400);
+      } else {
+        document.getElementById("story-go-btn").style.display = "";
+      }
+    };
+    setTimeout(step, TEST_AUTO ? 1 : 600);
+  }
+}
+
+async function storyNextRoom() {
+  story.state = "fade";
+  await storyFade(true, 1200);
+  if (story.room === 1) {
+    storySetFade(1);
+    await storyEnterRoom(2);
+  } else {
+    storyShow("story-tbc");
+    storySetFade(0);
+    const el = document.getElementById("story-tbc-text");
+    el.innerHTML = "アリス・イン・アンダーランド<br><span style='font-size:12px;color:#5d5866;letter-spacing:.3em'>to be continued</span>";
+    document.getElementById("story-tbc-btn").style.display = TEST_AUTO ? "" : "none";
+    setTimeout(() => { document.getElementById("story-tbc-btn").style.display = ""; }, TEST_AUTO ? 1 : 2200);
+  }
+}
+
+function storyQuit() {
+  story.active = false;
+  story.state = "idle";
+  clearInterval(stTyping); stTyping = null; stDq = []; stCb = null;
+  document.getElementById("story-dialog").classList.remove("on");
+  document.getElementById("story-overlay").classList.remove("show");
+  for (const id of ["story-select", "story-name", "story-field", "story-go", "story-tbc"]) {
+    document.getElementById(id).classList.remove("on");
+  }
+  resetToTitle();
+}
+
+/* ---- 入力・配線 ---- */
+document.getElementById("btn-story").addEventListener("click", () => {
+  ac();
+  document.getElementById("title-overlay").classList.remove("show");
+  story.active = true; story.state = "select";
+  storyShow("story-select");
+});
+document.getElementById("story-back").addEventListener("click", storyQuit);
+document.getElementById("story-rule-magic").addEventListener("click", () => {
+  story.state = "name";
+  storyShow("story-name");
+  document.getElementById("story-name-input").focus();
+});
+document.getElementById("story-name-ok").addEventListener("click", () => {
+  const v = document.getElementById("story-name-input").value.trim();
+  story.name = v || "名無し";
+  storyEnterRoom(1);
+});
+document.getElementById("story-name-input").addEventListener("keydown", e => {
+  if (e.key === "Enter") document.getElementById("story-name-ok").click();
+  e.stopPropagation();
+});
+document.getElementById("story-dialog").addEventListener("click", storyAdvance);
+document.getElementById("story-canvas").addEventListener("click", () => { if (story.state === "dialog") storyAdvance(); });
+document.getElementById("story-go-btn").addEventListener("click", storyQuit);
+document.getElementById("story-tbc-btn").addEventListener("click", storyQuit);
+document.getElementById("story-quit").addEventListener("click", storyQuit);
+for (const b of document.querySelectorAll("#story-dpad button")) {
+  b.addEventListener("click", () => {
+    const d = { u: [0, -1], d: [0, 1], l: [-1, 0], r: [1, 0] }[b.dataset.d];
+    if (story.state === "dialog") { storyAdvance(); return; }
+    storyMove(d[0], d[1]);
+  });
+}
+document.addEventListener("keydown", e => {
+  if (!story.active) return;
+  if (e.target && e.target.tagName === "INPUT") return;
+  if (story.state === "dialog") {
+    if (["Enter", " ", "z", "Z"].includes(e.key)) { e.preventDefault(); storyAdvance(); }
+    return;
+  }
+  if (story.state !== "field") return;
+  const d = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0],
+              w: [0, -1], s: [0, 1], a: [-1, 0], d: [1, 0] }[e.key];
+  if (d) { e.preventDefault(); storyMove(d[0], d[1]); }
+});
+
 /* ================= 開始 ================= */
 function setRule(r) {
   ruleMode = r;
@@ -4020,7 +4426,7 @@ function startCpu() {
 document.getElementById("btn-cpu").addEventListener("click", startCpu);
 document.getElementById("btn-host").addEventListener("click", hostRoom);
 document.getElementById("btn-join").addEventListener("click", () => joinRoom(document.getElementById("join-code").value));
-document.getElementById("btn-again").addEventListener("click", () => {
+function resetToTitle() {
   // reloadせずタイトルに戻す(環境によってはreloadで白画面になるため)
   gameToken++;                                   // 走行中の非同期処理を無効化
   if (transport) { try { transport.stop(); } catch (e) {} transport = null; }
@@ -4045,7 +4451,8 @@ document.getElementById("btn-again").addEventListener("click", () => {
   document.getElementById("enemy-side").classList.remove("defeated");
   document.getElementById("btn-end").disabled = true;
   document.getElementById("title-overlay").classList.add("show");
-});
+}
+document.getElementById("btn-again").addEventListener("click", resetToTitle);
 
 window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("btn-mute").textContent = muted ? "🔇" : "🔊";
