@@ -77,6 +77,7 @@
   /* 土地: スートが主役なので大きく1つだけ表示 */
   .card.sm.land .st-s { display: none; }
   .card.sm.land .st-b { font-size: 30px; margin-top: -2px; }
+  .card.ench { outline: 2px solid var(--gold); box-shadow: 0 0 8px rgba(201,162,39,.45); }
   /* 遊戯王: 裏側セットの「R」マーク(自分にだけ表が見える) */
   .card .rmark {
     position: absolute; right: 2px; top: 2px; width: 15px; height: 15px; line-height: 15px;
@@ -500,6 +501,16 @@
       <button id="rule-original">マジックルール</button>
       <button id="rule-yugi">遊戯王ルール</button>
       <button id="rule-poke">ポケカルール</button>
+      <button id="rule-alice">マジック(アリス)</button>
+    </div>
+    <div class="body" id="rules-alice" style="display:none">
+      マジックルールの変種。ルール進行は同じだが、<b>両者ともアリスの特殊カード</b>でデュエルする(ストーリーモードのアリス戦では相手だけがこのカードを使う)。<br><br>
+      アリスカードは通常のスート能力・絵札能力の代わりに、<b>数字の帯ごとの能力</b>を持つ:<br>
+      <b>♥ハート</b>: 2〜6=<b>飛行</b>(飛行を持たないクリーチャーにブロックされない)/ 7〜10=<b>「T: カードを1枚引く」</b>(召喚酔い中は不可)/ J〜K=<b>ETB: クリーチャー1体をオーナーの手札に戻す</b><br>
+      <b>♠スペード</b>: 2〜6=<b>接死</b>(1点以上の戦闘ダメージを与えた相手を破壊)/ 7〜10=<b>威迫</b>(2体以上にしかブロックされない)/ J〜K=<b>ETB: 対象に+X/+0</b>(X=このパワー)<br>
+      <b>♣クローバー</b>: 2〜6=<b>「T: ♣マナ1点」</b>(マナクリーチャー・召喚酔い中は不可)/ 7〜10=<b>トランプル</b> / J〜K=<b>ETB: 数字X以下の土地をそのオーナーのクリーチャー化</b>(X=このパワー)<br>
+      <b>♦ダイヤ</b>: 2〜6=<b>絆魂</b>(与えた戦闘ダメージぶん墓地を山札の下へ・墓地枚数まで)/ 7〜10=<b>反撃</b>(タップ状態でもパワー0にならない)/ J〜K=<b>ETB: 全クリーチャーに-X/-X</b>(X=このパワー・ターン終了時まで)<br><br>
+      アリスカードに瞬速・速攻・警戒・挑戦はなく、全て召喚酔いする。A(エンチャント)とJOKERは共通。
     </div>
     <div class="body" id="rules-poke" style="display:none">
       54枚フルデッキ(4色×13+JOKER2枚)同士の1対1。<b>初手5枚・マナなし・サイド6枚</b>。手札にたねが無ければ強制引き直し(そのたび相手が1枚ドロー)。先攻後攻はランダム、<b>先攻の1ターン目はワザを使えない</b>。敗者の手札は公開される。<br><br>
@@ -530,15 +541,12 @@
     <div class="body" id="rules-original" style="display:none">
       54枚フルデッキ(4色×13+JOKER2枚)同士の1対1。<b>初手7枚・シールドなし・勝利条件はデッキアウトのみ</b>(山札0枚で即敗北・両者同時なら引き分け)。先攻後攻はランダム、後攻は1回フリーマリガン可。<b>先攻の1ターン目はアンタップ&ドローを飛ばす</b>。敗者の手札は公開される。<br><br>
       <b>フェイズ進行</b>(毎ターン): ☀→⚔→⛨→✦→⚚<br>
-      ☀<b>クリンナップ&amp;アンタップ&amp;ドロー</b>(敵味方全ての戦闘ダメージ回復→アンタップ→ドロー)→ ⚔<b>アタック</b>(<b>土地・呪文・召喚も可能</b>+攻撃を全て宣言)→ ⛨<b>ブロック</b>(<b>相手が</b>ブロック指定+♥瞬速召喚・A呪文も使える)→ ✦<b>戦闘解決</b> → ⚚<b>メイン</b>(土地・呪文・召喚)=ターン終了<br><br>
+      ☀<b>クリンナップ&amp;アンタップ&amp;ドロー</b>(敵味方全ての戦闘ダメージ回復→アンタップ→ドロー)→ ⚔<b>アタック</b>(<b>土地・呪文・召喚も可能</b>+攻撃を全て宣言)→ ⛨<b>ブロック</b>(<b>相手が</b>ブロック指定+♥瞬速召喚・A(エンチャント)も使える)→ ✦<b>戦闘解決</b> → ⚚<b>メイン</b>(土地・呪文・召喚)=ターン終了<br><br>
       <b>攻撃</b>: タップ中の敵クリーチャーか、プレイヤー本体。どちらも複数のクリーチャーで攻撃できる。本体に通ると数字ぶん相手の山札が墓地へ<br>
       <b>多重ブロック可</b>: 1体の攻撃を複数のクリーチャーでブロックできる。攻撃側のダメージは<b>数字の大きいブロッカーへ優先して致死分ずつ割り振られ</b>、余りは次へ(例: ♥Qを♠3と♦8でブロック→♦8に8点、♠3に4点)。ブロッカー全員のパワーが攻撃側に返る<br>
       <b>ダメージは次のクリンナップ(次ターンのアンタップ直前)まで蓄積</b>(数字以上で破壊)。<b>召喚酔いあり</b>(出したターンは攻撃不可)。<b>タップ状態で戦闘フェイズを終えたクリーチャーはパワー0</b>(アンタップで回復)<br><br>
-      <b>A(エース)はクリーチャーではなくインスタント呪文</b>(コスト=自スート1マナ+Xマナ。相手のブロックフェイズでも唱えられる。土地にもできる):<br>
-      ・♥A: 墓地の上からX枚を山札に混ぜて切り直す(墓地の枚数が上限)<br>
-      ・♠A: 対象のクリーチャー1体にX点ダメージ<br>
-      ・♣A: 対象の自分の土地X枚を手札に戻す<br>
-      ・♦A: 対象のクリーチャー1体は+X/+Xの修整を受ける(次のクリンナップまで)<br><br>
+      <b>A(エース)はクリーチャーではなく瞬速付きエンチャント</b>(コスト=自スート1マナ+無色1マナ。相手のブロックフェイズでも唱えられ、場に残り続ける。土地にもできる):<br>
+      ・場にある間、<b>自分の同スートのクリーチャーは+1/+1の修整を受ける</b>(重ね掛け可)<br><br>
       <b>スート能力</b>: ♠<b>挑戦</b>(攻撃時、アンタップの敵1体を強制的にブロックへ参加させる。複数ブロック時は挑戦対象へ最優先でダメージ)/ ♥<b>瞬速</b>(相手のブロックフェイズに召喚できる)/ ♦<b>警戒</b>(各戦闘フェイズ後にアンタップ)/ ♣<b>速攻</b>(召喚酔いしない)<br>
       <b>挑戦の操作</b>: ♠アタッカーを選ぶ → アンタップの敵をクリックで挑戦対象を指定 → 本体かタップ中の敵をクリックで攻撃先を確定(挑戦を使わないなら直接攻撃先をクリック)<br>
       <b>絵札(J/Q/K)の追加能力</b>: ♣<b>猪突</b>(2体以上のクリーチャーにはブロックされない)/ ♠<b>貫通</b>(余剰戦闘ダメージが当初の攻撃対象へ)/ ♦<b>飛行</b>(飛行を持たないクリーチャーにはブロックされない)/ ♥<b>絆魂</b>(与えたダメージぶん、墓地の上から山札に加えて切り直す。墓地の枚数が上限)<br><br>
@@ -645,6 +653,8 @@ let rng = Math.random;
 /* ================= 状態 ================= */
 let players, turnP, turnNo, winner, firstP;
 let landSetUsed = 0, landSetMax = 1;   // 土地セット権(モックスジョーカーで+1される)
+let aliceVariant = false;              // マジックルール(アリス): 特殊カードを両者が使う
+let aliceSide = [false, false];        // 各プレイヤーがアリスの特殊カードを使うか
 let ruleMode = "duema";          // 'duema' | 'original' | 'yugi' | 'poke'
 let ySummoned = false;           // 遊戯王: このターン通常召喚/セットを使ったか
 let manualPay = false;           // マナ支払い: 手動モード(ローカル設定。選んだ土地はアクションに載る)
@@ -710,21 +720,30 @@ function handById(pi, id) { return players[pi].hand.find(c => c.id === id); }
 function fieldById(pi, id) { return players[pi].field.find(f => f.card.id === id); }
 function landById(pi, id) { return players[pi].lands.find(l => l.card.id === id); }
 
+/* マナ源: 土地(+アリスの♣2-6クリーチャー=T:♣マナ1) */
+function manaSources(p) {
+  const pi = players ? players.indexOf(p) : -1;
+  const out = untappedLands(p).map(l => ({ land: l, val: l.lotus ? 3 : 1, colored: l.lotus ? null : (l.card.joker ? "*" : l.card.suit), id: l.card.id }));
+  if (ruleMode === "original" && pi >= 0 && aliceSide[pi]) {
+    for (const f of p.field) if (isManaCre(f) && !f.tapped && !f.sick) out.push({ cre: f, val: 1, colored: 3, id: f.card.id });
+  }
+  return out;
+}
 function canPay(p, suit, total) {
   if (total <= 0) return true;
-  const ls = untappedLands(p);
-  const cap = ls.reduce((s2, l) => s2 + (l.lotus ? 3 : 1), 0);   // ロータスは無色3点
-  if (cap < total) return false;
-  return ls.some(l => !l.lotus && (l.card.joker || l.card.suit === suit));   // 色はロータス以外から
+  const srcs = manaSources(p);
+  if (srcs.reduce((s2, x) => s2 + x.val, 0) < total) return false;
+  return srcs.some(x => x.colored === "*" || x.colored === suit);
 }
 /* 手動支払い: 指定idの土地をタップ。無効(枚数不足・色なし・タップ済み等)なら false → 自動にフォールバック */
 function payWith(p, suit, total, ids) {
   if (!ids || !ids.length || new Set(ids).size !== ids.length) return false;
-  const ls = ids.map(id => p.lands.find(l => l.card.id === id));
-  if (ls.some(l => !l || l.tapped)) return false;
-  if (ls.reduce((s2, l) => s2 + (l.lotus ? 3 : 1), 0) < total) return false;   // ロータスは3点
-  if (!ls.some(l => !l.lotus && (l.card.joker || l.card.suit === suit))) return false;
-  ls.forEach(l => l.tapped = true);
+  const srcs = manaSources(p);
+  const sel = ids.map(id => srcs.find(x => x.id === id));
+  if (sel.some(x => !x)) return false;
+  if (sel.reduce((s2, x) => s2 + x.val, 0) < total) return false;
+  if (!sel.some(x => x.colored === "*" || x.colored === suit)) return false;
+  sel.forEach(x => { (x.land || x.cre).tapped = true; });
   return true;
 }
 
@@ -742,36 +761,37 @@ function requestPays(suit, need) {
 }
 function paySelSum() {
   if (!paySel) return 0;
-  const p = players[myIdx];
+  const srcs = manaSources(players[myIdx]);
   return [...paySel.sel].reduce((s2, id) => {
-    const l = p.lands.find(x => x.card.id === id);
-    return s2 + (l ? (l.lotus ? 3 : 1) : 0);
+    const x = srcs.find(y => y.id === id);
+    return s2 + (x ? x.val : 0);
   }, 0);
 }
 function paySelValid() {
   if (!paySel) return false;
-  const p = players[myIdx];
+  const srcs = manaSources(players[myIdx]);
   if (paySelSum() < paySel.need) return false;
   return [...paySel.sel].some(id => {
-    const l = p.lands.find(x => x.card.id === id);
-    return l && !l.lotus && (l.card.joker || l.card.suit === paySel.suit);
+    const x = srcs.find(y => y.id === id);
+    return x && (x.colored === "*" || x.colored === paySel.suit);
   });
 }
 
 function pay(p, suit, total) {
-  const ls = untappedLands(p);
-  const colored = ls.find(l => !l.lotus && !l.card.joker && l.card.suit === suit) || ls.find(l => !l.lotus && l.card.joker);
-  colored.tapped = true;
+  const srcs = manaSources(p);
+  const tapS = x => { (x.land || x.cre).tapped = true; };
+  const colored = srcs.find(x => x.colored === suit && x.land && !x.land.card.joker) ||
+                  srcs.find(x => x.colored === suit) || srcs.find(x => x.colored === "*");
+  tapS(colored);
   let need = total - 1;
-  for (const l of ls) {   // まず通常の土地から
+  const rest = srcs.filter(x => x !== colored);
+  // 通常の土地 → ♣クリーチャー → ロータス/JOKER土地 の順で崩す
+  const order = [...rest.filter(x => x.land && !x.land.lotus && !x.land.card.joker),
+                 ...rest.filter(x => x.cre),
+                 ...rest.filter(x => x.land && (x.land.lotus || x.land.card.joker))];
+  for (const x of order) {
     if (need <= 0) break;
-    if (l.tapped || l.card.joker) continue;
-    l.tapped = true; need--;
-  }
-  for (const l of ls) {   // 次にロータス(3点)、残りのJOKER土地
-    if (need <= 0) break;
-    if (l.tapped) continue;
-    l.tapped = true; need -= l.lotus ? 3 : 1;
+    tapS(x); need -= x.val;
   }
 }
 
@@ -807,29 +827,54 @@ function bonus() { return 0; }
 function faceBonus(x, y) { return (x.rank === 1 && y.rank >= 11) ? 13 : 0; }
 
 /* 戦闘の数値計算(蓄積ダメージ・タップ時パワー0(pz)込み・状態は変更しない) */
-/* マジック: 絵札(J/Q/K)のスート追加能力 */
+/* マジック: キーワード能力(通常カード=絵札のスート能力 / アリスカード=数字帯ごとの能力) */
 const isFace = f => f.card.rank >= 11;
-const hasChototsu = f => isFace(f) && f.card.suit === 3;   // ♣猪突: 2体以上にブロックされない
-const hasPierce = f => isFace(f) && f.card.suit === 0;     // ♠貫通: 余剰ダメージが当初の攻撃対象へ
-const hasFlying = f => isFace(f) && f.card.suit === 2;     // ♦飛行: 飛行を持たないクリーチャーにブロックされない
-const hasLifelink = f => isFace(f) && f.card.suit === 1;   // ♥絆魂: 与えたダメージぶん墓地を山札に戻して切り直す
+const creOwner = cre => players[0].field.includes(cre) ? 0 : players[1].field.includes(cre) ? 1 : null;
+const isAliceCre = cre => { const o = creOwner(cre); return o !== null && aliceSide[o]; };
+const bandOf = c => c.rank <= 6 ? 0 : c.rank <= 10 ? 1 : 2;   // 2-6 / 7-10 / J-K
+const aAbil = (cre, suit, band) => isAliceCre(cre) && cre.card.suit === suit && !cre.card.joker &&
+  cre.card.rank !== 1 && bandOf(cre.card) === band;
+
+const hasChototsu = f => !isAliceCre(f) && isFace(f) && f.card.suit === 3;   // ♣絵札 猪突: 2体以上にブロックされない
+const hasMenace = f => aAbil(f, 0, 1);                                       // アリス♠7-10 威迫: 2体以上にしかブロックされない
+const hasTrample = f => isAliceCre(f) ? aAbil(f, 3, 1) : (isFace(f) && f.card.suit === 0);   // 貫通/トランプル
+const canFly = f => isAliceCre(f) ? aAbil(f, 1, 0) : (isFace(f) && f.card.suit === 2);       // 飛行
+const hasDeathtouch = f => aAbil(f, 0, 0);                                   // アリス♠2-6 接死
+const pzZero = cre => cre.pz && !aAbil(cre, 2, 1);                           // アリス♦7-10 反撃: タップでもパワー0にならない
+const hasTapDraw = f => aAbil(f, 1, 1);                                      // アリス♥7-10 T:1ドロー
+const isManaCre = f => aAbil(f, 3, 0);                                       // アリス♣2-6 T:♣マナ1
+const hasLifelink = f => isAliceCre(f) ? aAbil(f, 2, 0) : (isFace(f) && f.card.suit === 1);  // 絆魂
+
+/* エンチャント(A): 自分の同スートクリーチャーに+1/+1 */
+function enchBuff(cre) {
+  if (ruleMode !== "original") return 0;
+  const o = creOwner(cre);
+  if (o === null) return 0;
+  return (players[o].ench || []).filter(e => e.suit === cre.card.suit).length;
+}
+const totBuff = cre => (cre.buff || 0) + enchBuff(cre);
+const creTough = cre => cre.card.rank + totBuff(cre);
+const crePower = (cre, vsCard) => pzZero(cre) ? 0 :
+  cre.card.rank + totBuff(cre) + (cre.pbuff || 0) + (vsCard ? faceBonus(cre.card, vsCard) : 0);
 
 function lifelink(pi, cre, dealt) {
   if (!hasLifelink(cre) || dealt <= 0) return;
   const p = players[pi];
   const n = Math.min(dealt, p.grave.length);   // 墓地の枚数が上限
   if (n <= 0) return;
-  p.deck.push(...p.grave.splice(p.grave.length - n, n));   // 墓地の上(新しい方)からn枚
-  shuffle(p.deck);
-  log(`♥絆魂! ${cardLabel(cre.card)} — 墓地${n}枚を山札に加えて切り直した(山札${p.deck.length})`);
+  if (isAliceCre(cre)) {   // アリス♦2-6: 墓地の上からデッキの下へ
+    p.deck.unshift(...p.grave.splice(p.grave.length - n, n));
+    log(`♦絆魂! ${cardLabel(cre.card)} — 墓地${n}枚を山札の下に戻した(山札${p.deck.length})`);
+  } else {                 // 通常♥絵札: 山札に混ぜて切り直す
+    p.deck.push(...p.grave.splice(p.grave.length - n, n));
+    shuffle(p.deck);
+    log(`♥絆魂! ${cardLabel(cre.card)} — 墓地${n}枚を山札に加えて切り直した(山札${p.deck.length})`);
+  }
 }
 
 function battleNumbers(aCre, bCre) {
-  const a = aCre.card, b = bCre.card;
-  const ab = aCre.buff || 0, bb = bCre.buff || 0;   // ♦Aの+X/+X(クリンナップまで)
-  const ap = aCre.pz ? 0 : a.rank + ab + faceBonus(a, b);
-  const bp = bCre.pz ? 0 : b.rank + bb + faceBonus(b, a);
-  const at = a.rank + ab, bt = b.rank + bb;
+  const ap = crePower(aCre, bCre.card), bp = crePower(bCre, aCre.card);
+  const at = creTough(aCre), bt = creTough(bCre);
   return {
     ap, at, bp, bt,
     aDies: (aCre.dmg || 0) + bp >= at,
@@ -842,10 +887,12 @@ async function battle(aPi, aCre, bPi, bCre) {
   aCre.dmg = (aCre.dmg || 0) + n.bp;
   bCre.dmg = (bCre.dmg || 0) + n.ap;
   log(`戦闘: ${cardLabel(aCre.card)}(${n.ap}/${n.at}) vs ${cardLabel(bCre.card)}(${n.bp}/${n.bt})`);
-  await showBattleFx(aCre, bCre, n.aDies, n.bDies);
-  if (n.bDies) destroy(bPi, bCre);
-  if (n.aDies) destroy(aPi, aCre);
-  if (!n.aDies && !n.bDies) log(`両者生存(蓄積ダメージ ${cardLabel(aCre.card)}:${aCre.dmg} / ${cardLabel(bCre.card)}:${bCre.dmg})`);
+  const bDies = n.bDies || (hasDeathtouch(aCre) && n.ap >= 1);   // 接死
+  const aDies = n.aDies || (hasDeathtouch(bCre) && n.bp >= 1);
+  await showBattleFx(aCre, bCre, aDies, bDies);
+  if (bDies) destroy(bPi, bCre);
+  if (aDies) destroy(aPi, aCre);
+  if (!aDies && !bDies) log(`両者生存(蓄積ダメージ ${cardLabel(aCre.card)}:${aCre.dmg} / ${cardLabel(bCre.card)}:${bCre.dmg})`);
   if (ruleMode === "original") {
     lifelink(aPi, aCre, n.ap);
     lifelink(bPi, bCre, n.bp);
@@ -1102,10 +1149,13 @@ async function runGame(seed) {
   const token = ++gameToken;
   rng = mulberry32(seed);
   players = [
-    { name: myIdx === 0 ? "あなた" : (mode === "cpu" ? "CPU" : "相手"), deck: shuffle(buildDeck(0)),   hand: [], shields: [], lands: [], field: [], grave: [], traps: [], active: null, bench: [] },
-    { name: myIdx === 1 ? "あなた" : (mode === "cpu" ? "CPU" : "相手"), deck: shuffle(buildDeck(200)), hand: [], shields: [], lands: [], field: [], grave: [], traps: [], active: null, bench: [] },
+    { name: myIdx === 0 ? "あなた" : (mode === "cpu" ? "CPU" : "相手"), deck: shuffle(buildDeck(0)),   hand: [], shields: [], lands: [], field: [], grave: [], traps: [], active: null, bench: [], ench: [] },
+    { name: myIdx === 1 ? "あなた" : (mode === "cpu" ? "CPU" : "相手"), deck: shuffle(buildDeck(200)), hand: [], shields: [], lands: [], field: [], grave: [], traps: [], active: null, bench: [], ench: [] },
   ];
-  if (story.active) { players[myIdx].name = story.name || "あなた"; players[1 - myIdx].name = "ウサギ紳士"; }
+  if (story.active) { players[myIdx].name = story.name || "あなた"; players[1 - myIdx].name = story.room === 3 ? "アリス" : "ウサギ紳士"; }
+  aliceSide = aliceVariant ? [true, true]
+    : (story.active && story.room === 3) ? (myIdx === 0 ? [false, true] : [true, false])
+    : [false, false];
   for (const p of players) {
     if (ruleMode === "duema") p.shields = p.deck.splice(0, 6);
     else p.shields = [];                       // マジック・遊戯王: シールドなし
@@ -1214,7 +1264,7 @@ async function runOriginalTurns(token, secondP) {
     if (turnNo === 1 && cur === firstP) {
       log(`── ${players[cur].name} のターン1 ── 先攻はアンタップフェイズを飛ばす`);
     } else {
-      players.forEach(p => p.field.forEach(f => { f.dmg = 0; f.buff = 0; }));   // クリンナップ: 全ダメージ回復+修整の消滅
+      players.forEach(p => p.field.forEach(f => { f.dmg = 0; f.buff = 0; f.pbuff = 0; }));   // クリンナップ: 全ダメージ回復+修整の消滅
       players[cur].lands.forEach(l => { l.tapped = false; });
       players[cur].field.forEach(f => { f.tapped = false; f.sick = false; f.pz = false; });
       players[cur].hand.push(players[cur].deck.pop());
@@ -1251,7 +1301,7 @@ async function runOriginalTurns(token, secondP) {
     const preAlive = declaredAttacks.filter(at =>
       fieldById(cur, at.cre) && (at.tt !== "cre" || fieldById(def, at.tv)));
     const defCanAct = (preAlive.length && players[def].field.some(f => !f.tapped)) ||
-                      players[def].hand.some(c => !c.joker && (c.suit === 1 || c.rank === 1));   // ♥瞬速召喚とA呪文(インスタント)
+                      players[def].hand.some(c => !c.joker && (c.rank === 1 || (c.suit === 1 && !aliceSide[def])));   // ♥瞬速(通常カード)とA(瞬速エンチャント)
     oPhase = { phase: "block", actor: def }; render();
     if (defCanAct) {
       for (;;) {
@@ -1277,16 +1327,30 @@ async function runOriginalTurns(token, secondP) {
       await wait(600);
       if (token !== gameToken) return;
     }
-    // ♦飛行: 飛行(♦絵札)を持たないクリーチャーにはブロックされない
+    // 飛行: 飛行を持たないクリーチャーにはブロックされない
     blocks = blocks.filter(b => {
       const at = fieldById(cur, b.attacker), bl = fieldById(def, b.blocker);
       if (!at || !bl) return true;
-      if (hasFlying(at) && !hasFlying(bl)) {
+      if (canFly(at) && !canFly(bl)) {
         log(`${cardLabel(bl.card)} は飛行を持たないため ${cardLabel(at.card)} をブロックできない`);
         return false;
       }
       return true;
     });
+    // 威迫(アリス♠7-10): 2体以上でしかブロックできない(1体だけの割り当ては無効)
+    {
+      const cnt = {};
+      for (const b of blocks) cnt[b.attacker] = (cnt[b.attacker] || 0) + 1;
+      blocks = blocks.filter(b => {
+        const at = fieldById(cur, b.attacker);
+        if (!at || !hasMenace(at)) return true;
+        if (cnt[b.attacker] < 2) {
+          log(`威迫! ${cardLabel(at.card)} は2体以上でしかブロックできない`);
+          return false;
+        }
+        return true;
+      });
+    }
     // ♣猪突: 2体以上のクリーチャーにはブロックされない(最初の1体のみ有効)
     {
       const seen1 = new Set();
@@ -1328,7 +1392,7 @@ async function runOriginalTurns(token, secondP) {
         log(`${players[def].name}: ${bls.map(b => cardLabel(b.card)).join(" ")} で ${cardLabel(atkCre.card)} をブロック!`);
         await battleMulti(cur, atkCre, def, bls, at);
       } else if (at.tt === "player") {
-        const n = atkCre.card.rank + (atkCre.buff || 0);
+        const n = crePower(atkCre, null);
         const milled = players[def].deck.splice(Math.max(0, players[def].deck.length - n), n);
         players[def].grave.push(...milled);
         sfx("clash");
@@ -1345,8 +1409,8 @@ async function runOriginalTurns(token, secondP) {
     declaredAttacks = [];
     activeBlocks = [];
     // 戦闘フェイズ終了時: ♦は警戒でアンタップ、タップ状態のクリーチャーはパワー0(アンタップまで)
-    players.forEach(p => p.field.forEach(f => {
-      if (f.card.suit === 2) { f.tapped = false; f.pz = false; }
+    players.forEach((p, ppi) => p.field.forEach(f => {
+      if (!aliceSide[ppi] && f.card.suit === 2) { f.tapped = false; f.pz = false; }   // ♦警戒(通常カードのみ)
       else if (f.tapped) f.pz = true;
     }));
     render();
@@ -2181,26 +2245,30 @@ async function battleMulti(atkPi, atkCre, defPi, blockers, at) {
   const provoked = at && at.prov ? blockers.find(b => b.card.id === at.prov) : null;
   const rest = blockers.filter(b => b !== provoked).sort((a, b) => b.card.rank - a.card.rank);
   const sorted = provoked ? [provoked, ...rest] : rest;
-  const pierce = hasPierce(atkCre);   // ♠絵札の貫通: 各ブロッカーに致死分のみ、余剰は当初の対象へ
-  const initialPool = atkCre.pz ? 0 : atkCre.card.rank + (atkCre.buff || 0) + faceBonus(atkCre.card, sorted[0].card);
+  const pierce = hasTrample(atkCre);   // 貫通/トランプル: 各ブロッカーに致死分のみ、余剰は当初の対象へ
+  const dt = hasDeathtouch(atkCre);
+  const initialPool = crePower(atkCre, sorted[0].card);
   let pool = initialPool;
   const assigns = [];
+  const assigned = new Map();
   sorted.forEach((b, i) => {
-    const lethal = Math.max(0, b.card.rank + (b.buff || 0) - (b.dmg || 0));
+    const lethal = Math.max(0, creTough(b) - (b.dmg || 0));
     const last = i === sorted.length - 1;
-    const assign = (last && !pierce) ? pool : Math.min(pool, lethal);
+    const assign = (last && !pierce) ? pool : Math.min(pool, dt ? Math.min(lethal, 1) : lethal);
     b.dmg = (b.dmg || 0) + assign;
+    assigned.set(b, assign);
     pool -= assign;
     assigns.push(`${cardLabel(b.card)}に${assign}点`);
   });
-  const counter = blockers.reduce((s, b) => s + (b.pz ? 0 : b.card.rank + (b.buff || 0) + faceBonus(b.card, atkCre.card)), 0);
+  const counter = blockers.reduce((s, b) => s + crePower(b, atkCre.card), 0);
   atkCre.dmg = (atkCre.dmg || 0) + counter;
   log(`割り振り: ${assigns.join("、")} / 反撃: ${cardLabel(atkCre.card)}に合計${counter}点`);
-  const atkDies = atkCre.dmg >= atkCre.card.rank + (atkCre.buff || 0);
-  const firstDies = sorted[0].dmg >= sorted[0].card.rank + (sorted[0].buff || 0);
+  const dtCounter = blockers.some(b => hasDeathtouch(b) && crePower(b, atkCre.card) >= 1);   // 接死ブロッカー
+  const atkDies = atkCre.dmg >= creTough(atkCre) || dtCounter;
+  const firstDies = sorted[0].dmg >= creTough(sorted[0]) || (dt && assigned.get(sorted[0]) >= 1);
   await showBattleFx(atkCre, sorted[0], atkDies, firstDies);
   for (const b of blockers) {
-    if (b.dmg >= b.card.rank + (b.buff || 0)) destroy(defPi, b);
+    if (b.dmg >= creTough(b) || (dt && assigned.get(b) >= 1)) destroy(defPi, b);
   }
   if (atkDies) destroy(atkPi, atkCre);
   let dealt = initialPool - pool;
@@ -2209,7 +2277,7 @@ async function battleMulti(atkPi, atkCre, defPi, blockers, at) {
     if (at.tt === "player") {
       const milled = players[defPi].deck.splice(Math.max(0, players[defPi].deck.length - pool), pool);
       players[defPi].grave.push(...milled);
-      log(`♠貫通! 余剰${pool}点 → ${players[defPi].name}の山札${milled.length}枚が墓地へ`);
+      log(`貫通! 余剰${pool}点 → ${players[defPi].name}の山札${milled.length}枚が墓地へ`);
       dealt += milled.length;
       render();
       await checkDeckOut();
@@ -2218,14 +2286,14 @@ async function battleMulti(atkPi, atkCre, defPi, blockers, at) {
       if (t) {
         t.dmg = (t.dmg || 0) + pool;
         dealt += pool;
-        log(`♠貫通! 余剰${pool}点 → ${cardLabel(t.card)}`);
-        if (t.dmg >= t.card.rank + (t.buff || 0)) destroy(defPi, t);
+        log(`貫通! 余剰${pool}点 → ${cardLabel(t.card)}`);
+        if (t.dmg >= creTough(t)) destroy(defPi, t);
       }
     }
   }
   // ♥絆魂(攻撃側・ブロッカー側とも)
   lifelink(atkPi, atkCre, dealt);
-  for (const b of blockers) lifelink(defPi, b, b.pz ? 0 : b.card.rank + (b.buff || 0) + faceBonus(b.card, atkCre.card));
+  for (const b of blockers) lifelink(defPi, b, crePower(b, atkCre.card));
 }
 
 /* 1対1の一発勝負(蓄積ダメージなし) */
@@ -2238,7 +2306,7 @@ async function battleO(aPi, aCre, bPi, bCre) {
   if (!n.aDies && !n.bDies) log("両者生き残った");
 }
 
-/* オリジナルのメインフェイズ行動(相手側: 土地・JOKER呪文・召喚) */
+/* オリジナルのメインフェイズ行動(土地・JOKER呪文・召喚・A・起動能力) */
 async function applyMainO(pi, a) {
   const p = players[pi], o = players[1 - pi];
   switch (a.t) {
@@ -2276,130 +2344,22 @@ async function applyMainO(pi, a) {
       return;
     }
     case "summon": await applySummonO(pi, a); return;
-    // ===== Aの呪文(マジック): すべてインスタント(瞬速)。コスト=自スート1マナ+Xマナ。解決後に墓地へ =====
-    case "aceh": {  // ♥A: 墓地の上からX枚を山札に混ぜてシャッフル(墓地の枚数が上限)
+    // A(エース): 瞬速付きエンチャント。コスト=自スート1+無色1。自分の同スートクリーチャーに+1/+1
+    case "aceench": {
       const c = handById(pi, a.card);
-      const X = Math.max(1, a.x | 0);
-      if (!c || c.joker || c.rank !== 1 || c.suit !== 1) return;
-      if (!castAceX(pi, a, c, 1 + X)) return;
-      const n = Math.min(X, p.grave.length);
-      if (n > 0) {
-        p.deck.push(...p.grave.splice(p.grave.length - n, n));
-        shuffle(p.deck);
-      }
-      log(`♥A: 墓地${n}枚を山札に混ぜて切り直した(山札${p.deck.length})`);
-      p.grave.push(c);
-      return;
-    }
-    case "aces": {  // ♠A: 対象のクリーチャー1体にX点ダメージ
-      const c = handById(pi, a.card);
-      const X = Math.max(1, a.x | 0);
-      if (!c || c.joker || c.rank !== 1 || c.suit !== 0) return;
-      const owner = fieldById(pi, a.tgt) ? pi : fieldById(1 - pi, a.tgt) ? 1 - pi : null;
-      const t = owner === null ? null : fieldById(owner, a.tgt);
-      if (!t) return;
-      if (!castAceX(pi, a, c, 1 + X)) return;
-      t.dmg = (t.dmg || 0) + X;
-      log(`♠A: ${cardLabel(t.card)} に${X}点ダメージ(蓄積${t.dmg})`);
-      if (t.dmg >= t.card.rank + (t.buff || 0)) destroy(owner, t);
-      p.grave.push(c);
+      if (!c || c.joker || c.rank !== 1) return;
+      if (!castAceX(pi, a, c, 2)) return;
+      p.ench.push(c);
+      log(`${p.name}: ${cardLabel(c)} のエンチャントが場に出た — 自分の${SUITS[c.suit]}クリーチャーは+1/+1`);
       render();
       return;
     }
-    case "acec": {  // ♣A: 対象の自分の土地X枚を手札に戻す
-      const c = handById(pi, a.card);
-      const ls = (a.lands || []).map(id => landById(pi, id)).filter(Boolean);
-      if (!c || c.joker || c.rank !== 1 || c.suit !== 3 || !ls.length) return;
-      if (!castAceX(pi, a, c, 1 + ls.length)) return;
-      for (const l of ls) {
-        p.lands = p.lands.filter(x => x !== l);
-        if (l.lotus) p.grave.push(l.card); else p.hand.push(l.card);   // ロータスは土地を離れると砕ける
-      }
-      log(`♣A: 土地${ls.length}枚を手札に戻した`);
-      p.grave.push(c);
-      return;
-    }
-    case "aced": {  // ♦A: 対象のクリーチャー1体に+X/+X(次のクリンナップまで)
-      const c = handById(pi, a.card);
-      const X = Math.max(1, a.x | 0);
-      if (!c || c.joker || c.rank !== 1 || c.suit !== 2) return;
-      const owner = fieldById(pi, a.tgt) ? pi : fieldById(1 - pi, a.tgt) ? 1 - pi : null;
-      const t = owner === null ? null : fieldById(owner, a.tgt);
-      if (!t) return;
-      if (!castAceX(pi, a, c, 1 + X)) return;
-      t.buff = (t.buff || 0) + X;
-      log(`♦A: ${cardLabel(t.card)} は+${X}/+${X}の修整を受けた(次のクリンナップまで)`);
-      p.grave.push(c);
-      render();
-      return;
-    }
-    case "mishra": { // ミシュラズジョーカー: 0マナ呪文、1枚引く
-      const jk = handById(pi, a.jk);
-      if (!jk || !jk.joker) return;
-      spendJoker(pi, jk, "ミシュラズジョーカー");
+    case "tapdraw": { // アリス♥7-10: タップしてカード1枚引く(召喚酔い中は不可)
+      const f = fieldById(pi, a.cre);
+      if (!f || !hasTapDraw(f) || f.tapped || f.sick) return;
+      f.tapped = true;
       if (p.deck.length) p.hand.push(p.deck.pop());
-      log(`${p.name}: 1枚ドロー(山札${p.deck.length})`);
-      render();
-      await checkDeckOut();
-      return;
-    }
-    case "lotus": {  // ロータスジョーカー: 相手より土地が少ないときセット権を使わずセット。タップで無色3点、ターン終了時に破壊
-      const jk = handById(pi, a.jk);
-      if (!jk || !jk.joker || p.lands.length >= o.lands.length) return;
-      removeFromHand(p, jk);
-      p.lands.push({ card: jk, tapped: false, lotus: true });
-      sfx("land");
-      log(`${p.name}: ロータスジョーカーをセットした(無色3マナ・ターン終了時に破壊)`);
-      return;
-    }
-    case "summon": await applySummonO(pi, a); return;
-    // ===== Aの呪文(マジック): コストは通常通り(自スート1+無指定1)。唱えたAは墓地へ =====
-    case "aceh": {  // ♥A(瞬速): 対象のパワーX以下のクリーチャー1体を山札の一番上へ。X=自分の墓地の枚数(このAを含む)
-      const c = handById(pi, a.card);
-      if (!c || c.joker || c.rank !== 1 || c.suit !== 1) return;
-      castAcePay(pi, a, c);
-      const X = p.grave.length;
-      const owner = fieldById(pi, a.tgt) ? pi : fieldById(1 - pi, a.tgt) ? 1 - pi : null;
-      const t = owner === null ? null : fieldById(owner, a.tgt);
-      if (!t || (t.pz ? 0 : t.card.rank) > X) { log(`♥A: 対象不適正 — 呪文は立ち消えた(X=${X})`); return; }
-      players[owner].field = players[owner].field.filter(f => f !== t);
-      players[owner].deck.push(t.card);
-      log(`♥A: ${cardLabel(t.card)} を${players[owner].name}の山札の一番上に戻した(X=${X})`);
-      return;
-    }
-    case "acec": {  // ♣A: 自分の土地X枚を選んで手札に加える
-      const c = handById(pi, a.card);
-      if (!c || c.joker || c.rank !== 1 || c.suit !== 3) return;
-      castAcePay(pi, a, c);
-      const ls = (a.lands || []).map(id => landById(pi, id)).filter(Boolean);
-      for (const l of ls) { p.lands = p.lands.filter(x => x !== l); p.hand.push(l.card); }
-      log(`♣A: 土地${ls.length}枚を手札に加えた`);
-      return;
-    }
-    case "aced": {  // ♦A: X=相手のクリーチャー数-自分のクリーチャー数 だけドロー
-      const c = handById(pi, a.card);
-      if (!c || c.joker || c.rank !== 1 || c.suit !== 2) return;
-      castAcePay(pi, a, c);
-      const X = Math.max(0, o.field.length - p.field.length);
-      for (let i = 0; i < X && p.deck.length; i++) p.hand.push(p.deck.pop());
-      log(`♦A: ${X}枚ドロー(山札${p.deck.length})`);
-      render();
-      await checkDeckOut();
-      return;
-    }
-    case "aces": {  // ♠A: 自分の山札の上からX枚を墓地へ → 全クリーチャーは-X/-X(=X点のダメージとして処理)
-      const c = handById(pi, a.card);
-      if (!c || c.joker || c.rank !== 1 || c.suit !== 0) return;
-      const X = Math.max(1, Math.min(a.x || 1, p.deck.length));
-      castAcePay(pi, a, c);
-      p.grave.push(...p.deck.splice(p.deck.length - X, X));
-      log(`♠A: 自分の山札${X}枚を墓地へ → 全クリーチャーに-${X}/-${X}`);
-      for (const side of [0, 1]) {
-        for (const f of [...players[side].field]) {
-          f.dmg = (f.dmg || 0) + X;
-          if (f.dmg >= f.card.rank) destroy(side, f);
-        }
-      }
+      log(`${p.name}: ${cardLabel(f.card)} をタップして1枚ドロー(山札${p.deck.length})`);
       render();
       await checkDeckOut();
       return;
@@ -2485,7 +2445,46 @@ async function applySummonO(pi, a) {
   }
   if (sacs.length) log(`${p.name}: ${sacs.map(f => cardLabel(f.card)).join(" ")} を生贄に捧げた(コスト-${reduction})`);
   summon(pi, c, false, reduction, a.pays);
-  p.field[p.field.length - 1].sick = c.suit !== 3;   // ♣は速攻(召喚酔いなし)
+  const cre = p.field[p.field.length - 1];
+  cre.sick = aliceSide[pi] ? true : c.suit !== 3;   // ♣は速攻(アリスカードは常に酔う)
+  if (aliceSide[pi] && c.rank >= 11) await aliceETB(pi, cre, a.etb || {});
+}
+
+/* アリスの絵札ETB(場に出たときの効果) */
+async function aliceETB(pi, cre, etb) {
+  const p = players[pi], o = players[1 - pi];
+  const c = cre.card;
+  const X = crePower(cre, null);
+  if (c.suit === 1) {        // ♥J-K: クリーチャー1体をオーナーの手札へ
+    const owner = fieldById(pi, etb.tgt) ? pi : fieldById(1 - pi, etb.tgt) ? 1 - pi : null;
+    const t = owner === null ? null : fieldById(owner, etb.tgt);
+    if (!t || t === cre) return;
+    players[owner].field = players[owner].field.filter(f => f !== t);
+    players[owner].hand.push(t.card);
+    log(`${cardLabel(c)}: ${cardLabel(t.card)} はオーナーの手札に戻った`);
+  } else if (c.suit === 0) { // ♠J-K: 対象に+X/+0
+    const owner = fieldById(pi, etb.tgt) ? pi : fieldById(1 - pi, etb.tgt) ? 1 - pi : null;
+    const t = owner === null ? null : fieldById(owner, etb.tgt);
+    if (!t) return;
+    t.pbuff = (t.pbuff || 0) + X;
+    log(`${cardLabel(c)}: ${cardLabel(t.card)} は+${X}/+0の修整を受けた`);
+  } else if (c.suit === 3) { // ♣J-K: 数字X以下の土地をそのオーナーのクリーチャー化
+    const owner = landById(pi, etb.tgt) ? pi : landById(1 - pi, etb.tgt) ? 1 - pi : null;
+    const l = owner === null ? null : landById(owner, etb.tgt);
+    if (!l || l.card.joker || l.card.rank > X) return;
+    players[owner].lands = players[owner].lands.filter(x => x !== l);
+    players[owner].field.push({ card: l.card, tapped: false, sick: true, dmg: 0 });
+    log(`${cardLabel(c)}: 土地 ${cardLabel(l.card)} は${players[owner].name}のクリーチャーになった`);
+  } else {                   // ♦J-K: 全クリーチャーに-X/-X(ターン終了時まで)
+    log(`${cardLabel(c)}: すべてのクリーチャーは-${X}/-${X}の修整を受ける`);
+    for (const side of [0, 1]) {
+      for (const f of [...players[side].field]) {
+        f.buff = (f.buff || 0) - X;
+        if (creTough(f) <= 0 || (f.dmg || 0) >= creTough(f)) destroy(side, f);
+      }
+    }
+  }
+  render();
 }
 
 /* メインフェイズのアクション適用。'end' なら true を返す */
@@ -2612,17 +2611,14 @@ function aiDecide(pi, kind, ctx) {
   if (kind === "oblocks") {
     const p = players[pi];
     const attackers2 = declaredAttacks.map(at => fieldById(1 - pi, at.cre)).filter(Boolean);
-    // ♠A(インスタント): 大物アタッカーをX点火力で落とす
-    const aceS = p.hand.find(c => !c.joker && c.rank === 1 && c.suit === 0);
-    if (aceS && attackers2.length) {
-      const big = [...attackers2].sort((a, b) => b.card.rank - a.card.rank)[0];
-      const need = Math.max(1, big.card.rank + (big.buff || 0) - (big.dmg || 0));
-      if (big.card.rank >= 6 && canPay(p, 0, 1 + need)) {
-        return { k: "oblocks", t: "aces", card: aceS.id, x: need, tgt: big.card.id };
-      }
+    // A(瞬速エンチャント): 攻撃が来ていて、そのスートのブロッカーが2体以上いるなら唱えて迎撃を固くする
+    const aceE = p.hand.find(c => !c.joker && c.rank === 1 &&
+      p.field.filter(f => !f.tapped && f.card.suit === c.suit).length >= 2 && canPay(p, c.suit, 2));
+    if (aceE && attackers2.length) {
+      return { k: "oblocks", t: "aceench", card: aceE.id };
     }
-    // ♥瞬速召喚: 攻撃が来ていれば、出せる♥を強い順に出して待ち伏せる(Aは呪文なので除外)
-    if (attackers2.length) {
+    // ♥瞬速召喚: 攻撃が来ていれば、出せる♥を強い順に出して待ち伏せる(Aとアリスカードは除外)
+    if (attackers2.length && !aliceSide[pi]) {
       const flash = p.hand.filter(c => !c.joker && c.rank !== 1 && c.suit === 1 && canPay(p, c.suit, costOf(c)))
         .sort((a, b) => b.rank - a.rank)[0];
       if (flash) return { k: "oblocks", t: "summon", card: flash.id };
@@ -2792,25 +2788,24 @@ function aiOMain(pi) {   // 相手ターン中のメイン: 土地→呪文→�
       return { t: "mishra", jk: jk.id };
     }
   }
-  // ♠A(インスタント): 相手の大物をX点火力で除去
-  const aceS = p.hand.find(c => !c.joker && c.rank === 1 && c.suit === 0);
-  if (aceS) {
-    const tgt = o.field.map(f => ({ f, need: Math.max(1, f.card.rank + (f.buff || 0) - (f.dmg || 0)) }))
-      .filter(x => x.f.card.rank >= 7 && x.need <= 6 && canPay(p, 0, 1 + x.need))
-      .sort((a, b) => b.f.card.rank - a.f.card.rank)[0];
-    if (tgt) return { t: "aces", card: aceS.id, x: tgt.need, tgt: tgt.f.card.id };
+  // A(エンチャント): 同スートのクリーチャーが2体以上いれば唱える
+  const aces = p.hand.filter(c => !c.joker && c.rank === 1);
+  for (const aceC of aces) {
+    if (p.field.filter(f => f.card.suit === aceC.suit).length >= 2 && canPay(p, aceC.suit, 2)) {
+      return { t: "aceench", card: aceC.id };
+    }
   }
-  // ♥A: 山札が細くなったら墓地をX枚戻す
-  const aceH = p.hand.find(c => !c.joker && c.rank === 1 && c.suit === 1);
-  if (aceH && p.deck.length <= 12 && p.grave.length >= 6) {
-    let mx = 0;
-    for (let x = Math.min(10, p.grave.length); x >= 1; x--) if (canPay(p, 1, 1 + x)) { mx = x; break; }
-    if (mx >= 3) return { t: "aceh", card: aceH.id, x: mx };
+  // アリス♥7-10: 攻撃に向かないクリーチャーをタップして1ドロー
+  if (aliceSide[pi] && p.deck.length >= 15) {
+    const td = p.field.find(f => hasTapDraw(f) && !f.tapped && !f.sick && oneSidedByBlocker(pi, f));
+    if (td) return { t: "tapdraw", cre: td.card.id };
   }
-  // 召喚(出せる限り最強から)。♥は瞬速のため相手のブロックフェイズまで温存する。Aは呪文なので除外
-  const s = p.hand.filter(c => !c.joker && c.rank !== 1 && c.suit !== 1 && canPay(p, c.suit, costOf(c))).sort((a, b) => b.rank - a.rank)[0];
-  if (s) return { t: "summon", card: s.id };
-  for (const c of p.hand.filter(c => !c.joker && c.suit !== 1 && c.rank >= 11).sort((a, b) => b.rank - a.rank)) {
+  // 召喚(出せる限り最強から)。通常カードの♥は瞬速のため温存(アリスに瞬速はない)。Aはエンチャント
+  const okSummon = c => !aliceSide[pi] ? (c.suit !== 1)
+    : !(c.suit === 2 && c.rank >= 11 && o.field.length - p.field.length < 2);   // アリス♦絵札は全体-X/-X: 劣勢時のみ
+  const s = p.hand.filter(c => !c.joker && c.rank !== 1 && okSummon(c) && canPay(p, c.suit, costOf(c))).sort((a, b) => b.rank - a.rank)[0];
+  if (s) return { t: "summon", card: s.id, etb: aiEtbFor(pi, s) };
+  for (const c of p.hand.filter(c => !c.joker && c.rank !== 1 && okSummon(c) && c.rank >= 11).sort((a, b) => b.rank - a.rank)) {
     const sameSuit = p.field.filter(f => f.card.suit === c.suit).sort((a, b) => a.card.rank - b.card.rank);
     const sacs = [];
     let red = 0;
@@ -2820,10 +2815,21 @@ function aiOMain(pi) {   // 相手ターン中のメイン: 土地→呪文→�
       if (canPay(p, c.suit, Math.max(0, costOf(c) - red))) break;
     }
     if (sacs.length && red < c.rank && canPay(p, c.suit, Math.max(0, costOf(c) - red))) {
-      return { t: "summon", card: c.id, sacs: sacs.map(f => f.card.id) };
+      return { t: "summon", card: c.id, sacs: sacs.map(f => f.card.id), etb: aiEtbFor(pi, c) };
     }
   }
   return { t: "done" };
+}
+
+/* アリス絵札のETBターゲットをAIが選ぶ */
+function aiEtbFor(pi, c) {
+  if (!aliceSide[pi] || c.rank < 11) return undefined;
+  const p = players[pi], o = players[1 - pi];
+  const X = c.rank + p.ench.filter(e => e.suit === c.suit).length;
+  if (c.suit === 1) { const t = [...o.field].sort((a, b) => creTough(b) - creTough(a))[0]; return t ? { tgt: t.card.id } : {}; }
+  if (c.suit === 0) { const t = p.field.filter(f => !f.tapped && !f.sick).sort((a, b) => b.card.rank - a.card.rank)[0]; return t ? { tgt: t.card.id } : {}; }
+  if (c.suit === 3) { const t = [...o.lands].filter(l => !l.card.joker && l.card.rank <= X).sort((a, b) => a.card.rank - b.card.rank)[0]; return t ? { tgt: t.card.id } : {}; }
+  return {};
 }
 
 function aiOAttacks(pi) {
@@ -2866,7 +2872,7 @@ function aiOAttacks(pi) {
   const provUsed = new Set();
   for (const f of avail) if (!used.has(f.card.id)) {
     const a2 = { cre: f.card.id, tt: "player" };
-    if (f.card.suit === 0) {
+    if (f.card.suit === 0 && !aliceSide[pi]) {
       const pv = o.field.find(t => {
         if (t.tapped || provUsed.has(t.card.id)) return false;
         const n = battleNumbers(f, t);
@@ -2885,19 +2891,19 @@ function aiOBlocks(pi) {
   const list = [];
   const used = new Set();
   const freeAll = () => p.field.filter(f => !f.tapped && !used.has(f.card.id));
-  const effPow = (b, oppCard) => b.pz ? 0 : b.card.rank + (b.buff || 0) + faceBonus(b.card, oppCard);
+  const effPow = (b, oppCard) => crePower(b, oppCard);
   for (const at of [...alive].sort((a, b) => (fieldById(atkPi, b.cre)?.card.rank || 0) - (fieldById(atkPi, a.cre)?.card.rank || 0))) {
     const atk = fieldById(atkPi, at.cre);
     if (!atk) continue;
-    const free = () => hasFlying(atk) ? freeAll().filter(hasFlying) : freeAll();   // ♦飛行は飛行でしかブロックできない
-    const lethal = Math.max(0, atk.card.rank + (atk.buff || 0) - (atk.dmg || 0));
-    // 1) 単体で討ち取って生き残るブロック
-    const single = free().filter(x => { const n = battleNumbers(atk, x); return n.aDies && !n.bDies; })
+    const free = () => canFly(atk) ? freeAll().filter(canFly) : freeAll();   // 飛行は飛行でしかブロックできない
+    const lethal = Math.max(0, creTough(atk) - (atk.dmg || 0));
+    // 1) 単体で討ち取って生き残るブロック(威迫には単体ブロック不可)
+    const single = hasMenace(atk) ? null : free().filter(x => { const n = battleNumbers(atk, x); return n.aDies && !n.bDies; })
       .sort((x, y) => x.card.rank - y.card.rank)[0];
     if (single) { used.add(single.card.id); list.push({ attacker: at.cre, blocker: single.card.id }); continue; }
     if (at.tt !== "player") continue;   // クリーチャーへの攻撃は有利ブロックのみ
     // 2) 単体トレード(相打ち・格下で)
-    const trade = free().filter(x => { const n = battleNumbers(atk, x); return n.aDies && x.card.rank <= atk.card.rank; })
+    const trade = hasMenace(atk) ? null : free().filter(x => { const n = battleNumbers(atk, x); return n.aDies && x.card.rank <= atk.card.rank; })
       .sort((x, y) => x.card.rank - y.card.rank)[0];
     if (trade) { used.add(trade.card.id); list.push({ attacker: at.cre, blocker: trade.card.id }); continue; }
     // 3) ギャングブロック(2〜3体): 合計パワーで討ち取れて、失う数字の合計が見合う組を探す(♣猪突には不可)
@@ -2918,7 +2924,7 @@ function aiOBlocks(pi) {
       let lost = 0;
       sorted.forEach((b, i2) => {
         const bl = Math.max(0, b.card.rank - (b.dmg || 0));
-        const assign = (i2 === sorted.length - 1 && !hasPierce(atk)) ? pool : Math.min(pool, bl);
+        const assign = (i2 === sorted.length - 1 && !hasTrample(atk)) ? pool : Math.min(pool, bl);
         if ((b.dmg || 0) + assign >= b.card.rank) lost += b.card.rank;
         pool -= assign;
       });
@@ -2929,8 +2935,8 @@ function aiOBlocks(pi) {
       for (const b of best.combo) { used.add(b.card.id); list.push({ attacker: at.cre, blocker: b.card.id }); }
       continue;
     }
-    // 4) 山札が残り少ないときはチャンプブロックで延命
-    if (p.deck.length <= 12) {
+    // 4) 山札が残り少ないときはチャンプブロックで延命(威迫は2体必要)
+    if (p.deck.length <= 12 && !hasMenace(atk)) {
       const chump = free().sort((x, y) => x.card.rank - y.card.rank)[0];
       if (chump) { used.add(chump.card.id); list.push({ attacker: at.cre, blocker: chump.card.id }); }
     }
@@ -3093,58 +3099,61 @@ async function actSpell(kind, c, body, cost) {
   act(a);
 }
 
-/* X選択モーダル */
-async function chooseAceX(c, maxX, desc) {
-  if (maxX < 1) { setHint("マナが足りない"); return null; }
-  const opts = Array.from({ length: maxX }, (_, i) => ({ label: `X = ${i + 1}(コスト${i + 2})`, value: i + 1 }));
-  opts.push({ label: "キャンセル", value: null });
-  return await choose(`${cardLabel(c)}: Xを選ぶ — ${desc}`, opts, c);
-}
-
-/* A呪文のUIフロー(すべてインスタント: メイン/アタック/ブロックフェイズで使える) */
+/* A(エンチャント)のUIフロー: メイン/アタック/ブロックフェイズで唱えられる(瞬速) */
 async function aceSpellUI(c, kind) {
-  const p = players[myIdx], o = players[1 - myIdx];
-  let affordX = 0;
-  for (let x = 13; x >= 1; x--) if (canPay(p, c.suit, 1 + x)) { affordX = x; break; }
-  if (c.suit === 1) {        // ♥A: 墓地の上からX枚を山札へ混ぜる
-    const X = await chooseAceX(c, Math.min(affordX, p.grave.length), "墓地の上からX枚を山札に混ぜて切り直す");
-    if (!X) return;
-    await actSpell(kind, c, { t: "aceh", x: X }, 1 + X);
-  } else if (c.suit === 0) { // ♠A: 対象にX点
-    const X = await chooseAceX(c, affordX, "対象のクリーチャー1体にX点ダメージ");
-    if (!X) return;
-    const t = await chooseCard("♠A: ダメージを与えるクリーチャー", [...o.field, ...p.field].map(f => f.card), "", "キャンセル");
-    if (!t) return;
-    await actSpell(kind, c, { t: "aces", x: X, tgt: t.id }, 1 + X);
-  } else if (c.suit === 2) { // ♦A: 対象に+X/+X
-    const X = await chooseAceX(c, affordX, "対象のクリーチャー1体は+X/+Xの修整を受ける(次のクリンナップまで)");
-    if (!X) return;
-    const t = await chooseCard("♦A: 修整を与えるクリーチャー", [...p.field, ...o.field].map(f => f.card), "", "キャンセル");
-    if (!t) return;
-    await actSpell(kind, c, { t: "aced", x: X, tgt: t.id }, 1 + X);
-  } else {                   // ♣A: 自分の土地X枚を手札へ
-    const ls = await chooseMulti("♣A: 手札に戻す自分の土地を選ぶ(X=選んだ枚数)", p.lands.map(l => l.card),
-      sel => ({
-        text: `X=${sel.length} → コスト${1 + sel.length}` + (sel.length && canPay(p, 3, 1 + sel.length) ? "" : sel.length ? " — <b>マナが足りない</b>" : ""),
-        ok: sel.length >= 1 && canPay(p, 3, 1 + sel.length),
-      }), "手札に戻す", "キャンセル");
-    if (!ls) return;
-    await actSpell(kind, c, { t: "acec", lands: ls.map(x => x.id) }, 1 + ls.length);
-  }
+  const p = players[myIdx];
+  const cnt = p.ench.filter(e => e.suit === c.suit).length;
+  const v = await choose(`${cardLabel(c)}(瞬速エンチャント)`, [
+    { label: `唱える(${SUITS[c.suit]}1+無色1) — 自分の${SUITS[c.suit]}クリーチャーは+1/+1` + (cnt ? `(現在+${cnt}/+${cnt}、重ね掛け可)` : ""),
+      value: "cast", primary: true, disabled: !canPay(p, c.suit, 2) },
+    { label: "キャンセル", value: null },
+  ], c, "エンチャントは場に残り続ける");
+  if (v !== "cast") return;
+  await actSpell(kind, c, { t: "aceench" }, 2);
 }
 
-/* 召喚アクションの送信。手動支払いモードなら先に土地を選ばせ、選択をアクションに載せる *//* 召喚アクションの送信。手動支払いモードなら先に土地を選ばせ、選択をアクションに載せる */
+/* 召喚アクションの送信。手動支払いモードなら先に土地を選ばせ、選択をアクションに載せる *//* 召喚アクションの送信。手動支払いモードなら先に土地を選ばせ、選択をアクションに載せる *//* 召喚アクションの送信。手動支払いモードなら先に土地を選ばせ、選択をアクションに載せる */
 async function actSummon(kind, c, sacs) {
   const red = (sacs || []).reduce((t, x) => t + x.rank, 0);
   const remaining = Math.max(0, costOf(c) - red);
   const a = { k: kind, t: "summon", card: c.id };
   if (sacs) a.sacs = sacs.map(x => x.id);
+  if (aliceSide[myIdx] && c.rank >= 11) {   // アリス絵札: ETBの対象を先に選ぶ
+    const etb = await aliceEtbUI(c);
+    if (etb === null) return;
+    a.etb = etb;
+  }
   if (manualPay && remaining > 0) {
     const ids = await requestPays(c.suit, remaining);
     if (!ids) return;
     a.pays = ids;
   }
   act(a);
+}
+
+/* アリス絵札のETBターゲット選択UI。キャンセルで null */
+async function aliceEtbUI(c) {
+  const p = players[myIdx], o = players[1 - myIdx];
+  const X = c.rank + p.ench.filter(e => e.suit === c.suit).length;
+  if (c.suit === 1) {
+    const cands = [...o.field, ...p.field].map(f => f.card);
+    if (!cands.length) return {};
+    const t = await chooseCard(`${cardLabel(c)}のETB: オーナーの手札に戻すクリーチャー`, cands, "", "キャンセル");
+    return t ? { tgt: t.id } : null;
+  }
+  if (c.suit === 0) {
+    const cands = [...p.field, ...o.field].map(f => f.card);
+    if (!cands.length) return {};
+    const t = await chooseCard(`${cardLabel(c)}のETB: +${X}/+0を与えるクリーチャー`, cands, "", "キャンセル");
+    return t ? { tgt: t.id } : null;
+  }
+  if (c.suit === 3) {
+    const cands = [...o.lands, ...p.lands].filter(l => !l.card.joker && l.card.rank <= X).map(l => l.card);
+    if (!cands.length) return {};
+    const t = await chooseCard(`${cardLabel(c)}のETB: クリーチャー化する土地(数字${X}以下)`, cands, "", "キャンセル");
+    return t ? { tgt: t.id } : null;
+  }
+  return {};   // ♦: 全体-X/-X(対象なし)
 }
 
 /* オリジナルルールの手札クリック(相手ターン中の自分のメインフェイズ) */
@@ -3154,7 +3163,8 @@ async function onHandClickO(c) {
     // ブロックフェイズ中は♥の瞬速召喚と、A呪文(インスタント)が使える
     if (c.joker) { setHint("JOKERはブロックフェイズでは使えない"); return; }
     if (c.rank === 1) { await aceSpellUI(c, "oblocks"); return; }
-    if (c.suit !== 1) { setHint("ブロックフェイズで使えるのは♥(瞬速)とA呪文(インスタント)のみ"); return; }
+    if (aliceSide[myIdx]) { setHint("アリスのカードに瞬速はない — ブロックフェイズで使えるのはA(エンチャント)のみ"); return; }
+    if (c.suit !== 1) { setHint("ブロックフェイズで使えるのは♥(瞬速)とA(エンチャント)のみ"); return; }
     {
       const opts = [{
         label: `瞬速で召喚する — コスト${costOf(c)}(${SUITS[c.suit]}1+無指定${c.rank}) ${c.rank}/${c.rank}`,
@@ -3198,20 +3208,16 @@ async function onHandClickO(c) {
     const mk = oPhase.phase === "attack" ? "oattacks" : "omain";
     if (!c.joker && c.rank === 1) {
       // A: クリーチャーではなくスート別の呪文
-      const desc = {
-        1: "墓地の上からX枚を山札に混ぜて切り直す(墓地の枚数が上限)",
-        0: "対象のクリーチャー1体にX点ダメージ",
-        3: "対象の自分の土地X枚を手札に戻す",
-        2: "対象のクリーチャー1体は+X/+Xの修整を受ける(次のクリンナップまで)",
-      }[c.suit];
-      const v = await choose(`${cardLabel(c)}(インスタント)`, [
+      const cnt = p.ench.filter(e => e.suit === c.suit).length;
+      const v = await choose(`${cardLabel(c)}(瞬速エンチャント)`, [
         { label: `土地に置く(${SUITS[c.suit]}マナ)`, value: "land", disabled: landSetUsed >= landSetMax },
-        { label: `呪文を唱える(${SUITS[c.suit]}1マナ+Xマナ) — ${desc}`, value: "spell", primary: true, disabled: !canPay(p, c.suit, 2) },
+        { label: `エンチャントとして唱える(${SUITS[c.suit]}1+無色1) — 自分の${SUITS[c.suit]}クリーチャーは+1/+1` + (cnt ? `(現在+${cnt})` : ""),
+          value: "spell", primary: true, disabled: !canPay(p, c.suit, 2) },
         { label: "キャンセル", value: null },
-      ], c, "Aはクリーチャーとして召喚できない。呪文は相手のブロックフェイズでも唱えられる(インスタント)");
+      ], c, "Aはクリーチャーではなくエンチャント。相手のブロックフェイズでも唱えられる(瞬速)");
       if (!uiMain) return;
       if (v === "land") act({ k: mk, t: "land", card: c.id });
-      if (v === "spell") await aceSpellUI(c, mk);
+      if (v === "spell") await actSpell(mk, c, { t: "aceench" }, 2);
       return;
     }
     if (!c.joker) {
@@ -3416,7 +3422,7 @@ document.getElementById("btn-paymode").addEventListener("click", () => {
 /* 手動支払い中は土地と決定・キャンセル以外のクリックを遮断する */
 document.getElementById("app").addEventListener("click", e => {
   if (!paySel) return;
-  if (e.target.closest("#m-lands") || e.target.closest("#btn-end") || e.target.closest("#btn-paycancel")) return;
+  if (e.target.closest("#m-lands") || e.target.closest("#m-field") || e.target.closest("#btn-end") || e.target.closest("#btn-paycancel")) return;
   e.stopPropagation();
   e.preventDefault();
 }, true);
@@ -3461,7 +3467,7 @@ async function hostRoom() {
   const code = genCode();
   const seed = Math.floor(Math.random() * 2 ** 31);
   const roomRef = firebase.database().ref("rooms/" + code);
-  await roomRef.set({ seed, created: Date.now(), p0: true, rule: ruleMode });   // ルールは部屋主が決める
+  await roomRef.set({ seed, created: Date.now(), p0: true, rule: aliceVariant ? "alice" : ruleMode });   // ルールは部屋主が決める
   document.getElementById("title-overlay").classList.remove("show");
   document.getElementById("room-code-big").textContent = code;
   document.getElementById("wait-overlay").classList.add("show");
@@ -3484,7 +3490,11 @@ async function joinRoom(code) {
   const snap = await roomRef.get();
   if (!snap.exists()) { document.getElementById("online-note").textContent = "その部屋コードは見つかりません"; return; }
   mode = "guest"; myIdx = 1;
-  ruleMode = snap.val().rule || "duema";   // ゲストは部屋のルールに従う
+  {   // ゲストは部屋のルールに従う
+    const r = snap.val().rule || "duema";
+    aliceVariant = r === "alice";
+    ruleMode = aliceVariant ? "original" : r;
+  }
   await roomRef.child("p1").set(true);
   document.getElementById("title-overlay").classList.remove("show");
   transport = new FirebaseTransport(code);
@@ -3495,7 +3505,7 @@ async function joinRoom(code) {
 /* テスト・同一ブラウザ検証用(BroadcastChannel対戦) */
 window.__startBC = function (role, code, seed, rule) {
   mode = role; myIdx = role === "host" ? 0 : 1;
-  if (rule) ruleMode = rule;
+  if (rule) { aliceVariant = rule === "alice"; ruleMode = aliceVariant ? "original" : rule; }
   document.getElementById("title-overlay").classList.remove("show");
   transport = new BCTransport(code);
   transport.start(onActionArrived);
@@ -3606,8 +3616,8 @@ function cardEl(c, opts = {}) {
   }
   if (opts.pt) el.innerHTML += opts.yr
     ? `<span class="pt">${YR(c)}/${YR(c)}</span>`
-    : `<span class="pt">${(opts.pz ? 0 : c.rank + (opts.buff || 0))}/${c.rank + (opts.buff || 0)}</span>`;
-  if (opts.buff > 0) el.innerHTML += `<span class="buffb">+${opts.buff}</span>`;
+    : `<span class="pt">${(opts.pz ? 0 : Math.max(0, c.rank + (opts.buff || 0) + (opts.pbuff || 0)))}/${Math.max(0, c.rank + (opts.buff || 0))}</span>`;
+  if ((opts.buff || 0) + (opts.pbuff || 0) > 0) el.innerHTML += `<span class="buffb">+${(opts.buff || 0) + (opts.pbuff || 0)}</span>`;
   if (opts.rmark) el.innerHTML += `<span class="rmark">R</span>`;
   if (opts.dmg > 0) el.innerHTML += `<span class="dmgb">-${opts.dmg}</span>`;
   return el;
@@ -3757,9 +3767,15 @@ function render() {
     }
   }
 
-  // 土地(手動支払い中は自分のアンタップ土地をクリックで選ぶ)
+  // 土地(手動支払い中は自分のアンタップ土地をクリックで選ぶ)+ A(エンチャント)
   if (!poke) for (const [id, p] of [["e-lands", en], ["m-lands", me]]) {
     const z = document.getElementById(id); z.innerHTML = "";
+    (p.ench || []).forEach(c2 => {
+      const eel = cardEl(c2, { sm: true });
+      eel.classList.add("land", "ench");
+      eel.title = `自分の${SUITS[c2.suit]}クリーチャーは+1/+1`;
+      z.appendChild(eel);
+    });
     p.lands.forEach(l => {
       const slot = document.createElement("div");
       slot.className = "slot" + (l.tapped ? " tapped" : "");
@@ -3790,7 +3806,7 @@ function render() {
     slot.className = "slot" + ((yugi ? yDef : f.tapped) ? " tapped" : "");
     const el = yugi
       ? (f.down ? cardEl(null, { back: true }) : cardEl(f.card, { pt: true, yr: true }))
-      : cardEl(f.card, { pt: true, dmg: f.dmg, pz: f.pz, buff: f.buff });
+      : cardEl(f.card, { pt: true, dmg: f.dmg, pz: pzZero(f), buff: totBuff(f), pbuff: f.pbuff });
     el.dataset.cid = f.card.id;
     if (yugi ? yDef : f.tapped) el.classList.add("tapped");
     if (!yugi && f.sick) el.classList.add("sick");
@@ -3834,7 +3850,7 @@ function render() {
       // ♠挑戦: アンタップの敵を挑戦対象に指定できる(そのあと本体かタップ中の敵を攻撃対象に選ぶ)
       if (uiMain && oPhase && oPhase.phase === "attack" && selAttacker !== null && !f.tapped) {
         const atk = me.field[selAttacker];
-        if (atk && atk.card.suit === 0 && !pendAtkSet.has(atk.card.id)) {
+        if (atk && atk.card.suit === 0 && !aliceSide[myIdx] && !pendAtkSet.has(atk.card.id)) {
           el.classList.add("targetable");
           if (provSel === f.card.id) el.classList.add("attacking");
           el.addEventListener("click", () => {
@@ -3847,7 +3863,7 @@ function render() {
       if (uiMain && oPhase && oPhase.phase === "block" && declAtkSet.has(f.card.id) && selTargetAtt !== null) {
         const at = declaredAttacks.find(a => a.cre === f.card.id);
         const myBlocker = fieldById(myIdx, selTargetAtt);
-        const flyBlocked = hasFlying(f) && myBlocker && !hasFlying(myBlocker);
+        const flyBlocked = canFly(f) && myBlocker && !canFly(myBlocker);
         const choBlocked = hasChototsu(f) && pendingBlocks.some(b => b.attacker === f.card.id);
         const aliveA = at && (at.tt !== "cre" || fieldById(myIdx, at.tv)) && !flyBlocked && !choBlocked;
         if (aliveA) {
@@ -3881,7 +3897,7 @@ function render() {
     slot.className = "slot" + ((yugi ? yDef : f.tapped) ? " tapped" : "");
     const el = yugi
       ? (f.down ? cardEl(f.card, { rmark: true }) : cardEl(f.card, { pt: true, yr: true }))
-      : cardEl(f.card, { pt: true, dmg: f.dmg, pz: f.pz, buff: f.buff });
+      : cardEl(f.card, { pt: true, dmg: f.dmg, pz: pzZero(f), buff: totBuff(f), pbuff: f.pbuff });
     el.dataset.cid = f.card.id;
     if (yugi ? yDef : f.tapped) el.classList.add("tapped");
     if (!yugi && f.sick) el.classList.add("sick");
@@ -3909,8 +3925,18 @@ function render() {
     if (original) {
       // 攻撃宣言中(確定前含む)のクリーチャーには⚔マーク
       if (declAtkSet.has(f.card.id) || pendAtkSet.has(f.card.id)) el.innerHTML += `<span class="atkmark">⚔️</span>`;
-      // アタックフェイズ: 攻撃クリーチャーの選択/割り当て解除
-      if (uiMain && oPhase && oPhase.phase === "attack") {
+      // 手動支払い中: アリスの♣2-6はマナ源としてクリックできる
+      if (paySel && isManaCre(f) && !f.tapped && !f.sick) {
+        el.classList.add("targetable");
+        if (paySel.sel.has(f.card.id)) el.classList.add("payselect");
+        el.addEventListener("click", () => {
+          if (paySel.sel.has(f.card.id)) paySel.sel.delete(f.card.id);
+          else if (paySelSum() < paySel.need) paySel.sel.add(f.card.id);
+          render();
+        });
+      }
+      // アタックフェイズ: 攻撃クリーチャーの選択/割り当て解除(アリス♥7-10はタップでドローも選べる)
+      if (!paySel && uiMain && oPhase && oPhase.phase === "attack") {
         if (pendAtkSet.has(f.card.id)) {
           el.classList.add("assigned");
           el.addEventListener("click", () => {
@@ -3920,12 +3946,32 @@ function render() {
         } else if (!f.tapped && !f.sick) {
           el.classList.add("selectable");
           if (selAttacker === idx) el.classList.add("attacking");
-          el.addEventListener("click", () => {
+          el.addEventListener("click", async () => {
+            if (hasTapDraw(f)) {
+              const v = await choose(cardLabel(f.card), [
+                { label: "攻撃クリーチャーとして選択", value: "atk" },
+                { label: "タップしてカードを1枚引く(起動能力)", value: "draw", primary: true },
+                { label: "キャンセル", value: null },
+              ], f.card);
+              if (v === "draw") { act({ k: "oattacks", t: "tapdraw", cre: f.card.id }); return; }
+              if (v !== "atk") return;
+            }
             selAttacker = selAttacker === idx ? null : idx;
             provSel = null;
             render();
           });
         }
+      }
+      // メインフェイズ(第2): アリス♥7-10のタップドロー
+      if (!paySel && uiMain && oPhase && oPhase.phase === "main2" && hasTapDraw(f) && !f.tapped && !f.sick) {
+        el.classList.add("selectable");
+        el.addEventListener("click", async () => {
+          const v = await choose(cardLabel(f.card), [
+            { label: "タップしてカードを1枚引く(起動能力)", value: "draw", primary: true },
+            { label: "キャンセル", value: null },
+          ], f.card);
+          if (v === "draw") act({ k: "omain", t: "tapdraw", cre: f.card.id });
+        });
       }
       // ブロックフェイズ: まず自分のブロッカーを選ぶ(選択中は金色パルス)
       if (uiMain && oPhase && oPhase.phase === "block") {
@@ -4013,7 +4059,7 @@ function render() {
   }
   if (original && uiMain && oPhase && oPhase.phase === "attack" && selAttacker !== null) {
     const selAtk = players[myIdx].field[selAttacker];
-    if (selAtk && selAtk.card.suit === 0) {
+    if (selAtk && selAtk.card.suit === 0 && !aliceSide[myIdx]) {
       setHint(provSel
         ? "挑戦対象を指定した — 攻撃対象(本体 or タップ中の敵)をクリックで確定"
         : "攻撃対象を選択: 本体/タップ中の敵。アンタップの敵をクリックすると♠挑戦(強制ブロック)の対象に指定できる");
@@ -4210,9 +4256,15 @@ function storyDraw() {
     }
     ctx.fillStyle = "#000"; ctx.fillRect(DX * T + 1, (H - 1) * T + 1, T - 2, T - 2);   // 開いた扉
   }
-  // ウサギ紳士 or 死体
+  // ウサギ紳士 or アリス or 死体
   const rx = RX * T, ry = RY * T;
-  if (!story.rabbitDead) {
+  if (story.room === 3) {
+    ctx.fillStyle = "#cdbd7e"; ctx.fillRect(rx + 4, ry - 3, 8, 6);       // 金色の髪
+    ctx.fillStyle = "#e3d3c3"; ctx.fillRect(rx + 5, ry + 3, 6, 4);       // 白い顔
+    ctx.fillStyle = "#1a1a20"; ctx.fillRect(rx + 6, ry + 4, 1, 2); ctx.fillRect(rx + 9, ry + 4, 1, 2);   // 虚ろな目
+    ctx.fillStyle = "#3d5570"; ctx.fillRect(rx + 3, ry + 7, 10, 8);      // 青いドレス
+    ctx.fillStyle = "#d9d2c6"; ctx.fillRect(rx + 5, ry + 8, 6, 6);       // エプロン
+  } else if (!story.rabbitDead) {
     ctx.fillStyle = "#e8e2d8"; ctx.fillRect(rx + 5, ry - 7, 2, 7); ctx.fillRect(rx + 9, ry - 7, 2, 7);   // 耳
     ctx.fillStyle = "#efe9df"; ctx.fillRect(rx + 4, ry, 8, 7);   // 顔
     ctx.fillStyle = "#3a3540"; ctx.fillRect(rx + 6, ry + 3, 1, 2); ctx.fillRect(rx + 9, ry + 3, 1, 2);   // 悲しげな目
@@ -4253,6 +4305,7 @@ function storyMove(dx, dy) {
   const t = storyTileAt(nx, ny);
   if (t === "wall") return;
   if (t === "rabbit") {
+    if (story.room === 3) { storyStartBattle(); return; }   // アリスは何も言わない
     storyDialog(["それでは、私を殺してください。", "よろしくお願いいたします。"], storyStartBattle);
     return;
   }
@@ -4274,6 +4327,7 @@ async function storyEnterRoom(n) {
   storySetFade(1);
   storyDraw();
   await storyFade(false, 1800);
+  if (n === 3) { story.state = "field"; return; }   // アリスの部屋: 台詞はない。近づけば、始まる
   const lines = n === 1 ? STORY_LINES_1(story.name) : STORY_LINES_2;
   storyDialog(lines, storyStartBattle);
 }
@@ -4292,6 +4346,16 @@ function storyStartBattle() {
 
 function storyBattleEnd(winnerPi) {
   if (winnerPi === myIdx) {
+    if (story.room === 3) {   // アリスに勝利 → to be continued
+      story.state = "fade";
+      storyShow("story-tbc");
+      storySetFade(0);
+      const el = document.getElementById("story-tbc-text");
+      el.innerHTML = "アリスは、静かに微笑んだ。<br><br>アリス・イン・アンダーランド<br><span style='font-size:12px;color:#5d5866;letter-spacing:.3em'>to be continued</span>";
+      document.getElementById("story-tbc-btn").style.display = "none";
+      setTimeout(() => { document.getElementById("story-tbc-btn").style.display = ""; }, TEST_AUTO ? 1 : 2200);
+      return;
+    }
     story.rabbitDead = true;
     story.state = "field";
     storyShow("story-field");
@@ -4327,6 +4391,9 @@ async function storyNextRoom() {
   if (story.room === 1) {
     storySetFade(1);
     await storyEnterRoom(2);
+  } else if (story.room === 2) {
+    storySetFade(1);
+    await storyEnterRoom(3);
   } else {
     storyShow("story-tbc");
     storySetFade(0);
@@ -4398,16 +4465,20 @@ document.addEventListener("keydown", e => {
 
 /* ================= 開始 ================= */
 function setRule(r) {
-  ruleMode = r;
-  for (const m of ["duema", "original", "yugi", "poke"]) {
-    document.getElementById("rule-" + m).classList.toggle("on", r === m);
-    document.getElementById("rules-" + m).style.display = r === m ? "" : "none";
+  aliceVariant = r === "alice";
+  ruleMode = r === "alice" ? "original" : r;   // アリスはマジックエンジンの変種
+  for (const m of ["duema", "original", "yugi", "poke", "alice"]) {
+    const btn = document.getElementById("rule-" + m);
+    if (btn) btn.classList.toggle("on", r === m);
+    const body = document.getElementById("rules-" + m);
+    if (body) body.style.display = r === m ? "" : "none";
   }
 }
 document.getElementById("rule-duema").addEventListener("click", () => setRule("duema"));
 document.getElementById("rule-original").addEventListener("click", () => setRule("original"));
 document.getElementById("rule-yugi").addEventListener("click", () => setRule("yugi"));
 document.getElementById("rule-poke").addEventListener("click", () => setRule("poke"));
+document.getElementById("rule-alice").addEventListener("click", () => setRule("alice"));
 
 document.getElementById("btn-mute").addEventListener("click", () => {
   muted = !muted;
