@@ -78,6 +78,21 @@
   .card.sm.land .st-s { display: none; }
   .card.sm.land .st-b { font-size: 30px; margin-top: -2px; }
   .card.ench { outline: 2px solid var(--gold); box-shadow: 0 0 8px rgba(201,162,39,.45); }
+  /* アリスカード: 黒地。黒スート=白字、赤スート=赤字 */
+  .card.alice { background: #141318; border-color: #3c3946; color: #ece6dc; }
+  .card.alice.red { color: #e04a50; }
+  .card.alice.tapped { filter: brightness(1); }
+  /* カードテキストのポップアップ(右クリック) */
+  #cardtext-pop {
+    display: none; position: fixed; inset: 0; z-index: 90;
+    background: rgba(0,0,0,.7); align-items: center; justify-content: center;
+  }
+  #cardtext-pop .ctp-inner {
+    background: #1a2430; border: 1px solid rgba(201,162,39,.5); border-radius: 12px;
+    padding: 20px 22px; max-width: min(90vw, 440px); display: flex; gap: 16px; align-items: flex-start;
+  }
+  #ctp-text { font-size: 12px; line-height: 1.9; color: var(--paper); }
+  #ctp-text b { color: var(--gold); }
   /* 遊戯王: 裏側セットの「R」マーク(自分にだけ表が見える) */
   .card .rmark {
     position: absolute; right: 2px; top: 2px; width: 15px; height: 15px; line-height: 15px;
@@ -481,6 +496,9 @@
   <div id="story-fade"></div>
 </div>
 
+<!-- カードテキスト(右クリック) -->
+<div id="cardtext-pop"><div class="ctp-inner"><div id="ctp-card"></div><div id="ctp-text"></div></div></div>
+
 <!-- 汎用モーダル -->
 <div class="overlay" id="modal">
   <div class="panel">
@@ -510,7 +528,7 @@
       <b>♠スペード</b>: 2〜6=<b>接死</b>(1点以上の戦闘ダメージを与えた相手を破壊)/ 7〜10=<b>威迫</b>(2体以上にしかブロックされない)/ J〜K=<b>ETB: 対象に+X/+0</b>(X=このパワー)<br>
       <b>♣クローバー</b>: 2〜6=<b>「T: ♣マナ1点」</b>(マナクリーチャー・召喚酔い中は不可)/ 7〜10=<b>トランプル</b> / J〜K=<b>ETB: 数字X以下の土地をそのオーナーのクリーチャー化</b>(X=このパワー)<br>
       <b>♦ダイヤ</b>: 2〜6=<b>絆魂</b>(与えた戦闘ダメージぶん墓地を山札の下へ・墓地枚数まで)/ 7〜10=<b>反撃</b>(タップ状態でもパワー0にならない)/ J〜K=<b>ETB: 全クリーチャーに-X/-X</b>(X=このパワー・ターン終了時まで)<br><br>
-      アリスカードに瞬速・速攻・警戒・挑戦はなく、全て召喚酔いする。A(エンチャント)とJOKERは共通。
+      アリスカードも<b>基本スート能力(♠挑戦/♥瞬速/♦警戒/♣速攻)を持つ</b>(通常の絵札能力だけが帯能力に置き換わる)。A(エンチャント)とJOKERは共通。アリスカードは黒地(黒スート=白字・赤スート=赤字)で表示される。カードは<b>右クリックでテキスト参照</b>できる(マジック・アリス共通)。
     </div>
     <div class="body" id="rules-poke" style="display:none">
       54枚フルデッキ(4色×13+JOKER2枚)同士の1対1。<b>初手5枚・マナなし・サイド6枚</b>。手札にたねが無ければ強制引き直し(そのたび相手が1枚ドロー)。先攻後攻はランダム、<b>先攻の1ターン目はワザを使えない</b>。敗者の手札は公開される。<br><br>
@@ -1060,7 +1078,7 @@ function revealHand(container, pi) {
   wrap.innerHTML = `<div class="body" style="text-align:center;margin-top:12px">${players[pi].name}の手札(公開)</div>`;
   const row = document.createElement("div");
   row.className = "cardrow";
-  if (players[pi].hand.length) players[pi].hand.forEach(c => row.appendChild(cardEl(c, { sm: true })));
+  if (players[pi].hand.length) players[pi].hand.forEach(c => row.appendChild(cardEl(c, { sm: true, alice: aliceSide[pi] })));
   else row.innerHTML = `<span style="color:var(--dim);font-size:12px">(手札なし)</span>`;
   wrap.appendChild(row);
   container.appendChild(wrap);
@@ -1301,7 +1319,7 @@ async function runOriginalTurns(token, secondP) {
     const preAlive = declaredAttacks.filter(at =>
       fieldById(cur, at.cre) && (at.tt !== "cre" || fieldById(def, at.tv)));
     const defCanAct = (preAlive.length && players[def].field.some(f => !f.tapped)) ||
-                      players[def].hand.some(c => !c.joker && (c.rank === 1 || (c.suit === 1 && !aliceSide[def])));   // ♥瞬速(通常カード)とA(瞬速エンチャント)
+                      players[def].hand.some(c => !c.joker && (c.rank === 1 || c.suit === 1));   // ♥瞬速とA(瞬速エンチャント)
     oPhase = { phase: "block", actor: def }; render();
     if (defCanAct) {
       for (;;) {
@@ -1409,8 +1427,8 @@ async function runOriginalTurns(token, secondP) {
     declaredAttacks = [];
     activeBlocks = [];
     // 戦闘フェイズ終了時: ♦は警戒でアンタップ、タップ状態のクリーチャーはパワー0(アンタップまで)
-    players.forEach((p, ppi) => p.field.forEach(f => {
-      if (!aliceSide[ppi] && f.card.suit === 2) { f.tapped = false; f.pz = false; }   // ♦警戒(通常カードのみ)
+    players.forEach(p => p.field.forEach(f => {
+      if (f.card.suit === 2) { f.tapped = false; f.pz = false; }   // ♦警戒(アリスカードも同様)
       else if (f.tapped) f.pz = true;
     }));
     render();
@@ -2446,7 +2464,7 @@ async function applySummonO(pi, a) {
   if (sacs.length) log(`${p.name}: ${sacs.map(f => cardLabel(f.card)).join(" ")} を生贄に捧げた(コスト-${reduction})`);
   summon(pi, c, false, reduction, a.pays);
   const cre = p.field[p.field.length - 1];
-  cre.sick = aliceSide[pi] ? true : c.suit !== 3;   // ♣は速攻(アリスカードは常に酔う)
+  cre.sick = c.suit !== 3;   // ♣は速攻(召喚酔いなし・アリスカードも同様)
   if (aliceSide[pi] && c.rank >= 11) await aliceETB(pi, cre, a.etb || {});
 }
 
@@ -2617,8 +2635,8 @@ function aiDecide(pi, kind, ctx) {
     if (aceE && attackers2.length) {
       return { k: "oblocks", t: "aceench", card: aceE.id };
     }
-    // ♥瞬速召喚: 攻撃が来ていれば、出せる♥を強い順に出して待ち伏せる(Aとアリスカードは除外)
-    if (attackers2.length && !aliceSide[pi]) {
+    // ♥瞬速召喚: 攻撃が来ていれば、出せる♥を強い順に出して待ち伏せる(Aは除外)
+    if (attackers2.length) {
       const flash = p.hand.filter(c => !c.joker && c.rank !== 1 && c.suit === 1 && canPay(p, c.suit, costOf(c)))
         .sort((a, b) => b.rank - a.rank)[0];
       if (flash) return { k: "oblocks", t: "summon", card: flash.id };
@@ -2801,8 +2819,8 @@ function aiOMain(pi) {   // 相手ターン中のメイン: 土地→呪文→�
     if (td) return { t: "tapdraw", cre: td.card.id };
   }
   // 召喚(出せる限り最強から)。通常カードの♥は瞬速のため温存(アリスに瞬速はない)。Aはエンチャント
-  const okSummon = c => !aliceSide[pi] ? (c.suit !== 1)
-    : !(c.suit === 2 && c.rank >= 11 && o.field.length - p.field.length < 2);   // アリス♦絵札は全体-X/-X: 劣勢時のみ
+  const okSummon = c => c.suit !== 1 &&
+    !(aliceSide[pi] && c.suit === 2 && c.rank >= 11 && o.field.length - p.field.length < 2);   // アリス♦絵札は全体-X/-X: 劣勢時のみ
   const s = p.hand.filter(c => !c.joker && c.rank !== 1 && okSummon(c) && canPay(p, c.suit, costOf(c))).sort((a, b) => b.rank - a.rank)[0];
   if (s) return { t: "summon", card: s.id, etb: aiEtbFor(pi, s) };
   for (const c of p.hand.filter(c => !c.joker && c.rank !== 1 && okSummon(c) && c.rank >= 11).sort((a, b) => b.rank - a.rank)) {
@@ -2872,7 +2890,7 @@ function aiOAttacks(pi) {
   const provUsed = new Set();
   for (const f of avail) if (!used.has(f.card.id)) {
     const a2 = { cre: f.card.id, tt: "player" };
-    if (f.card.suit === 0 && !aliceSide[pi]) {
+    if (f.card.suit === 0) {
       const pv = o.field.find(t => {
         if (t.tapped || provUsed.has(t.card.id)) return false;
         const n = battleNumbers(f, t);
@@ -3163,7 +3181,6 @@ async function onHandClickO(c) {
     // ブロックフェイズ中は♥の瞬速召喚と、A呪文(インスタント)が使える
     if (c.joker) { setHint("JOKERはブロックフェイズでは使えない"); return; }
     if (c.rank === 1) { await aceSpellUI(c, "oblocks"); return; }
-    if (aliceSide[myIdx]) { setHint("アリスのカードに瞬速はない — ブロックフェイズで使えるのはA(エンチャント)のみ"); return; }
     if (c.suit !== 1) { setHint("ブロックフェイズで使えるのは♥(瞬速)とA(エンチャント)のみ"); return; }
     {
       const opts = [{
@@ -3607,12 +3624,20 @@ function chooseCard(title, cards, bodyHtml, cancelLabel) {
 function cardEl(c, opts = {}) {
   const el = document.createElement("div");
   if (opts.back) { el.className = "card back" + (opts.sm ? " sm" : ""); return el; }
+  const aliceCard = opts.alice !== undefined ? !!opts.alice : (ruleMode === "original" && aliceVariant);
   if (c.joker) {
     el.className = "card joker" + (opts.sm ? " sm" : "");
     el.innerHTML = `<span class="jk">JOKER</span>`;
   } else {
     el.className = "card" + (opts.sm ? " sm" : "") + (c.suit === 1 || c.suit === 2 ? " red" : "");
+    if (aliceCard) el.classList.add("alice");
     el.innerHTML = `<span class="rk">${RANK_LABEL[c.rank]}</span><span class="st-s">${SUITS[c.suit]}</span><span class="st-b">${SUITS[c.suit]}</span>`;
+  }
+  if (ruleMode === "original" && c) {
+    el.addEventListener("contextmenu", e => {
+      e.preventDefault();
+      showCardText(c, aliceCard);
+    });
   }
   if (opts.pt) el.innerHTML += opts.yr
     ? `<span class="pt">${YR(c)}/${YR(c)}</span>`
@@ -3644,6 +3669,64 @@ function pokeCardEl(pk, opts) {
   }
   return slot;
 }
+
+/* 右クリックのカードテキスト(マジック・アリス共通) */
+function cardRulesText(c, alice) {
+  if (c.joker) {
+    return `<b>JOKER</b><br>3つの使い方から選ぶ:<br><br>・<b>モックスジョーカー</b>(0マナ呪文): このターンの土地セット権+1(相手より土地が少ないときのみ)<br>・<b>ミシュラズジョーカー</b>(0マナ呪文): カードを1枚引く<br>・<b>ロータスジョーカー</b>: セット権を使わず土地としてセット(相手より土地が少ないときのみ)。タップで無色3マナ、ターン終了時に破壊`;
+  }
+  if (c.rank === 1) {
+    return `<b>${cardLabel(c)} — 瞬速エンチャント</b><br>コスト: ${SUITS[c.suit]}1+無色1<br><br>場にある間、自分の${SUITS[c.suit]}クリーチャーは<b>+1/+1</b>(重ね掛け可)。相手のブロックフェイズでも唱えられる。<br><br>土地として置くこともできる(${SUITS[c.suit]}マナ1点)`;
+  }
+  const kw = {
+    0: "<b>挑戦</b>: 攻撃時、アンタップの相手クリーチャー最大1体を対象に取り、強制的にそのブロックへ参加させる(複数ブロック時は挑戦対象へ最優先でダメージ)",
+    1: "<b>瞬速</b>: 相手のブロックフェイズに召喚できる",
+    2: "<b>警戒</b>: 各戦闘フェイズの後にアンタップする",
+    3: "<b>速攻</b>: 召喚酔いしない",
+  }[c.suit];
+  const lines = [
+    `<b>${cardLabel(c)} — クリーチャー ${c.rank}/${c.rank}</b>`,
+    `コスト: ${SUITS[c.suit]}1+無指定${c.rank}`,
+    kw,
+  ];
+  if (alice) {
+    lines.push({
+      1: ["<b>飛行</b>: 飛行を持たないクリーチャーにはブロックされない",
+          "<b>T: カードを1枚引く</b>(召喚酔い中は起動できない)",
+          "<b>場に出たとき</b>: クリーチャー1体を対象とし、それをオーナーの手札に戻す"],
+      0: ["<b>接死</b>: このクリーチャーから1点以上の戦闘ダメージを受けたクリーチャーは破壊される",
+          "<b>威迫</b>: 2体以上のクリーチャーにしかブロックされない",
+          "<b>場に出たとき</b>: 対象のクリーチャー1体は+X/+0の修整を受ける(X=このクリーチャーのパワー)"],
+      3: ["<b>T: ♣マナ1点を加える</b>(召喚酔い中は起動できない)",
+          "<b>トランプル</b>: 被ブロック余剰戦闘ダメージは、当初の攻撃対象に与えられる",
+          "<b>場に出たとき</b>: 対象の数字X以下の土地をそのオーナーのクリーチャーにする(X=このクリーチャーのパワー)"],
+      2: ["<b>絆魂</b>: 与えた戦闘ダメージぶん、墓地の上から山札の下に戻す(墓地の枚数が上限)",
+          "<b>反撃</b>: タップ状態でもパワーが0にならない",
+          "<b>場に出たとき</b>: すべてのクリーチャーはターン終了時まで-X/-Xの修整を受ける(X=このクリーチャーのパワー)"],
+    }[c.suit][bandOf(c)]);
+  } else if (c.rank >= 11) {
+    lines.push({
+      3: "<b>猪突</b>: 2体以上のクリーチャーにはブロックされない",
+      0: "<b>貫通</b>: 余剰戦闘ダメージが当初の攻撃対象へ与えられる",
+      2: "<b>飛行</b>: 飛行を持たないクリーチャーにはブロックされない",
+      1: "<b>絆魂</b>: 与えたダメージぶん、墓地の上から山札に加えて切り直す(墓地の枚数が上限)",
+    }[c.suit]);
+    lines.push("<b>生贄召喚</b>: 召喚時、同スートの味方を望む数だけ生贄にして、その数字の合計分コスト軽減できる");
+  }
+  lines.push(`土地として置くこともできる(${SUITS[c.suit]}マナ1点)`);
+  return lines.join("<br><br>");
+}
+function showCardText(c, alice) {
+  const pop = document.getElementById("cardtext-pop");
+  const cc = document.getElementById("ctp-card");
+  cc.innerHTML = "";
+  cc.appendChild(cardEl(c, { alice }));
+  document.getElementById("ctp-text").innerHTML = cardRulesText(c, alice);
+  pop.style.display = "flex";
+}
+document.getElementById("cardtext-pop").addEventListener("click", () => {
+  document.getElementById("cardtext-pop").style.display = "none";
+});
 
 function render() {
   if (!players) return;
@@ -3771,7 +3854,7 @@ function render() {
   if (!poke) for (const [id, p] of [["e-lands", en], ["m-lands", me]]) {
     const z = document.getElementById(id); z.innerHTML = "";
     (p.ench || []).forEach(c2 => {
-      const eel = cardEl(c2, { sm: true });
+      const eel = cardEl(c2, { sm: true, alice: aliceSide[p === me ? myIdx : 1 - myIdx] });
       eel.classList.add("land", "ench");
       eel.title = `自分の${SUITS[c2.suit]}クリーチャーは+1/+1`;
       z.appendChild(eel);
@@ -3779,7 +3862,7 @@ function render() {
     p.lands.forEach(l => {
       const slot = document.createElement("div");
       slot.className = "slot" + (l.tapped ? " tapped" : "");
-      const el = cardEl(l.card, { sm: true });
+      const el = cardEl(l.card, { sm: true, alice: aliceSide[p === me ? myIdx : 1 - myIdx] });
       el.classList.add("land");
       if (l.lotus) el.innerHTML += `<span class="pt">3</span>`;
       if (l.tapped) el.classList.add("tapped");
@@ -3806,7 +3889,7 @@ function render() {
     slot.className = "slot" + ((yugi ? yDef : f.tapped) ? " tapped" : "");
     const el = yugi
       ? (f.down ? cardEl(null, { back: true }) : cardEl(f.card, { pt: true, yr: true }))
-      : cardEl(f.card, { pt: true, dmg: f.dmg, pz: pzZero(f), buff: totBuff(f), pbuff: f.pbuff });
+      : cardEl(f.card, { pt: true, dmg: f.dmg, pz: pzZero(f), buff: totBuff(f), pbuff: f.pbuff, alice: aliceSide[1 - myIdx] });
     el.dataset.cid = f.card.id;
     if (yugi ? yDef : f.tapped) el.classList.add("tapped");
     if (!yugi && f.sick) el.classList.add("sick");
@@ -3850,7 +3933,7 @@ function render() {
       // ♠挑戦: アンタップの敵を挑戦対象に指定できる(そのあと本体かタップ中の敵を攻撃対象に選ぶ)
       if (uiMain && oPhase && oPhase.phase === "attack" && selAttacker !== null && !f.tapped) {
         const atk = me.field[selAttacker];
-        if (atk && atk.card.suit === 0 && !aliceSide[myIdx] && !pendAtkSet.has(atk.card.id)) {
+        if (atk && atk.card.suit === 0 && !pendAtkSet.has(atk.card.id)) {
           el.classList.add("targetable");
           if (provSel === f.card.id) el.classList.add("attacking");
           el.addEventListener("click", () => {
@@ -3897,7 +3980,7 @@ function render() {
     slot.className = "slot" + ((yugi ? yDef : f.tapped) ? " tapped" : "");
     const el = yugi
       ? (f.down ? cardEl(f.card, { rmark: true }) : cardEl(f.card, { pt: true, yr: true }))
-      : cardEl(f.card, { pt: true, dmg: f.dmg, pz: pzZero(f), buff: totBuff(f), pbuff: f.pbuff });
+      : cardEl(f.card, { pt: true, dmg: f.dmg, pz: pzZero(f), buff: totBuff(f), pbuff: f.pbuff, alice: aliceSide[myIdx] });
     el.dataset.cid = f.card.id;
     if (yugi ? yDef : f.tapped) el.classList.add("tapped");
     if (!yugi && f.sick) el.classList.add("sick");
@@ -4006,7 +4089,7 @@ function render() {
         (oPhase.phase === "block" && oPhase.actor === myIdx)));
   const hz = document.getElementById("hand-zone"); hz.innerHTML = "";
   me.hand.forEach(c => {
-    const el = cardEl(c);
+    const el = cardEl(c, { alice: aliceSide[myIdx] });
     if (handOk) el.addEventListener("click", () => onHandClick(c));
     hz.appendChild(el);
   });
@@ -4059,7 +4142,7 @@ function render() {
   }
   if (original && uiMain && oPhase && oPhase.phase === "attack" && selAttacker !== null) {
     const selAtk = players[myIdx].field[selAttacker];
-    if (selAtk && selAtk.card.suit === 0 && !aliceSide[myIdx]) {
+    if (selAtk && selAtk.card.suit === 0) {
       setHint(provSel
         ? "挑戦対象を指定した — 攻撃対象(本体 or タップ中の敵)をクリックで確定"
         : "攻撃対象を選択: 本体/タップ中の敵。アンタップの敵をクリックすると♠挑戦(強制ブロック)の対象に指定できる");
