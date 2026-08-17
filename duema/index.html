@@ -597,7 +597,7 @@
       ・土地は1ターンに1枚。タップでそのスートのマナ1を出す<br>
       ・クリーチャー召喚コスト = <b>自スート1マナ + 数字ぶんの無指定マナ</b>(例: ♠3 は合計4マナ)。パワー/タフネス = 数字<br>
       ・出したターンは攻撃できない(召喚酔い)<br><br>
-      <b>攻撃と戦闘</b>: 相手プレイヤー(シールド)か、タップ中の敵クリーチャーを攻撃。相手はアンタップのクリーチャーでブロック可能。<b>アンタップ状態のクリーチャーは、攻撃またはブロックするとタップ状態になる</b>(次の自分のターン開始時にアンタップ)<br>
+      <b>攻撃と戦闘</b>: 相手プレイヤー(シールド)か、タップ中の敵クリーチャーを攻撃。<b>同じクリーチャーを複数のクリーチャーで攻撃してもよい</b>(ダメージが蓄積して討ち取れる)。相手はアンタップのクリーチャーでブロック可能。<b>アンタップ状態のクリーチャーは、攻撃またはブロックするとタップ状態になる</b>(次の自分のターン開始時にアンタップ)<br>
       ・<b>A(エース)</b>は J/Q/K との戦闘時 <b>+13/+0</b>(刺し違えて絵札を討ち取る)<br>
       ・<b>J/Q/K</b>は召喚時、同スートの味方クリーチャーを望む数だけ生贄にでき、その数字の合計分コスト軽減。またJ/Q/Kに<b>シールドトリガーはない</b>(手札に加わるだけ)<br>
       ・戦闘ダメージは<b>ターン終了時まで蓄積</b>する(累計がタフネス以上で破壊。例: 6/6 が3点→4点と受けると2回目で破壊)<br><br>
@@ -2768,6 +2768,23 @@ function aiMainAction(pi) {
     const n = battleNumbers(atk, b);
     return n.aDies && !n.bDies;
   });
+  // 複数がかり: タップ中の敵に格下を順に当ててダメージを蓄積し、合計致死+レートで得なときだけ仕留めにいく
+  // (単騎で一方的に討てる相手は下の通常ルートに任せる。討ち切れない相手には手を出さない)
+  const gangReady = ready.filter(f => !suicidal(f));
+  for (const t of [...o.field].filter(t => t.tapped).sort((a, b) => b.card.rank - a.card.rank)) {
+    if (gangReady.some(f => { const n = battleNumbers(f, t); return n.bDies && !n.aDies; })) continue;
+    const combo = [];
+    let sum = 0, lost = 0;
+    for (const f of [...gangReady].sort((a, b) => a.card.rank - b.card.rank)) {
+      const n = battleNumbers(f, t);
+      combo.push(f); sum += n.ap;
+      if (n.aDies) lost += f.card.rank;
+      if ((t.dmg || 0) + sum >= creTough(t)) break;
+    }
+    if ((t.dmg || 0) + sum < creTough(t)) continue;
+    if (t.card.rank <= lost) continue;   // 失う数字合計より大きい相手だけ(Aの絵札特効トレード含む)
+    return { t: "attack", cre: combo[0].card.id, tt: "cre", tv: t.card.id };
+  }
   for (const atk of ready) {
     if (suicidal(atk)) continue;
     if (shieldCount(o) > 0) {
