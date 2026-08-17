@@ -93,6 +93,21 @@
   }
   #ctp-text { font-size: 12px; line-height: 1.9; color: var(--paper); }
   #ctp-text b { color: var(--gold); }
+  /* 墓地ビューア */
+  .stat.gravebtn { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+  .stat.gravebtn:hover { color: var(--gold); }
+  #grave-pop {
+    display: none; position: fixed; inset: 0; z-index: 90;
+    background: rgba(0,0,0,.7); align-items: center; justify-content: center;
+  }
+  #grave-pop .gvp-inner {
+    background: #1a2430; border: 1px solid rgba(201,162,39,.5); border-radius: 12px;
+    padding: 16px 18px; max-width: min(92vw, 560px); max-height: 80vh; overflow-y: auto;
+  }
+  #gvp-title { font-size: 13px; font-weight: 700; color: var(--gold); margin-bottom: 10px; }
+  #gvp-cards { display: flex; flex-wrap: wrap; padding-left: 14px; align-items: flex-start; }
+  #gvp-cards .card { flex: 0 0 auto; margin: 3px 2px 3px -14px; }
+  .gvp-hint { font-size: 10px; color: var(--dim); margin-top: 10px; text-align: center; }
   /* 遊戯王: 裏側セットの「R」マーク(自分にだけ表が見える) */
   .card .rmark {
     position: absolute; right: 2px; top: 2px; width: 15px; height: 15px; line-height: 15px;
@@ -394,7 +409,7 @@
       <span class="pname" id="e-name">相手</span>
       <span class="stat">山札 <b id="e-deck">0</b></span>
       <span class="stat">手札 <b id="e-hand">0</b></span>
-      <span class="stat">墓地 <b id="e-grave">0</b></span>
+      <span class="stat gravebtn" id="e-grave-btn" title="タップで墓地を見る">墓地 <b id="e-grave">0</b></span>
       <span class="mana" id="e-mana"></span>
     </div>
     <div class="zone-label" id="e-sh-label">シールド</div>
@@ -423,7 +438,7 @@
     <div class="side-head">
       <span class="pname">あなた</span>
       <span class="stat">山札 <b id="m-deck">0</b></span>
-      <span class="stat">墓地 <b id="m-grave">0</b></span>
+      <span class="stat gravebtn" id="m-grave-btn" title="タップで墓地を見る">墓地 <b id="m-grave">0</b></span>
       <span class="mana" id="m-mana"></span>
     </div>
     <div class="zone-label" id="m-f-label">バトルゾーン</div>
@@ -498,6 +513,9 @@
 
 <!-- カードテキスト(右クリック) -->
 <div id="cardtext-pop"><div class="ctp-inner"><div id="ctp-card"></div><div id="ctp-text"></div></div></div>
+
+<!-- 墓地ビューア(墓地カウンタのタップで開く) -->
+<div id="grave-pop"><div class="gvp-inner"><div id="gvp-title"></div><div id="gvp-cards"></div><div class="gvp-hint">タップで閉じる(カード右クリックでテキスト)</div></div></div>
 
 <!-- 汎用モーダル -->
 <div class="overlay" id="modal">
@@ -3728,6 +3746,31 @@ function showCardText(c, alice) {
 }
 document.getElementById("cardtext-pop").addEventListener("click", () => {
   document.getElementById("cardtext-pop").style.display = "none";
+});
+
+/* 墓地ビューア: 墓地カウンタのタップで、そのプレイヤーの墓地を上から順に表示 */
+function showGrave(pi) {
+  if (!players || !players[pi]) return;
+  const p = players[pi];
+  document.getElementById("gvp-title").textContent = `${p.name}の墓地(${p.grave.length}枚)`;
+  const box = document.getElementById("gvp-cards");
+  box.innerHTML = "";
+  if (!p.grave.length) {
+    const w = document.createElement("span");
+    w.style.cssText = "font-size:11px;color:var(--dim);margin-left:-14px";
+    w.textContent = "(墓地は空)";
+    box.appendChild(w);
+  } else {
+    for (let i = p.grave.length - 1; i >= 0; i--) {
+      box.appendChild(cardEl(p.grave[i], { sm: true, alice: aliceSide[pi] }));
+    }
+  }
+  document.getElementById("grave-pop").style.display = "flex";
+}
+document.getElementById("m-grave-btn").addEventListener("click", () => showGrave(myIdx));
+document.getElementById("e-grave-btn").addEventListener("click", () => showGrave(1 - myIdx));
+document.getElementById("grave-pop").addEventListener("click", () => {
+  document.getElementById("grave-pop").style.display = "none";
 });
 
 function render() {
