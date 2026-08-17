@@ -528,7 +528,7 @@
       <b>♠スペード</b>: 2〜6=<b>接死</b>(1点以上の戦闘ダメージを与えた相手を破壊)/ 7〜10=<b>トランプル</b> / J〜K=<b>ETB: 対象に+X/+0</b>(X=このパワー)<br>
       <b>♣クローバー</b>: 2〜6=<b>「T: ♣マナ1点」</b>(マナクリーチャー・召喚酔い中は不可)/ 7〜10=<b>威迫</b>(2体以上にしかブロックされない)/ J〜K=<b>ETB: 数字X以下の土地をそのオーナーのクリーチャー化</b>(X=このパワー)<br>
       <b>♦ダイヤ</b>: 2〜6=<b>絆魂</b>(与えた戦闘ダメージぶん墓地を山札の下へ・墓地枚数まで)/ 7〜10=<b>反撃</b>(タップ状態でもパワー0にならない)/ J〜K=<b>ETB: 全クリーチャーに-X/-X</b>(X=このパワー・ターン終了時まで)<br><br>
-      アリスカードも<b>基本スート能力(♠挑戦/♥瞬速/♦警戒/♣速攻)を持つ</b>(通常の絵札能力だけが帯能力に置き換わる)。A(エンチャント)とJOKERは共通。アリスカードは黒地(黒スート=白字・赤スート=赤字)で表示される。カードは<b>右クリックでテキスト参照</b>できる(マジック・アリス共通)。
+      アリスカードも<b>基本スート能力(♠挑戦/♥瞬速/♦警戒/♣速攻)を持つ</b>(通常の絵札能力だけが帯能力に置き換わる)。A(1/1・ETB蘇生)とJOKERは共通。アリスカードは黒地(黒スート=白字・赤スート=赤字)で表示される。カードは<b>右クリックでテキスト参照</b>できる(マジック・アリス共通)。
     </div>
     <div class="body" id="rules-poke" style="display:none">
       54枚フルデッキ(4色×13+JOKER2枚)同士の1対1。<b>初手5枚・マナなし・サイド6枚</b>。手札にたねが無ければ強制引き直し(そのたび相手が1枚ドロー)。先攻後攻はランダム、<b>先攻の1ターン目はワザを使えない</b>。敗者の手札は公開される。<br><br>
@@ -559,12 +559,13 @@
     <div class="body" id="rules-original" style="display:none">
       54枚フルデッキ(4色×13+JOKER2枚)同士の1対1。<b>初手7枚・シールドなし・勝利条件はデッキアウトのみ</b>(山札0枚で即敗北・両者同時なら引き分け)。先攻後攻はランダム、後攻は1回フリーマリガン可。<b>先攻の1ターン目はアンタップ&ドローを飛ばす</b>。敗者の手札は公開される。<br><br>
       <b>フェイズ進行</b>(毎ターン): ☀→⚔→⛨→✦→⚚<br>
-      ☀<b>クリンナップ&amp;アンタップ&amp;ドロー</b>(敵味方全ての戦闘ダメージ回復→アンタップ→ドロー)→ ⚔<b>アタック</b>(<b>土地・呪文・召喚も可能</b>+攻撃を全て宣言)→ ⛨<b>ブロック</b>(<b>相手が</b>ブロック指定+♥瞬速召喚・A(エンチャント)も使える)→ ✦<b>戦闘解決</b> → ⚚<b>メイン</b>(土地・呪文・召喚)=ターン終了<br><br>
+      ☀<b>クリンナップ&amp;アンタップ&amp;ドロー</b>(敵味方全ての戦闘ダメージ回復→アンタップ→ドロー)→ ⚔<b>アタック</b>(<b>土地・呪文・召喚も可能</b>+攻撃を全て宣言)→ ⛨<b>ブロック</b>(<b>相手が</b>ブロック指定+♥の瞬速召喚(♥A含む)も使える)→ ✦<b>戦闘解決</b> → ⚚<b>メイン</b>(土地・呪文・召喚)=ターン終了<br><br>
       <b>攻撃</b>: タップ中の敵クリーチャーか、プレイヤー本体。どちらも複数のクリーチャーで攻撃できる。本体に通ると数字ぶん相手の山札が墓地へ<br>
       <b>多重ブロック可</b>: 1体の攻撃を複数のクリーチャーでブロックできる。攻撃側のダメージは<b>数字の大きいブロッカーへ優先して致死分ずつ割り振られ</b>、余りは次へ(例: ♥Qを♠3と♦8でブロック→♦8に8点、♠3に4点)。ブロッカー全員のパワーが攻撃側に返る<br>
       <b>ダメージは次のクリンナップ(次ターンのアンタップ直前)まで蓄積</b>(数字以上で破壊)。<b>召喚酔いあり</b>(出したターンは攻撃不可)。<b>タップ状態で戦闘フェイズを終えたクリーチャーはパワー0</b>(アンタップで回復)<br><br>
-      <b>A(エース)はクリーチャーではなく瞬速付きエンチャント</b>(コスト=自スート1マナ+無色1マナ。相手のブロックフェイズでも唱えられ、場に残り続ける。土地にもできる):<br>
-      ・場にある間、<b>自分の同スートのクリーチャーは+1/+1の修整を受ける</b>(重ね掛け可)<br><br>
+      <b>A(エース)は1/1のETB蘇生クリーチャー</b>(コスト=自スート1マナ+無色Xマナ。Xは召喚時に選ぶ・0でも可。土地にもできる):<br>
+      ・スートのキーワード(♠挑戦/♥瞬速/♦警戒/♣速攻)を持つ。♥Aは瞬速で相手のブロックフェイズにも唱えられる<br>
+      ・<b>場に出たとき: 自分の墓地にある同スートの数字X以下のクリーチャー1体を場に出す</b>(蘇生された側の「場に出たとき」は誘発しない)<br><br>
       <b>スート能力</b>: ♠<b>挑戦</b>(攻撃時、アンタップの敵1体を強制的にブロックへ参加させる。複数ブロック時は挑戦対象へ最優先でダメージ)/ ♥<b>瞬速</b>(相手のブロックフェイズに召喚できる)/ ♦<b>警戒</b>(各戦闘フェイズ後にアンタップ)/ ♣<b>速攻</b>(召喚酔いしない)<br>
       <b>挑戦の操作</b>: ♠アタッカーを選ぶ → アンタップの敵をクリックで挑戦対象を指定 → 本体かタップ中の敵をクリックで攻撃先を確定(挑戦を使わないなら直接攻撃先をクリック)<br>
       <b>絵札(J/Q/K)の追加能力</b>: ♣<b>猪突</b>(2体以上のクリーチャーにはブロックされない)/ ♠<b>貫通</b>(余剰戦闘ダメージが当初の攻撃対象へ)/ ♦<b>飛行</b>(飛行を持たないクリーチャーにはブロックされない)/ ♥<b>絆魂</b>(与えたダメージぶん、墓地の上から山札に加えて切り直す。墓地の枚数が上限)<br><br>
@@ -841,7 +842,10 @@ function spendJoker(pi, jk, spellName) {
 // スート相性ルールは廃止(常に修正なし)
 function bonus() { return 0; }
 /* A(エース)は J/Q/K との戦闘時 +13/+0(パワーのみ) */
-function faceBonus(x, y) { return (x.rank === 1 && y.rank >= 11) ? 13 : 0; }
+function faceBonus(x, y) {
+  if (ruleMode === "original") return 0;   // マジック/アリスのAは素の1/1(絵札特効なし)
+  return (x.rank === 1 && y.rank >= 11) ? 13 : 0;
+}
 
 /* 戦闘の数値計算(蓄積ダメージ・タップ時パワー0(pz)込み・状態は変更しない) */
 /* マジック: キーワード能力(通常カード=絵札のスート能力 / アリスカード=数字帯ごとの能力) */
@@ -862,14 +866,7 @@ const hasTapDraw = f => aAbil(f, 1, 1);                                      // 
 const isManaCre = f => aAbil(f, 3, 0);                                       // アリス♣2-6 T:♣マナ1
 const hasLifelink = f => isAliceCre(f) ? aAbil(f, 2, 0) : (isFace(f) && f.card.suit === 1);  // 絆魂
 
-/* エンチャント(A): 自分の同スートクリーチャーに+1/+1 */
-function enchBuff(cre) {
-  if (ruleMode !== "original") return 0;
-  const o = creOwner(cre);
-  if (o === null) return 0;
-  return (players[o].ench || []).filter(e => e.suit === cre.card.suit).length;
-}
-const totBuff = cre => (cre.buff || 0) + enchBuff(cre);
+const totBuff = cre => (cre.buff || 0);
 const creTough = cre => cre.card.rank + totBuff(cre);
 const crePower = (cre, vsCard) => pzZero(cre) ? 0 :
   cre.card.rank + totBuff(cre) + (cre.pbuff || 0) + (vsCard ? faceBonus(cre.card, vsCard) : 0);
@@ -1318,7 +1315,7 @@ async function runOriginalTurns(token, secondP) {
     const preAlive = declaredAttacks.filter(at =>
       fieldById(cur, at.cre) && (at.tt !== "cre" || fieldById(def, at.tv)));
     const defCanAct = (preAlive.length && players[def].field.some(f => !f.tapped)) ||
-                      players[def].hand.some(c => !c.joker && (c.rank === 1 || c.suit === 1));   // ♥瞬速とA(瞬速エンチャント)
+                      players[def].hand.some(c => !c.joker && c.suit === 1);   // ♥のカード(瞬速)。♥Aも含む
     oPhase = { phase: "block", actor: def }; render();
     if (defCanAct) {
       for (;;) {
@@ -2353,13 +2350,31 @@ async function applyMainO(pi, a) {
       return;
     }
     case "summon": await applySummonO(pi, a); return;
-    // A(エース): 瞬速付きエンチャント。コスト=自スート1+無色1。自分の同スートクリーチャーに+1/+1
-    case "aceench": {
+    // A(エース): スート1+Xマナの1/1クリーチャー。ETB: 墓地の同スート・数字X以下のクリーチャー1体を場に出す
+    case "acecast": {
       const c = handById(pi, a.card);
       if (!c || c.joker || c.rank !== 1) return;
-      if (!castAceX(pi, a, c, 2)) return;
-      p.ench.push(c);
-      log(`${p.name}: ${cardLabel(c)} のエンチャントが場に出た — 自分の${SUITS[c.suit]}クリーチャーは+1/+1`);
+      const X = Math.max(0, a.x | 0);
+      const total = 1 + X;
+      if (!payWith(p, c.suit, total, a.pays)) {
+        if (!canPay(p, c.suit, total)) return;
+        pay(p, c.suit, total);
+      }
+      removeFromHand(p, c);
+      p.field.push({ card: c, tapped: false, sick: c.suit !== 3, dmg: 0 });
+      sfx("summon");
+      log(`${p.name}: ${cardLabel(c)} を召喚(X=${X}) — 1/1`);
+      // ETB(唱えて出たときのみ): 蘇生されたクリーチャーのETBは誘発しない
+      const rc = a.revive != null
+        ? p.grave.find(g => g.id === a.revive && !g.joker && g.suit === c.suit && g.rank <= X)
+        : null;
+      if (rc) {
+        p.grave = p.grave.filter(g => g.id !== rc.id);
+        p.field.push({ card: rc, tapped: false, sick: rc.suit !== 3, dmg: 0 });
+        sfx("trigger");
+        await showBanner("エースの帰還!", 1000, rc);
+        log(`${cardLabel(c)}のETB: 墓地から ${cardLabel(rc)} が場に戻った!`);
+      }
       render();
       return;
     }
@@ -2374,19 +2389,6 @@ async function applyMainO(pi, a) {
       return;
     }
   }
-}
-
-/* A呪文の支払い共通処理(コスト=自スート1+X。手動支払い対応)。支払えなければ false */
-function castAceX(pi, a, c, total) {
-  const p = players[pi];
-  if (!payWith(p, c.suit, total, a.pays)) {
-    if (!canPay(p, c.suit, total)) return false;
-    pay(p, c.suit, total);
-  }
-  removeFromHand(p, c);
-  sfx("joker");
-  log(`${p.name}: ${cardLabel(c)} の呪文を唱えた(コスト${total})`);
-  return true;
 }
 
 /* ===== JOKER呪文の実体(デュエマ・マジック共通) ===== */
@@ -2620,11 +2622,12 @@ function aiDecide(pi, kind, ctx) {
   if (kind === "oblocks") {
     const p = players[pi];
     const attackers2 = declaredAttacks.map(at => fieldById(1 - pi, at.cre)).filter(Boolean);
-    // A(瞬速エンチャント): 攻撃が来ていて、そのスートのブロッカーが2体以上いるなら唱えて迎撃を固くする
-    const aceE = p.hand.find(c => !c.joker && c.rank === 1 &&
-      p.field.filter(f => !f.tapped && f.card.suit === c.suit).length >= 2 && canPay(p, c.suit, 2));
-    if (aceE && attackers2.length) {
-      return { k: "oblocks", t: "aceench", card: aceE.id };
+    // ♥A(瞬速・ETB蘇生): 攻撃が来ていれば、墓地の♥を釣ってブロッカーを2体増やす
+    const aceH = p.hand.find(c => !c.joker && c.rank === 1 && c.suit === 1);
+    if (aceH && attackers2.length) {
+      const best = p.grave.filter(g => !g.joker && g.suit === 1 && g.rank >= 3 && canPay(p, 1, 1 + g.rank))
+        .sort((a, b) => b.rank - a.rank)[0];
+      if (best) return { k: "oblocks", t: "acecast", card: aceH.id, x: best.rank, revive: best.id };
     }
     // ♥瞬速召喚: 攻撃が来ていれば、出せる♥を強い順に出して待ち伏せる(Aは除外)
     if (attackers2.length) {
@@ -2793,12 +2796,11 @@ function aiOMain(pi) {   // 相手ターン中のメイン: 土地→呪文→�
       return { t: "mishra", jk: jk.id };
     }
   }
-  // A(エンチャント): 同スートのクリーチャーが2体以上いれば唱える
-  const aces = p.hand.filter(c => !c.joker && c.rank === 1);
-  for (const aceC of aces) {
-    if (p.field.filter(f => f.card.suit === aceC.suit).length >= 2 && canPay(p, aceC.suit, 2)) {
-      return { t: "aceench", card: aceC.id };
-    }
+  // A(1/1・ETB蘇生): 墓地の同スートに大物(5以上)がいて払えるなら釣る。♥Aは瞬速のため温存
+  for (const aceC of p.hand.filter(c => !c.joker && c.rank === 1 && c.suit !== 1)) {
+    const best = p.grave.filter(g => !g.joker && g.suit === aceC.suit && g.rank >= 5 && canPay(p, aceC.suit, 1 + g.rank))
+      .sort((a, b) => b.rank - a.rank)[0];
+    if (best) return { t: "acecast", card: aceC.id, x: best.rank, revive: best.id };
   }
   // アリス♥7-10: 攻撃に向かないクリーチャーをタップして1ドロー
   if (aliceSide[pi] && p.deck.length >= 15) {
@@ -2830,7 +2832,7 @@ function aiOMain(pi) {   // 相手ターン中のメイン: 土地→呪文→�
 function aiEtbFor(pi, c) {
   if (!aliceSide[pi] || c.rank < 11) return undefined;
   const p = players[pi], o = players[1 - pi];
-  const X = c.rank + p.ench.filter(e => e.suit === c.suit).length;
+  const X = c.rank;
   if (c.suit === 1) { const t = [...o.field].sort((a, b) => creTough(b) - creTough(a))[0]; return t ? { tgt: t.card.id } : {}; }
   if (c.suit === 0) { const t = p.field.filter(f => !f.tapped && !f.sick).sort((a, b) => b.card.rank - a.card.rank)[0]; return t ? { tgt: t.card.id } : {}; }
   if (c.suit === 3) { const t = [...o.lands].filter(l => !l.card.joker && l.card.rank <= X).sort((a, b) => a.card.rank - b.card.rank)[0]; return t ? { tgt: t.card.id } : {}; }
@@ -3104,20 +3106,31 @@ async function actSpell(kind, c, body, cost) {
   act(a);
 }
 
-/* A(エンチャント)のUIフロー: メイン/アタック/ブロックフェイズで唱えられる(瞬速) */
-async function aceSpellUI(c, kind) {
+/* A(1/1・ETB蘇生)のUIフロー: X選択→蘇生対象選択 */
+async function aceCastUI(c, kind) {
   const p = players[myIdx];
-  const cnt = p.ench.filter(e => e.suit === c.suit).length;
-  const v = await choose(`${cardLabel(c)}(瞬速エンチャント)`, [
-    { label: `唱える(${SUITS[c.suit]}1+無色1) — 自分の${SUITS[c.suit]}クリーチャーは+1/+1` + (cnt ? `(現在+${cnt}/+${cnt}、重ね掛け可)` : ""),
-      value: "cast", primary: true, disabled: !canPay(p, c.suit, 2) },
-    { label: "キャンセル", value: null },
-  ], c, "エンチャントは場に残り続ける");
-  if (v !== "cast") return;
-  await actSpell(kind, c, { t: "aceench" }, 2);
+  let maxX = -1;
+  for (let x = 13; x >= 0; x--) if (canPay(p, c.suit, 1 + x)) { maxX = x; break; }
+  if (maxX < 0) { setHint("マナが足りない"); return; }
+  const opts = [];
+  for (let x = 0; x <= maxX; x++) {
+    const cands = p.grave.filter(g => !g.joker && g.suit === c.suit && g.rank <= x).length;
+    opts.push({ label: `X = ${x}(コスト${1 + x}${cands ? `・蘇生候補${cands}枚` : ""})`, value: String(x) });
+  }
+  opts.push({ label: "キャンセル", value: null });
+  const xv = await choose(`${cardLabel(c)}: Xを選ぶ`, opts, c, "1/1で召喚し、ETBで墓地の同スート・数字X以下のクリーチャー1体を場に出す");
+  if (xv === null) return;
+  const X = parseInt(xv, 10);
+  const cands = p.grave.filter(g => !g.joker && g.suit === c.suit && g.rank <= X);
+  let revive = null;
+  if (cands.length) {
+    const t = await chooseCard(`${cardLabel(c)}のETB: 場に出すクリーチャーを選ぶ`, cands, "", "蘇生しない");
+    if (t) revive = t.id;
+  }
+  await actSpell(kind, c, { t: "acecast", x: X, revive }, 1 + X);
 }
 
-/* 召喚アクションの送信。手動支払いモードなら先に土地を選ばせ、選択をアクションに載せる *//* 召喚アクションの送信。手動支払いモードなら先に土地を選ばせ、選択をアクションに載せる *//* 召喚アクションの送信。手動支払いモードなら先に土地を選ばせ、選択をアクションに載せる */
+/* 召喚アクションの送信。手動支払いモードなら先に土地を選ばせ、選択をアクションに載せる *//* 召喚アクションの送信。手動支払いモードなら先に土地を選ばせ、選択をアクションに載せる *//* 召喚アクションの送信。手動支払いモードなら先に土地を選ばせ、選択をアクションに載せる *//* 召喚アクションの送信。手動支払いモードなら先に土地を選ばせ、選択をアクションに載せる */
 async function actSummon(kind, c, sacs) {
   const red = (sacs || []).reduce((t, x) => t + x.rank, 0);
   const remaining = Math.max(0, costOf(c) - red);
@@ -3139,7 +3152,7 @@ async function actSummon(kind, c, sacs) {
 /* アリス絵札のETBターゲット選択UI。キャンセルで null */
 async function aliceEtbUI(c) {
   const p = players[myIdx], o = players[1 - myIdx];
-  const X = c.rank + p.ench.filter(e => e.suit === c.suit).length;
+  const X = c.rank;
   if (c.suit === 1) {
     const cands = [...o.field, ...p.field].map(f => f.card);
     if (!cands.length) return {};
@@ -3167,8 +3180,12 @@ async function onHandClickO(c) {
   if (oPhase && oPhase.phase === "block" && oPhase.actor === myIdx) {
     // ブロックフェイズ中は♥の瞬速召喚と、A呪文(インスタント)が使える
     if (c.joker) { setHint("JOKERはブロックフェイズでは使えない"); return; }
-    if (c.rank === 1) { await aceSpellUI(c, "oblocks"); return; }
-    if (c.suit !== 1) { setHint("ブロックフェイズで使えるのは♥(瞬速)とA(エンチャント)のみ"); return; }
+    if (c.rank === 1) {
+      if (c.suit === 1) { await aceCastUI(c, "oblocks"); }
+      else setHint("♥以外のAに瞬速はない — ブロックフェイズには唱えられない");
+      return;
+    }
+    if (c.suit !== 1) { setHint("ブロックフェイズで使えるのは♥のカード(瞬速)のみ"); return; }
     {
       const opts = [{
         label: `瞬速で召喚する — コスト${costOf(c)}(${SUITS[c.suit]}1+無指定${c.rank}) ${c.rank}/${c.rank}`,
@@ -3212,16 +3229,16 @@ async function onHandClickO(c) {
     const mk = oPhase.phase === "attack" ? "oattacks" : "omain";
     if (!c.joker && c.rank === 1) {
       // A: クリーチャーではなくスート別の呪文
-      const cnt = p.ench.filter(e => e.suit === c.suit).length;
-      const v = await choose(`${cardLabel(c)}(瞬速エンチャント)`, [
+      const graveN = p.grave.filter(g => !g.joker && g.suit === c.suit).length;
+      const v = await choose(`${cardLabel(c)}(1/1・ETB蘇生)`, [
         { label: `土地に置く(${SUITS[c.suit]}マナ)`, value: "land", disabled: landSetUsed >= landSetMax },
-        { label: `エンチャントとして唱える(${SUITS[c.suit]}1+無色1) — 自分の${SUITS[c.suit]}クリーチャーは+1/+1` + (cnt ? `(現在+${cnt})` : ""),
-          value: "spell", primary: true, disabled: !canPay(p, c.suit, 2) },
+        { label: `召喚する(${SUITS[c.suit]}1+Xマナ) — 1/1。ETB: 墓地の同スートの数字X以下のクリーチャー1体を場に出す(同スート墓地${graveN}枚)`,
+          value: "cast", primary: true, disabled: !canPay(p, c.suit, 1) },
         { label: "キャンセル", value: null },
-      ], c, "Aはクリーチャーではなくエンチャント。相手のブロックフェイズでも唱えられる(瞬速)");
+      ], c, "Xは召喚時に選ぶ(0でも可)。蘇生されたクリーチャーのETBは誘発しない");
       if (!uiMain) return;
       if (v === "land") act({ k: mk, t: "land", card: c.id });
-      if (v === "spell") await actSpell(mk, c, { t: "aceench" }, 2);
+      if (v === "cast") await aceCastUI(c, mk);
       return;
     }
     if (!c.joker) {
@@ -3660,7 +3677,8 @@ function cardRulesText(c, alice) {
     return `<b>JOKER</b><br>2つの使い方から選ぶ:<br><br>・<b>ミシュラズジョーカー</b>(0マナ呪文): カードを1枚引く<br>・<b>ロータスジョーカー</b>: セット権を使わず土地としてセット(相手より土地が少ないときのみ)。タップで無色3マナ、ターン終了時に破壊`;
   }
   if (c.rank === 1) {
-    return `<b>${cardLabel(c)} — 瞬速エンチャント</b><br>コスト: ${SUITS[c.suit]}1+無色1<br><br>場にある間、自分の${SUITS[c.suit]}クリーチャーは<b>+1/+1</b>(重ね掛け可)。相手のブロックフェイズでも唱えられる。<br><br>土地として置くこともできる(${SUITS[c.suit]}マナ1点)`;
+    const kw1 = { 0: "挑戦", 1: "瞬速", 2: "警戒", 3: "速攻" }[c.suit];
+    return `<b>${cardLabel(c)} — クリーチャー 1/1</b><br>コスト: ${SUITS[c.suit]}1+無色X<br><br><b>${kw1}</b><br><br><b>場に出たとき</b>: 自分の墓地にある${SUITS[c.suit]}の数字X以下のクリーチャー1体を場に出す(蘇生されたクリーチャーの「場に出たとき」は誘発しない)<br><br>土地として置くこともできる(${SUITS[c.suit]}マナ1点)`;
   }
   const kw = {
     0: "<b>挑戦</b>: 攻撃時、アンタップの相手クリーチャー最大1体を対象に取り、強制的にそのブロックへ参加させる(複数ブロック時は挑戦対象へ最優先でダメージ)",
@@ -3837,12 +3855,6 @@ function render() {
   // 土地(手動支払い中は自分のアンタップ土地をクリックで選ぶ)+ A(エンチャント)
   if (!poke) for (const [id, p] of [["e-lands", en], ["m-lands", me]]) {
     const z = document.getElementById(id); z.innerHTML = "";
-    (p.ench || []).forEach(c2 => {
-      const eel = cardEl(c2, { sm: true, alice: aliceSide[p === me ? myIdx : 1 - myIdx] });
-      eel.classList.add("land", "ench");
-      eel.title = `自分の${SUITS[c2.suit]}クリーチャーは+1/+1`;
-      z.appendChild(eel);
-    });
     p.lands.forEach(l => {
       const slot = document.createElement("div");
       slot.className = "slot" + (l.tapped ? " tapped" : "");
