@@ -568,8 +568,7 @@
       <b>スート能力</b>: ♠<b>挑戦</b>(攻撃時、アンタップの敵1体を強制的にブロックへ参加させる。複数ブロック時は挑戦対象へ最優先でダメージ)/ ♥<b>瞬速</b>(相手のブロックフェイズに召喚できる)/ ♦<b>警戒</b>(各戦闘フェイズ後にアンタップ)/ ♣<b>速攻</b>(召喚酔いしない)<br>
       <b>挑戦の操作</b>: ♠アタッカーを選ぶ → アンタップの敵をクリックで挑戦対象を指定 → 本体かタップ中の敵をクリックで攻撃先を確定(挑戦を使わないなら直接攻撃先をクリック)<br>
       <b>絵札(J/Q/K)の追加能力</b>: ♣<b>猪突</b>(2体以上のクリーチャーにはブロックされない)/ ♠<b>貫通</b>(余剰戦闘ダメージが当初の攻撃対象へ)/ ♦<b>飛行</b>(飛行を持たないクリーチャーにはブロックされない)/ ♥<b>絆魂</b>(与えたダメージぶん、墓地の上から山札に加えて切り直す。墓地の枚数が上限)<br><br>
-      <b>JOKER</b>(3つの使い方から選ぶ):<br>
-      ・モックスジョーカー(0マナ呪文): <b>相手より土地が少ないときのみ</b>。このターンの土地セット権+1<br>
+      <b>JOKER</b>(2つの使い方から選ぶ・アリスルール共通):<br>
       ・ミシュラズジョーカー(0マナ呪文): カードを1枚引く<br>
       ・ロータスジョーカー: <b>相手より土地が少ないときのみ</b>、セット権を使わず土地としてセット。タップで無色マナ3点、ターン終了時に破壊
     </div>
@@ -2334,14 +2333,6 @@ async function applyMainO(pi, a) {
       playLand(pi, c);
       return;
     }
-    case "mox": {   // モックスジョーカー: 相手より土地が少ないときのみ唱えられる0マナ呪文。土地セット権+1
-      const jk = handById(pi, a.jk);
-      if (!jk || !jk.joker || p.lands.length >= o.lands.length) return;
-      spendJoker(pi, jk, "モックスジョーカー");
-      landSetMax++;
-      log(`${p.name}: このターンの土地セット権が+1された(使用${landSetUsed}/${landSetMax})`);
-      return;
-    }
     case "mishra": { // ミシュラズジョーカー: 0マナ呪文、1枚引く
       const jk = handById(pi, a.jk);
       if (!jk || !jk.joker) return;
@@ -2788,13 +2779,9 @@ function aiOMain(pi) {   // 相手ターン中のメイン: 土地→呪文→�
     const c = aiPickLand(pi);
     if (c && !c.joker) return { t: "land", card: c.id };   // マジックではJOKERを土地にできない
   }
-  // JOKER: モックス(セット権+1)> ロータス(3点ブースト)> ミシュラズ(1ドロー)
+  // JOKER: ロータス(3点ブースト)> ミシュラズ(1ドロー)
   {
     const jk = p.hand.find(c => c.joker);
-    if (jk && p.lands.length < o.lands.length && landSetUsed >= landSetMax &&
-        p.hand.filter(c => !c.joker).length >= 2) {
-      return { t: "mox", jk: jk.id };
-    }
     if (jk && p.lands.length < o.lands.length) {
       const cap = untappedLands(p).reduce((s2, l) => s2 + (l.lotus ? 3 : 1), 0);
       const boostTarget = p.hand.filter(c => !c.joker && c.rank !== 1 && c.suit !== 1)
@@ -3277,18 +3264,15 @@ async function onHandClickO(c) {
       }
       return;
     }
-    // JOKER: モックス / ミシュラズ / ロータス から選ぶ
+    // JOKER: ミシュラズ / ロータス から選ぶ(モックスは廃止)
     const v = await choose(cardLabel(c), [
-      { label: "モックスジョーカー(0マナ呪文): このターンの土地セット権+1(相手より土地が少ないときのみ)", value: "mox",
-        disabled: !(p.lands.length < o.lands.length) },
       { label: "ミシュラズジョーカー(0マナ呪文): カードを1枚引く", value: "mishra",
         disabled: !p.deck.length },
       { label: "ロータスジョーカー: セット権を使わず土地としてセット(相手より土地が少ないときのみ)。タップで無色3マナ・ターン終了時に破壊", value: "lotus",
         disabled: !(p.lands.length < o.lands.length) },
       { label: "キャンセル", value: null },
-    ], c, "JOKERは3つの使い方から選べる");
+    ], c, "JOKERは2つの使い方から選べる");
     if (!uiMain) return;
-    if (v === "mox") act({ k: mk, t: "mox", jk: c.id });
     if (v === "mishra") act({ k: mk, t: "mishra", jk: c.id });
     if (v === "lotus") act({ k: mk, t: "lotus", jk: c.id });
     return;
@@ -3673,7 +3657,7 @@ function pokeCardEl(pk, opts) {
 /* 右クリックのカードテキスト(マジック・アリス共通) */
 function cardRulesText(c, alice) {
   if (c.joker) {
-    return `<b>JOKER</b><br>3つの使い方から選ぶ:<br><br>・<b>モックスジョーカー</b>(0マナ呪文): このターンの土地セット権+1(相手より土地が少ないときのみ)<br>・<b>ミシュラズジョーカー</b>(0マナ呪文): カードを1枚引く<br>・<b>ロータスジョーカー</b>: セット権を使わず土地としてセット(相手より土地が少ないときのみ)。タップで無色3マナ、ターン終了時に破壊`;
+    return `<b>JOKER</b><br>2つの使い方から選ぶ:<br><br>・<b>ミシュラズジョーカー</b>(0マナ呪文): カードを1枚引く<br>・<b>ロータスジョーカー</b>: セット権を使わず土地としてセット(相手より土地が少ないときのみ)。タップで無色3マナ、ターン終了時に破壊`;
   }
   if (c.rank === 1) {
     return `<b>${cardLabel(c)} — 瞬速エンチャント</b><br>コスト: ${SUITS[c.suit]}1+無色1<br><br>場にある間、自分の${SUITS[c.suit]}クリーチャーは<b>+1/+1</b>(重ね掛け可)。相手のブロックフェイズでも唱えられる。<br><br>土地として置くこともできる(${SUITS[c.suit]}マナ1点)`;
