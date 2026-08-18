@@ -93,6 +93,23 @@
   }
   #ctp-text { font-size: 12px; line-height: 1.9; color: var(--paper); }
   #ctp-text b { color: var(--gold); }
+  /* ジョーカー種別ラベル */
+  .card .jtl {
+    position: absolute; left: 0; right: 0; bottom: 3px; text-align: center;
+    font-size: 8px; font-weight: 700; letter-spacing: .04em; color: var(--gold);
+  }
+  .card.sm .jtl { font-size: 7px; bottom: 2px; }
+  /* デッキエディタ */
+  #deck-grid { margin: 10px 0 4px; }
+  .deck-row { display: flex; justify-content: center; gap: 3px; margin-bottom: 4px; flex-wrap: wrap; }
+  .deck-row .card { cursor: pointer; }
+  .deck-row .card.deckoff { opacity: .22; filter: grayscale(.9); }
+  #deck-count { text-align: center; font-size: 13px; color: var(--paper); margin-top: 4px; }
+  #deck-count b { color: var(--gold); }
+  .deck-btns { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
+  .deck-btns button { font-size: 11.5px; padding: 7px 10px; }
+  .deck-btns button.primary { background: var(--gold); color: var(--ink); }
+  .deck-note { font-size: 11px; color: var(--dim); text-align: center; margin-top: 2px; }
   /* 墓地ビューア */
   .stat.gravebtn { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
   .stat.gravebtn:hover { color: var(--gold); }
@@ -512,6 +529,22 @@
 </div>
 
 <!-- カードテキスト(右クリック) -->
+<!-- デッキエディタ(マジックルール) -->
+<div class="overlay" id="deck-overlay">
+  <div class="panel" style="max-width:560px">
+    <h2>デッキ編集</h2>
+    <div class="deck-note">54枚以下・同じカードは1枚まで・ジョーカーは4種から2枚まで。カードをタップで抜き差し。</div>
+    <div id="deck-grid"></div>
+    <div id="deck-count"></div>
+    <div class="deck-btns" id="deck-slots"></div>
+    <div class="deck-btns">
+      <button id="deck-full">フルデッキに戻す</button>
+      <button id="deck-start" class="primary">この構築で開始</button>
+      <button id="deck-back">タイトルへ</button>
+    </div>
+  </div>
+</div>
+
 <div id="cardtext-pop"><div class="ctp-inner"><div id="ctp-card"></div><div id="ctp-text"></div></div></div>
 
 <!-- 墓地ビューア(墓地カウンタのタップで開く) -->
@@ -586,9 +619,12 @@
       ・<b>場に出たとき: 自分の墓地にある同スートのクリーチャーを、数字の合計がX以下になるように望む数だけ場に出す</b>(例: X=5なら♠2と♠3をまとめて。蘇生された側の「場に出たとき」は誘発しない)<br><br>
       <b>スート能力</b>: ♠<b>挑戦</b>(攻撃時、アンタップの敵1体を強制的にブロックへ参加させる。複数ブロック時は挑戦対象へ最優先でダメージ)/ ♥<b>瞬速</b>(相手のブロックフェイズに召喚できる)/ ♦<b>警戒</b>(各戦闘フェイズ後にアンタップ)/ ♣<b>速攻</b>(召喚酔いしない)<br>
       <b>挑戦の操作</b>: ♠アタッカーを選ぶ → アンタップの敵をクリックで挑戦対象を指定 → 本体かタップ中の敵をクリックで攻撃先を確定(挑戦を使わないなら直接攻撃先をクリック)<br>
-      <b>JOKER</b>(2つの使い方から選ぶ・アリスルール共通):<br>
-      ・ミシュラズジョーカー(0マナ呪文): カードを1枚引く<br>
-      ・ロータスジョーカー: <b>相手より土地が少ないときのみ</b>、セット権を使わず土地としてセット。タップで無色マナ3点、ターン終了時に破壊
+      <b>デッキ構築</b>: 開始時にデッキ編集画面が開く。52枚+4種のジョーカーのプールから、<b>54枚以下・同じカード1枚まで・ジョーカー2枚まで</b>で自由に構築(保存・ロード3枠)。フルデッキのまま戦ってもよい<br><br>
+      <b>JOKER</b>(4種・すべて0マナのアーティファクト、<b>サイクリング(無色1)</b>=捨てて1枚引く、を共通で持つ・アリスルール共通):<br>
+      ・<b>モックス</b>: 相手より土地が少ないときのみプレイ(土地ではない)。T: 無色マナ1点<br>
+      ・<b>ロータス</b>: 相手より土地が少ないときのみプレイ(土地ではない)。T: 望む単色マナ3点。ターン終了時に生贄<br>
+      ・<b>スティール</b>: 対象のクリーチャーはターン終了時まで<b>破壊不能</b>。ターン終了時に生贄<br>
+      ・<b>ルーター</b>: 追加コストで♥♠♦♣を1枚ずつ捨て、カードを7枚引く。ターン終了時に生贄
     </div>
     <div class="body" id="rules-duema">
       54枚フルデッキ(4色×13+JOKER2枚)同士、シールド6枚の1対1。先攻後攻はランダム。<br><br>
@@ -712,6 +748,22 @@ let transport = null;
 let gameToken = 0;          // ゲーム世代(古い非同期処理の無効化)
 
 function mkCard(id, suit, rank, joker) { return { id, suit, rank, joker: !!joker }; }
+const JT_ORDER = ["mox", "lotus", "steel", "router"];
+const JT_NAME = { mox: "モックスジョーカー", lotus: "ロータスジョーカー", steel: "スティールジョーカー", router: "ルータージョーカー" };
+const JT_SHORT = { mox: "モックス", lotus: "ロータス", steel: "スティール", router: "ルーター" };
+const FULL_DECK_LIST = [...Array(52).keys(), "mox", "lotus"];   // マジックのフルデッキ(ジョーカー2枚は既定でモックス+ロータス)
+let deckLists = null;    // 対戦ごとの [p0構築, p1構築](マジックのみ・null要素はフルデッキ)
+let myDeckList = null;   // 自分の構築(デッキエディタで確定したもの)
+/* コード: 0-51 = suit*13+(rank-1)、ジョーカーは種類名の文字列 */
+function buildDeckFromList(list, idBase) {
+  const nums = [...new Set(list.filter(x => typeof x === "number" && x >= 0 && x < 52))].sort((a, b) => a - b);
+  const d = []; let id = idBase;
+  for (const n of nums) d.push(mkCard(id++, Math.floor(n / 13), (n % 13) + 1, false));
+  for (const j of JT_ORDER) if (list.includes(j)) { const c = mkCard(id++, -1, 0, true); c.jt = j; d.push(c); }
+  return d;
+}
+function realLandCount(p) { return p.lands.filter(l => !l.card.joker).length; }   // アーティファクトジョーカーは土地に数えない
+
 function buildDeck(idBase) {
   const d = [];
   let id = idBase;
@@ -758,11 +810,37 @@ function landById(pi, id) { return players[pi].lands.find(l => l.card.id === id)
 /* マナ源: 土地(+アリスの♣2-6クリーチャー=T:♣マナ1) */
 function manaSources(p) {
   const pi = players ? players.indexOf(p) : -1;
-  const out = untappedLands(p).map(l => ({ land: l, val: l.lotus ? 3 : 1, colored: l.lotus ? null : (l.card.joker ? "*" : l.card.suit), id: l.card.id }));
+  const out = untappedLands(p).filter(l => !l.steel && !l.router).map(l => ({
+    land: l, val: l.lotus ? 3 : 1,
+    colored: l.lotus ? "*" : l.mox ? null : (l.card.joker ? "*" : l.card.suit),
+    id: l.card.id }));
   if (ruleMode === "original" && pi >= 0 && aliceSide[pi]) {
     for (const f of p.field) if (isManaCre(f) && !f.tapped && !f.sick) out.push({ cre: f, val: 1, colored: 3, id: f.card.id });
   }
   return out;
+}
+function canPayC(p, total) {   // 色指定なしの支払い可否(サイクリング等)
+  return manaSources(p).reduce((s2, x) => s2 + x.val, 0) >= total;
+}
+function payWithC(p, total, ids) {
+  if (!ids || !ids.length || new Set(ids).size !== ids.length) return false;
+  const srcs = manaSources(p);
+  const sel = ids.map(id => srcs.find(x => x.id === id));
+  if (sel.some(x => !x)) return false;
+  if (sel.reduce((s2, x) => s2 + x.val, 0) < total) return false;
+  sel.forEach(x => { (x.land || x.cre).tapped = true; });
+  return true;
+}
+function payC(p, total) {
+  const srcs = manaSources(p);
+  const order = [...srcs.filter(x => x.land && !x.land.lotus && !x.land.card.joker),
+                 ...srcs.filter(x => x.cre),
+                 ...srcs.filter(x => x.land && (x.land.lotus || x.land.card.joker))];
+  let need = total;
+  for (const x of order) {
+    if (need <= 0) break;
+    (x.land || x.cre).tapped = true; need -= x.val;
+  }
 }
 function canPay(p, suit, total) {
   if (total <= 0) return true;
@@ -790,7 +868,9 @@ function requestPays(suit, need) {
       done: ids => { paySel = null; res(ids); },
       cancel: () => { paySel = null; res(null); render(); },
     };
-    setHint(`マナ支払い: タップする土地を${need}枚クリック(${SUITS[suit]}かJOKERを1枚以上含む)→ 決定`);
+    setHint(suit == null
+      ? `マナ支払い: タップする土地を${need}点ぶんクリック → 決定`
+      : `マナ支払い: タップする土地を${need}枚クリック(${SUITS[suit]}かJOKERを1枚以上含む)→ 決定`);
     render();
   });
 }
@@ -806,6 +886,7 @@ function paySelValid() {
   if (!paySel) return false;
   const srcs = manaSources(players[myIdx]);
   if (paySelSum() < paySel.need) return false;
+  if (paySel.suit == null) return true;
   return [...paySel.sel].some(id => {
     const x = srcs.find(y => y.id === id);
     return x && (x.colored === "*" || x.colored === paySel.suit);
@@ -918,8 +999,8 @@ async function battle(aPi, aCre, bPi, bCre) {
   aCre.dmg = (aCre.dmg || 0) + n.bp;
   bCre.dmg = (bCre.dmg || 0) + n.ap;
   log(`戦闘: ${cardLabel(aCre.card)}(${n.ap}/${n.at}) vs ${cardLabel(bCre.card)}(${n.bp}/${n.bt})`);
-  const bDies = n.bDies || (hasDeathtouch(aCre) && n.ap >= 1);   // 接死
-  const aDies = n.aDies || (hasDeathtouch(bCre) && n.bp >= 1);
+  const bDies = (n.bDies || (hasDeathtouch(aCre) && n.ap >= 1)) && !bCre.indest;   // 接死・破壊不能
+  const aDies = (n.aDies || (hasDeathtouch(bCre) && n.bp >= 1)) && !aCre.indest;
   await showBattleFx(aCre, bCre, aDies, bDies);
   if (bDies) destroy(bPi, bCre);
   if (aDies) destroy(aPi, aCre);
@@ -1080,6 +1161,7 @@ function showBattleFx(aCre, bCre, aDies, bDies) {
   });
 }
 function destroy(pi, cre) {
+  if (cre.indest) { log(`${cardLabel(cre.card)} は破壊不能!(ターン終了時まで)`); return; }
   const p = players[pi];
   p.field = p.field.filter(f => f !== cre);
   p.grave.push(cre.card);
@@ -1179,9 +1261,12 @@ function setHint(t) { document.getElementById("hint").textContent = t; }
 async function runGame(seed) {
   const token = ++gameToken;
   rng = mulberry32(seed);
+  const deckFor = (i, base) => ruleMode === "original"
+    ? buildDeckFromList((deckLists && deckLists[i]) || FULL_DECK_LIST, base)
+    : buildDeck(base);
   players = [
-    { name: myIdx === 0 ? "あなた" : (mode === "cpu" ? "CPU" : "相手"), deck: shuffle(buildDeck(0)),   hand: [], shields: [], lands: [], field: [], grave: [], traps: [], active: null, bench: [], ench: [] },
-    { name: myIdx === 1 ? "あなた" : (mode === "cpu" ? "CPU" : "相手"), deck: shuffle(buildDeck(200)), hand: [], shields: [], lands: [], field: [], grave: [], traps: [], active: null, bench: [], ench: [] },
+    { name: myIdx === 0 ? "あなた" : (mode === "cpu" ? "CPU" : "相手"), deck: shuffle(deckFor(0, 0)),   hand: [], shields: [], lands: [], field: [], grave: [], traps: [], active: null, bench: [], ench: [] },
+    { name: myIdx === 1 ? "あなた" : (mode === "cpu" ? "CPU" : "相手"), deck: shuffle(deckFor(1, 200)), hand: [], shields: [], lands: [], field: [], grave: [], traps: [], active: null, bench: [], ench: [] },
   ];
   if (story.active) { players[myIdx].name = story.name || "あなた"; players[1 - myIdx].name = story.room === 3 ? "アリス" : "ウサギ紳士"; }
   aliceSide = aliceVariant ? [true, true]
@@ -1460,15 +1545,16 @@ async function runOriginalTurns(token, secondP) {
       render();
     }
 
-    // ターン終了時: ロータスジョーカーは破壊される
+    // ターン終了時: ロータス/スティール/ルーターは生贄に。破壊不能も切れる
     for (const pp of players) {
       for (const l of [...pp.lands]) {
-        if (l.lotus) {
+        if (l.lotus || l.steel || l.router) {
           pp.lands = pp.lands.filter(x => x !== l);
           pp.grave.push(l.card);
-          log(`${pp.name} のロータスジョーカーは砕け散った`);
+          log(`${pp.name} の${JT_NAME[l.card.jt] || "ジョーカー"}は砕け散った`);
         }
       }
+      pp.field.forEach(f => { f.indest = false; });
     }
     render();
     oPhase = null;
@@ -2347,23 +2433,65 @@ async function applyMainO(pi, a) {
       playLand(pi, c);
       return;
     }
-    case "mishra": { // ミシュラズジョーカー: 0マナ呪文、1枚引く
+    case "jplay": {   // 新ジョーカー: 0マナのアーティファクトとしてプレイ
       const jk = handById(pi, a.jk);
-      if (!jk || !jk.joker) return;
-      spendJoker(pi, jk, "ミシュラズジョーカー");
-      if (p.deck.length) p.hand.push(p.deck.pop());
-      log(`${p.name}: 1枚ドロー(山札${p.deck.length})`);
+      if (!jk || !jk.joker || !jk.jt) return;
+      const t2 = jk.jt;
+      if ((t2 === "mox" || t2 === "lotus") && !(realLandCount(p) < realLandCount(o))) return;
+      if (t2 === "steel") {
+        const tgt = fieldById(0, a.tgt) || fieldById(1, a.tgt);
+        if (!tgt) return;
+        removeFromHand(p, jk);
+        p.lands.push({ card: jk, tapped: false, steel: true });
+        tgt.indest = true;
+        sfx("trigger");
+        await showBanner("破壊不能!", 900, tgt.card);
+        log(`${p.name}: スティールジョーカー — ${cardLabel(tgt.card)} はターン終了時まで破壊されない`);
+        render();
+        return;
+      }
+      if (t2 === "router") {
+        const ids2 = Array.isArray(a.discards) ? a.discards : [];
+        const dis = [];
+        for (const s2 of [1, 0, 2, 3]) {   // ♥♠♦♣を1枚ずつ
+          const g = p.hand.find(h => !h.joker && h.suit === s2 && ids2.includes(h.id) && !dis.includes(h));
+          if (!g) return;
+          dis.push(g);
+        }
+        for (const g of dis) { p.hand = p.hand.filter(h => h !== g); p.grave.push(g); }
+        removeFromHand(p, jk);
+        p.lands.push({ card: jk, tapped: false, router: true });
+        const n2 = Math.min(7, p.deck.length);
+        for (let i2 = 0; i2 < n2; i2++) p.hand.push(p.deck.pop());
+        sfx("joker");
+        log(`${p.name}: ルータージョーカー — 4色を1枚ずつ捨てて7枚引いた(山札${p.deck.length})`);
+        render();
+        await checkDeckOut();
+        return;
+      }
+      removeFromHand(p, jk);
+      const art = { card: jk, tapped: false };
+      art[t2] = true;
+      p.lands.push(art);
+      sfx("land");
+      log(`${p.name}: ${JT_NAME[t2]}を置いた(${t2 === "mox" ? "T: 無色マナ1点" : "T: 望む単色マナ3点・ターン終了時に生贄"})`);
       render();
-      await checkDeckOut();
       return;
     }
-    case "lotus": {  // ロータスジョーカー: 相手より土地が少ないときセット権を使わずセット。タップで無色3点、ターン終了時に破壊
+    case "jcycle": {  // サイクリング(無色1): ジョーカーを捨てて1枚引く
       const jk = handById(pi, a.jk);
-      if (!jk || !jk.joker || p.lands.length >= o.lands.length) return;
+      if (!jk || !jk.joker) return;
+      if (!payWithC(p, 1, a.pays)) {
+        if (!canPayC(p, 1)) return;
+        payC(p, 1);
+      }
       removeFromHand(p, jk);
-      p.lands.push({ card: jk, tapped: false, lotus: true });
-      sfx("land");
-      log(`${p.name}: ロータスジョーカーをセットした(無色3マナ・ターン終了時に破壊)`);
+      p.grave.push(jk);
+      if (p.deck.length) p.hand.push(p.deck.pop());
+      sfx("joker");
+      log(`${p.name}: ${JT_NAME[jk.jt] || "JOKER"}をサイクリング — 1枚引いた(山札${p.deck.length})`);
+      render();
+      await checkDeckOut();
       return;
     }
     case "summon": await applySummonO(pi, a); return;
@@ -2826,18 +2954,30 @@ function aiOMain(pi) {   // 相手ターン中のメイン: 土地→呪文→�
     const c = aiPickLand(pi);
     if (c && !c.joker) return { t: "land", card: c.id };   // マジックではJOKERを土地にできない
   }
-  // JOKER: ロータス(3点ブースト)> ミシュラズ(1ドロー)
-  {
-    const jk = p.hand.find(c => c.joker);
-    if (jk && p.lands.length < o.lands.length) {
-      const cap = untappedLands(p).reduce((s2, l) => s2 + (l.lotus ? 3 : 1), 0);
+  // JOKER(新ジョーカー): モックス=マナ加速 / ロータス=召喚ブースト / ルーター=手札交換 / 余りはサイクリング
+  for (const jk of p.hand.filter(c => c.joker)) {
+    const behind = realLandCount(p) < realLandCount(o);
+    if (jk.jt === "mox" && behind) return { t: "jplay", jk: jk.id };
+    if (jk.jt === "lotus" && behind) {
+      const cap = manaSources(p).reduce((s2, x) => s2 + x.val, 0);
       const boostTarget = p.hand.filter(c => !c.joker && c.rank !== 1 && c.suit !== 1)
-        .find(c => !canPay(p, c.suit, costOf(c)) && cap + 3 >= costOf(c) &&
-                   untappedLands(p).some(l => !l.lotus && (l.card.joker || l.card.suit === c.suit)));
-      if (boostTarget) return { t: "lotus", jk: jk.id };
+        .find(c => !canPay(p, c.suit, costOf(c)) && cap + 3 >= costOf(c));
+      if (boostTarget) return { t: "jplay", jk: jk.id };
     }
-    if (jk && p.lands.length >= o.lands.length && p.deck.length >= 8) {
-      return { t: "mishra", jk: jk.id };
+    if (jk.jt === "router" && p.deck.length >= 12 && p.hand.length >= 6 &&
+        [1, 0, 2, 3].every(s2 => p.hand.some(h => !h.joker && h.suit === s2))) {
+      const dis = [];
+      for (const s2 of [1, 0, 2, 3]) {
+        const g2 = p.hand.filter(h => !h.joker && h.suit === s2 && !dis.includes(h))
+          .sort((x, y) => x.rank - y.rank)[0];
+        dis.push(g2);
+      }
+      return { t: "jplay", jk: jk.id, discards: dis.map(x => x.id) };
+    }
+    // 出せない/出す価値のないジョーカーは、手札が細ったらサイクリング
+    if (p.hand.length <= 2 && p.deck.length >= 8 && canPayC(p, 1) &&
+        !((jk.jt === "mox" || jk.jt === "lotus") && behind)) {
+      return { t: "jcycle", jk: jk.id };
     }
   }
   // A(1/1・ETB蘇生): 払えるXの範囲で墓地の同スートを大きい順に詰め、数字合計5以上釣れるなら唱える。♥Aは瞬速のため温存
@@ -3336,17 +3476,57 @@ async function onHandClickO(c) {
       }
       return;
     }
-    // JOKER: ミシュラズ / ロータス から選ぶ(モックスは廃止)
-    const v = await choose(cardLabel(c), [
-      { label: "ミシュラズジョーカー(0マナ呪文): カードを1枚引く", value: "mishra",
-        disabled: !p.deck.length },
-      { label: "ロータスジョーカー: セット権を使わず土地としてセット(相手より土地が少ないときのみ)。タップで無色3マナ・ターン終了時に破壊", value: "lotus",
-        disabled: !(p.lands.length < o.lands.length) },
-      { label: "キャンセル", value: null },
-    ], c, "JOKERは2つの使い方から選べる");
+    // JOKER(マジック): 種類ごとのプレイ+サイクリング
+    const jt = c.jt;
+    const behind = realLandCount(p) < realLandCount(o);
+    const opts = [];
+    if (jt === "mox") opts.push({
+      label: "プレイ(0マナ): アーティファクト — T: 無色マナ1点(相手より土地が少ないときのみ)",
+      value: "play", primary: true, disabled: !behind });
+    if (jt === "lotus") opts.push({
+      label: "プレイ(0マナ): アーティファクト — T: 望む単色マナ3点。ターン終了時に生贄(相手より土地が少ないときのみ)",
+      value: "play", primary: true, disabled: !behind });
+    if (jt === "steel") opts.push({
+      label: "プレイ(0マナ): 対象のクリーチャーはターン終了時まで破壊不能。ターン終了時に生贄",
+      value: "play", primary: true, disabled: !p.field.length && !o.field.length });
+    if (jt === "router") opts.push({
+      label: "プレイ(0マナ): 追加コストで♥♠♦♣を1枚ずつ捨て、カードを7枚引く。ターン終了時に生贄",
+      value: "play", primary: true,
+      disabled: ![1, 0, 2, 3].every(s2 => p.hand.some(h => !h.joker && h.suit === s2)) });
+    opts.push({ label: "サイクリング(無色1): このカードを捨てて1枚引く", value: "cycle", disabled: !canPayC(p, 1) });
+    opts.push({ label: "キャンセル", value: null });
+    const v = await choose(JT_NAME[jt] || "JOKER", opts, c, "0マナのアーティファクト。使わないときはサイクリングで引きに変えられる");
     if (!uiMain) return;
-    if (v === "mishra") act({ k: mk, t: "mishra", jk: c.id });
-    if (v === "lotus") act({ k: mk, t: "lotus", jk: c.id });
+    if (v === "cycle") {
+      if (manualPay) {
+        const ids = await requestPays(null, 1);
+        if (!ids) return;
+        act({ k: mk, t: "jcycle", jk: c.id, pays: ids });
+      } else act({ k: mk, t: "jcycle", jk: c.id });
+      return;
+    }
+    if (v !== "play") return;
+    if (jt === "steel") {
+      const all = [...p.field, ...o.field].map(f => f.card);
+      const t3 = await chooseCard("破壊不能を与えるクリーチャーを選ぶ", all, "", "キャンセル");
+      if (!t3) return;
+      act({ k: mk, t: "jplay", jk: c.id, tgt: t3.id });
+      return;
+    }
+    if (jt === "router") {
+      const discards = [];
+      for (const s2 of [1, 0, 2, 3]) {
+        const cands = p.hand.filter(h => !h.joker && h.suit === s2 && !discards.includes(h.id));
+        if (!cands.length) return;
+        if (cands.length === 1) { discards.push(cands[0].id); continue; }
+        const pick = await chooseCard(`捨てる${SUITS[s2]}のカードを選ぶ`, cands, "", "キャンセル");
+        if (!pick) return;
+        discards.push(pick.id);
+      }
+      act({ k: mk, t: "jplay", jk: c.id, discards });
+      return;
+    }
+    act({ k: mk, t: "jplay", jk: c.id });
     return;
   }
 }
@@ -3540,13 +3720,24 @@ async function hostRoom() {
   const code = genCode();
   const seed = Math.floor(Math.random() * 2 ** 31);
   const roomRef = firebase.database().ref("rooms/" + code);
-  await roomRef.set({ seed, created: Date.now(), p0: true, rule: aliceVariant ? "alice" : ruleMode });   // ルールは部屋主が決める
+  const isMagic = ruleMode === "original" && !aliceVariant;
+  const d0 = isMagic ? (myDeckList || FULL_DECK_LIST) : null;
+  await roomRef.set({ seed, created: Date.now(), p0: true, rule: aliceVariant ? "alice" : ruleMode,
+                      d0: d0 ? JSON.stringify(d0) : null });   // ルールは部屋主が決める
   document.getElementById("title-overlay").classList.remove("show");
   document.getElementById("room-code-big").textContent = code;
   document.getElementById("wait-overlay").classList.add("show");
-  roomRef.child("p1").on("value", s => {
+  roomRef.child("p1").on("value", async s => {
     if (!s.val()) return;
     roomRef.child("p1").off();
+    let d1 = null;
+    if (isMagic) {
+      try {
+        const snap1 = await roomRef.child("d1").get();
+        if (snap1.exists()) d1 = JSON.parse(snap1.val());
+      } catch (e) {}
+    }
+    deckLists = isMagic ? [d0, d1] : null;
     document.getElementById("wait-overlay").classList.remove("show");
     transport = new FirebaseTransport(code);
     transport.start(onActionArrived);
@@ -3568,17 +3759,28 @@ async function joinRoom(code) {
     aliceVariant = r === "alice";
     ruleMode = aliceVariant ? "original" : r;
   }
-  await roomRef.child("p1").set(true);
-  document.getElementById("title-overlay").classList.remove("show");
-  transport = new FirebaseTransport(code);
-  transport.start(onActionArrived);
-  runGame(snap.val().seed);
+  const isMagic = ruleMode === "original" && !aliceVariant;
+  const proceed = async () => {
+    let d0 = null;
+    try { if (snap.val().d0) d0 = JSON.parse(snap.val().d0); } catch (e) {}
+    const d1 = isMagic ? (myDeckList || FULL_DECK_LIST) : null;
+    deckLists = isMagic ? [d0, d1] : null;
+    if (d1) await roomRef.child("d1").set(JSON.stringify(d1));   // p1より先に書く(ホストはp1を合図に読む)
+    await roomRef.child("p1").set(true);
+    document.getElementById("title-overlay").classList.remove("show");
+    transport = new FirebaseTransport(code);
+    transport.start(onActionArrived);
+    runGame(snap.val().seed);
+  };
+  if (isMagic) openDeckEditor(proceed);
+  else await proceed();
 }
 
 /* テスト・同一ブラウザ検証用(BroadcastChannel対戦) */
-window.__startBC = function (role, code, seed, rule) {
+window.__startBC = function (role, code, seed, rule, d0, d1) {
   mode = role; myIdx = role === "host" ? 0 : 1;
   if (rule) { aliceVariant = rule === "alice"; ruleMode = aliceVariant ? "original" : rule; }
+  deckLists = (d0 || d1) ? [d0 || null, d1 || null] : null;
   document.getElementById("title-overlay").classList.remove("show");
   transport = new BCTransport(code);
   transport.start(onActionArrived);
@@ -3683,7 +3885,7 @@ function cardEl(c, opts = {}) {
   const aliceCard = opts.alice !== undefined ? !!opts.alice : (ruleMode === "original" && aliceVariant);
   if (c.joker) {
     el.className = "card joker" + (opts.sm ? " sm" : "");
-    el.innerHTML = `<span class="jk">JOKER</span>`;
+    el.innerHTML = `<span class="jk">JOKER</span>` + (c.jt ? `<span class="jtl">${JT_SHORT[c.jt]}</span>` : "");
   } else {
     el.className = "card" + (opts.sm ? " sm" : "") + (c.suit === 1 || c.suit === 2 ? " red" : "");
     if (aliceCard) el.classList.add("alice");
@@ -3729,7 +3931,14 @@ function pokeCardEl(pk, opts) {
 /* 右クリックのカードテキスト(マジック・アリス共通) */
 function cardRulesText(c, alice) {
   if (c.joker) {
-    return `<b>JOKER</b><br>2つの使い方から選ぶ:<br><br>・<b>ミシュラズジョーカー</b>(0マナ呪文): カードを1枚引く<br>・<b>ロータスジョーカー</b>: セット権を使わず土地としてセット(相手より土地が少ないときのみ)。タップで無色3マナ、ターン終了時に破壊`;
+    const cyc = "<br><br><b>サイクリング(無色1)</b>: このカードを捨てて、カードを1枚引く";
+    const JT_TEXT = {
+      mox: "<b>モックスジョーカー</b> — 0マナ アーティファクト<br><br>相手の場より土地の枚数が少ないときのみプレイできる(土地ではない)<br><br><b>T</b>: 無色マナ1点を加える" + cyc,
+      lotus: "<b>ロータスジョーカー</b> — 0マナ アーティファクト<br><br>相手の場より土地の枚数が少ないときのみプレイできる(土地ではない)<br><br><b>T</b>: 望む単色マナ3点を加える<br><br>ターン終了時、生贄に捧げる" + cyc,
+      steel: "<b>スティールジョーカー</b> — 0マナ アーティファクト<br><br>プレイしたとき、対象のクリーチャーはターン終了時まで<b>破壊不能</b>を得る<br><br>ターン終了時、生贄に捧げる" + cyc,
+      router: "<b>ルータージョーカー</b> — 0マナ アーティファクト<br><br>追加コスト: 手札から♥・♠・♦・♣のカードを1枚ずつ捨てる<br><br>カードを7枚引く<br><br>ターン終了時、生贄に捧げる" + cyc,
+    };
+    return JT_TEXT[c.jt] || ("<b>JOKER</b>" + cyc);
   }
   if (c.rank === 1) {
     const kw1 = { 0: "挑戦", 1: "瞬速", 2: "警戒", 3: "速攻" }[c.suit];
@@ -4489,6 +4698,7 @@ function storyStartBattle() {
   story.state = "battle";
   document.getElementById("story-overlay").classList.remove("show");
   ruleMode = "original";
+  deckLists = null;   // ストーリーは常にフルデッキ
   mode = "cpu"; myIdx = 0;
   ac();
   if (transport) { try { transport.stop(); } catch (e) {} }
@@ -4617,6 +4827,104 @@ document.addEventListener("keydown", e => {
 });
 
 /* ================= 開始 ================= */
+/* ================= デッキエディタ(マジックルール) ================= */
+let deckSel = null;      // エディタ中の採用カード(コードのSet)
+let deckAfter = null;    // 「この構築で開始」後に実行する処理
+
+function loadDeckList(key) {
+  try {
+    const a = JSON.parse(localStorage.getItem(key));
+    if (Array.isArray(a) && a.length) return a;
+  } catch (e) {}
+  return null;
+}
+function openDeckEditor(afterFn) {
+  deckAfter = afterFn;
+  deckSel = new Set(loadDeckList("duema-deck-current") || FULL_DECK_LIST);
+  document.getElementById("title-overlay").classList.remove("show");
+  document.getElementById("deck-overlay").classList.add("show");
+  renderDeckEditor();
+}
+function renderDeckEditor() {
+  const grid = document.getElementById("deck-grid");
+  grid.innerHTML = "";
+  for (let s2 = 0; s2 < 4; s2++) {
+    const row = document.createElement("div");
+    row.className = "deck-row";
+    for (let r = 1; r <= 13; r++) {
+      const code = s2 * 13 + (r - 1);
+      const el = cardEl(mkCard(90000 + code, s2, r, false), { sm: true });
+      if (!deckSel.has(code)) el.classList.add("deckoff");
+      el.addEventListener("click", () => {
+        if (deckSel.has(code)) deckSel.delete(code); else deckSel.add(code);
+        renderDeckEditor();
+      });
+      row.appendChild(el);
+    }
+    grid.appendChild(row);
+  }
+  const jrow = document.createElement("div");
+  jrow.className = "deck-row";
+  const nj = JT_ORDER.filter(x => deckSel.has(x)).length;
+  JT_ORDER.forEach((j, i) => {
+    const c = mkCard(90100 + i, -1, 0, true);
+    c.jt = j;
+    const el = cardEl(c, { sm: true });
+    if (!deckSel.has(j)) el.classList.add("deckoff");
+    el.addEventListener("click", () => {
+      if (deckSel.has(j)) deckSel.delete(j);
+      else if (JT_ORDER.filter(x => deckSel.has(x)).length < 2) deckSel.add(j);
+      renderDeckEditor();
+    });
+    jrow.appendChild(el);
+  });
+  grid.appendChild(jrow);
+  const n = deckSel.size;
+  document.getElementById("deck-count").innerHTML =
+    `デッキ: <b>${n}枚</b>(ジョーカー ${nj}/2)` +
+    (n < 10 ? `<br><span style="color:var(--rust)">最低10枚必要です</span>` : "");
+  document.getElementById("deck-start").disabled = n < 10;
+  const slots = document.getElementById("deck-slots");
+  slots.innerHTML = "";
+  for (let i = 1; i <= 3; i++) {
+    const key = "duema-deck-slot" + i;
+    const has = !!loadDeckList(key);
+    const bs = document.createElement("button");
+    bs.textContent = `保存${i}`;
+    bs.addEventListener("click", () => {
+      try { localStorage.setItem(key, JSON.stringify([...deckSel])); } catch (e) {}
+      renderDeckEditor();
+    });
+    const bl = document.createElement("button");
+    bl.textContent = `ロード${i}`;
+    bl.disabled = !has;
+    bl.addEventListener("click", () => {
+      const a = loadDeckList(key);
+      if (a) { deckSel = new Set(a); renderDeckEditor(); }
+    });
+    slots.appendChild(bs);
+    slots.appendChild(bl);
+  }
+}
+document.getElementById("deck-full").addEventListener("click", () => {
+  deckSel = new Set(FULL_DECK_LIST);
+  renderDeckEditor();
+});
+document.getElementById("deck-start").addEventListener("click", () => {
+  if (!deckSel || deckSel.size < 10) return;
+  myDeckList = [...deckSel];
+  try { localStorage.setItem("duema-deck-current", JSON.stringify(myDeckList)); } catch (e) {}
+  document.getElementById("deck-overlay").classList.remove("show");
+  const fn = deckAfter;
+  deckAfter = null;
+  if (fn) fn();
+});
+document.getElementById("deck-back").addEventListener("click", () => {
+  document.getElementById("deck-overlay").classList.remove("show");
+  document.getElementById("title-overlay").classList.add("show");
+  deckAfter = null;
+});
+
 function setRule(r) {
   aliceVariant = r === "alice";
   ruleMode = r === "alice" ? "original" : r;   // アリスはマジックエンジンの変種
@@ -4647,14 +4955,21 @@ function startCpu() {
   transport.start(onActionArrived);
   runGame(Math.floor(Math.random() * 2 ** 31));
 }
-document.getElementById("btn-cpu").addEventListener("click", startCpu);
-document.getElementById("btn-host").addEventListener("click", hostRoom);
+const isMagicDeckMode = () => ruleMode === "original" && !aliceVariant && !story.active;
+document.getElementById("btn-cpu").addEventListener("click", () => {
+  if (isMagicDeckMode()) openDeckEditor(() => { deckLists = [myDeckList, null]; startCpu(); });
+  else { deckLists = null; startCpu(); }
+});
+document.getElementById("btn-host").addEventListener("click", () => {
+  if (isMagicDeckMode()) openDeckEditor(hostRoom);
+  else hostRoom();
+});
 document.getElementById("btn-join").addEventListener("click", () => joinRoom(document.getElementById("join-code").value));
 function resetToTitle() {
   // reloadせずタイトルに戻す(環境によってはreloadで白画面になるため)
   gameToken++;                                   // 走行中の非同期処理を無効化
   if (transport) { try { transport.stop(); } catch (e) {} transport = null; }
-  players = null; winner = null; oPhase = null; paySel = null;
+  players = null; winner = null; oPhase = null; paySel = null; deckLists = null;
   uiMain = false; selAttacker = null; selTargetAtt = null;
   declaredAttacks = []; activeBlocks = []; pendingAttacks = []; pendingBlocks = [];
   inbox.length = 0; pendingResolve = null;
