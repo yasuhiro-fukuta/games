@@ -583,7 +583,7 @@
       <b>ダメージは次のクリンナップ(次ターンのアンタップ直前)まで蓄積</b>(数字以上で破壊)。<b>召喚酔いあり</b>(出したターンは攻撃不可)。<b>タップ状態で戦闘フェイズを終えたクリーチャーはパワー0</b>(アンタップで回復)<br><br>
       <b>A(エース)は1/1のETB蘇生クリーチャー</b>(コスト=自スート1マナ+無色Xマナ。Xは召喚時に選ぶ・0でも可。土地にもできる):<br>
       ・スートのキーワード(♠挑戦/♥瞬速/♦警戒/♣速攻)を持つ。♥Aは瞬速で相手のブロックフェイズにも唱えられる<br>
-      ・<b>場に出たとき: 自分の墓地にある同スートの数字X以下のクリーチャー1体を場に出す</b>(蘇生された側の「場に出たとき」は誘発しない)<br><br>
+      ・<b>場に出たとき: 自分の墓地にある同スートのクリーチャーを、数字の合計がX以下になるように望む数だけ場に出す</b>(例: X=5なら♠2と♠3をまとめて。蘇生された側の「場に出たとき」は誘発しない)<br><br>
       <b>スート能力</b>: ♠<b>挑戦</b>(攻撃時、アンタップの敵1体を強制的にブロックへ参加させる。複数ブロック時は挑戦対象へ最優先でダメージ)/ ♥<b>瞬速</b>(相手のブロックフェイズに召喚できる)/ ♦<b>警戒</b>(各戦闘フェイズ後にアンタップ)/ ♣<b>速攻</b>(召喚酔いしない)<br>
       <b>挑戦の操作</b>: ♠アタッカーを選ぶ → アンタップの敵をクリックで挑戦対象を指定 → 本体かタップ中の敵をクリックで攻撃先を確定(挑戦を使わないなら直接攻撃先をクリック)<br>
       <b>絵札(J/Q/K)の追加能力</b>: ♣<b>猪突</b>(2体以上のクリーチャーにはブロックされない)/ ♠<b>貫通</b>(余剰戦闘ダメージが当初の攻撃対象へ)/ ♦<b>飛行</b>(飛行を持たないクリーチャーにはブロックされない)/ ♥<b>絆魂</b>(与えたダメージぶん、墓地の上から山札に加えて切り直す。墓地の枚数が上限)<br><br>
@@ -2368,7 +2368,7 @@ async function applyMainO(pi, a) {
       return;
     }
     case "summon": await applySummonO(pi, a); return;
-    // A(エース): スート1+Xマナの1/1クリーチャー。ETB: 墓地の同スート・数字X以下のクリーチャー1体を場に出す
+    // A(エース): スート1+Xマナの1/1クリーチャー。ETB: 墓地の同スートを数字の合計X以下になるよう何体でも場に出す
     case "acecast": {
       const c = handById(pi, a.card);
       if (!c || c.joker || c.rank !== 1) return;
@@ -2383,15 +2383,20 @@ async function applyMainO(pi, a) {
       sfx("summon");
       log(`${p.name}: ${cardLabel(c)} を召喚(X=${X}) — 1/1`);
       // ETB(唱えて出たときのみ): 蘇生されたクリーチャーのETBは誘発しない
-      const rc = a.revive != null
-        ? p.grave.find(g => g.id === a.revive && !g.joker && g.suit === c.suit && g.rank <= X)
-        : null;
-      if (rc) {
-        p.grave = p.grave.filter(g => g.id !== rc.id);
-        p.field.push({ card: rc, tapped: false, sick: rc.suit !== 3, dmg: 0 });
+      const ids = Array.isArray(a.revive) ? a.revive : (a.revive != null ? [a.revive] : []);
+      const picked = [];
+      let rsum = 0;
+      for (const id of ids) {
+        const g = p.grave.find(g => g.id === id && !g.joker && g.suit === c.suit && !picked.includes(g));
+        if (!g || rsum + g.rank > X) continue;
+        picked.push(g); rsum += g.rank;
+      }
+      if (picked.length) {
+        p.grave = p.grave.filter(g => !picked.includes(g));
+        for (const rc of picked) p.field.push({ card: rc, tapped: false, sick: rc.suit !== 3, dmg: 0 });
         sfx("trigger");
-        await showBanner("エースの帰還!", 1000, rc);
-        log(`${cardLabel(c)}のETB: 墓地から ${cardLabel(rc)} が場に戻った!`);
+        await showBanner("エースの救済!", 1000, picked[0]);
+        log(`${cardLabel(c)}のETB: 墓地から ${picked.map(g => cardLabel(g)).join("、")} が場に出た!(数字合計${rsum}≦X)`);
       }
       render();
       return;
@@ -2640,12 +2645,17 @@ function aiDecide(pi, kind, ctx) {
   if (kind === "oblocks") {
     const p = players[pi];
     const attackers2 = declaredAttacks.map(at => fieldById(1 - pi, at.cre)).filter(Boolean);
-    // ♥A(瞬速・ETB蘇生): 攻撃が来ていれば、墓地の♥を釣ってブロッカーを2体増やす
+    // ♥A(瞬速・ETB蘇生): 攻撃が来ていれば、払えるXの範囲で墓地の♥を大きい順に釣ってブロッカーを増やす
     const aceH = p.hand.find(c => !c.joker && c.rank === 1 && c.suit === 1);
     if (aceH && attackers2.length) {
-      const best = p.grave.filter(g => !g.joker && g.suit === 1 && g.rank >= 3 && canPay(p, 1, 1 + g.rank))
-        .sort((a, b) => b.rank - a.rank)[0];
-      if (best) return { k: "oblocks", t: "acecast", card: aceH.id, x: best.rank, revive: best.id };
+      let maxX = -1;
+      for (let x = 13; x >= 0; x--) if (canPay(p, 1, 1 + x)) { maxX = x; break; }
+      const picks = [];
+      let sum = 0;
+      for (const g of p.grave.filter(g => !g.joker && g.suit === 1).sort((a, b) => b.rank - a.rank)) {
+        if (sum + g.rank <= maxX) { picks.push(g); sum += g.rank; }
+      }
+      if (sum >= 3) return { k: "oblocks", t: "acecast", card: aceH.id, x: sum, revive: picks.map(g => g.id) };
     }
     // ♥瞬速召喚: 攻撃が来ていれば、出せる♥を強い順に出して待ち伏せる(Aは除外)
     if (attackers2.length) {
@@ -2831,11 +2841,17 @@ function aiOMain(pi) {   // 相手ターン中のメイン: 土地→呪文→�
       return { t: "mishra", jk: jk.id };
     }
   }
-  // A(1/1・ETB蘇生): 墓地の同スートに大物(5以上)がいて払えるなら釣る。♥Aは瞬速のため温存
+  // A(1/1・ETB蘇生): 払えるXの範囲で墓地の同スートを大きい順に詰め、数字合計5以上釣れるなら唱える。♥Aは瞬速のため温存
   for (const aceC of p.hand.filter(c => !c.joker && c.rank === 1 && c.suit !== 1)) {
-    const best = p.grave.filter(g => !g.joker && g.suit === aceC.suit && g.rank >= 5 && canPay(p, aceC.suit, 1 + g.rank))
-      .sort((a, b) => b.rank - a.rank)[0];
-    if (best) return { t: "acecast", card: aceC.id, x: best.rank, revive: best.id };
+    let maxX = -1;
+    for (let x = 13; x >= 0; x--) if (canPay(p, aceC.suit, 1 + x)) { maxX = x; break; }
+    if (maxX < 1) continue;
+    const picks = [];
+    let sum = 0;
+    for (const g of p.grave.filter(g => !g.joker && g.suit === aceC.suit).sort((a, b) => b.rank - a.rank)) {
+      if (sum + g.rank <= maxX) { picks.push(g); sum += g.rank; }
+    }
+    if (sum >= 5) return { t: "acecast", card: aceC.id, x: sum, revive: picks.map(g => g.id) };
   }
   // アリス♥7-10: 攻撃に向かないクリーチャーをタップして1ドロー
   if (aliceSide[pi] && p.deck.length >= 15) {
@@ -3153,14 +3169,19 @@ async function aceCastUI(c, kind) {
     opts.push({ label: `X = ${x}(コスト${1 + x}${cands ? `・蘇生候補${cands}枚` : ""})`, value: String(x) });
   }
   opts.push({ label: "キャンセル", value: null });
-  const xv = await choose(`${cardLabel(c)}: Xを選ぶ`, opts, c, "1/1で召喚し、ETBで墓地の同スート・数字X以下のクリーチャー1体を場に出す");
+  const xv = await choose(`${cardLabel(c)}: Xを選ぶ`, opts, c, "1/1で召喚し、ETBで墓地の同スートのクリーチャーを数字の合計X以下になるように望む数だけ場に出す");
   if (xv === null) return;
   const X = parseInt(xv, 10);
-  const cands = p.grave.filter(g => !g.joker && g.suit === c.suit && g.rank <= X);
-  let revive = null;
-  if (cands.length) {
-    const t = await chooseCard(`${cardLabel(c)}のETB: 場に出すクリーチャーを選ぶ`, cands, "", "蘇生しない");
-    if (t) revive = t.id;
+  const revive = [];
+  let rest = X;
+  for (;;) {
+    const cands = p.grave.filter(g => !g.joker && g.suit === c.suit && g.rank <= rest && !revive.includes(g.id));
+    if (!cands.length) break;
+    const t = await chooseCard(
+      `${cardLabel(c)}のETB: 場に出すクリーチャーを選ぶ(残りX=${rest}・合計X以下まで複数可)`,
+      cands, "", revive.length ? "これで決定" : "蘇生しない");
+    if (!t) break;
+    revive.push(t.id); rest -= t.rank;
   }
   await actSpell(kind, c, { t: "acecast", x: X, revive }, 1 + X);
 }
@@ -3267,7 +3288,7 @@ async function onHandClickO(c) {
       const graveN = p.grave.filter(g => !g.joker && g.suit === c.suit).length;
       const v = await choose(`${cardLabel(c)}(1/1・ETB蘇生)`, [
         { label: `土地に置く(${SUITS[c.suit]}マナ)`, value: "land", disabled: landSetUsed >= landSetMax },
-        { label: `召喚する(${SUITS[c.suit]}1+Xマナ) — 1/1。ETB: 墓地の同スートの数字X以下のクリーチャー1体を場に出す(同スート墓地${graveN}枚)`,
+        { label: `召喚する(${SUITS[c.suit]}1+Xマナ) — 1/1。ETB: 墓地の同スートを数字の合計X以下まで望む数だけ場に出す(同スート墓地${graveN}枚)`,
           value: "cast", primary: true, disabled: !canPay(p, c.suit, 1) },
         { label: "キャンセル", value: null },
       ], c, "Xは召喚時に選ぶ(0でも可)。蘇生されたクリーチャーのETBは誘発しない");
@@ -3713,7 +3734,7 @@ function cardRulesText(c, alice) {
   }
   if (c.rank === 1) {
     const kw1 = { 0: "挑戦", 1: "瞬速", 2: "警戒", 3: "速攻" }[c.suit];
-    return `<b>${cardLabel(c)} — クリーチャー 1/1</b><br>コスト: ${SUITS[c.suit]}1+無色X<br><br><b>${kw1}</b><br><br><b>場に出たとき</b>: 自分の墓地にある${SUITS[c.suit]}の数字X以下のクリーチャー1体を場に出す(蘇生されたクリーチャーの「場に出たとき」は誘発しない)<br><br>土地として置くこともできる(${SUITS[c.suit]}マナ1点)`;
+    return `<b>${cardLabel(c)} — クリーチャー 1/1</b><br>コスト: ${SUITS[c.suit]}1+無色X<br><br><b>${kw1}</b><br><br><b>場に出たとき</b>: 自分の墓地にある${SUITS[c.suit]}のクリーチャーを、数字の合計がX以下になるように望む数だけ場に出す(蘇生されたクリーチャーの「場に出たとき」は誘発しない)<br><br>土地として置くこともできる(${SUITS[c.suit]}マナ1点)`;
   }
   const kw = {
     0: "<b>挑戦</b>: 攻撃時、アンタップの相手クリーチャー最大1体を対象に取り、強制的にそのブロックへ参加させる(複数ブロック時は挑戦対象へ最優先でダメージ)",
