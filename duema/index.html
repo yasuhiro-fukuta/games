@@ -3697,6 +3697,15 @@ function aiOBlocks(pi) {
       .sort((x, y) => x.card.rank - y.card.rank)[0];
     if (single) { used.add(single.card.id); list.push({ attacker: at.cre, blocker: single.card.id }); continue; }
     if (at.tt !== "player") continue;   // クリーチャーへの攻撃は有利ブロックのみ
+    // 1.5) 我慢の一方殺し: 相打ちや損なブロックで止めるくらいなら、山札に余裕がある限り本体で受ける。
+    //      攻撃クリーチャーはタップ状態のまま次の自分のターンを迎え(パワー0)、
+    //      こちらの同格以上のクリーチャーで一方的に討ち取れる。
+    //      ♦(警戒)は戦闘フェイズ後にアンタップしてしまうため対象外
+    if (atk.card.suit !== 2 &&
+        p.deck.length >= atk.card.rank + 15 &&
+        p.field.some(f => f.card.rank >= atk.card.rank)) {
+      continue;
+    }
     // 2) 単体トレード(相打ち・格下で)
     const trade = hasMenace(atk) ? null : free().filter(x => { const n = battleNumbers(atk, x); return n.aDies && x.card.rank <= atk.card.rank; })
       .sort((x, y) => x.card.rank - y.card.rank)[0];
