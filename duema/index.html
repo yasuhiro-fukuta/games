@@ -82,6 +82,48 @@
   .card.alice { background: #141318; border-color: #3c3946; color: #ece6dc; }
   .card.alice.red { color: #e04a50; }
   .card.alice.tapped { filter: brightness(1); }
+  /* 入場エフェクト: 土地は場から生え、クリーチャーは降臨する */
+  @keyframes fxGrow {
+    0% { transform: translateY(18px) scale(.1); opacity: 0; }
+    60% { transform: translateY(-3px) scale(1.08); opacity: 1; }
+    100% { transform: none; opacity: 1; }
+  }
+  .card.fx-grow { animation: fxGrow .5s cubic-bezier(.2,.8,.3,1); }
+  @keyframes fxDrop {
+    0% { transform: translateY(-30px) scale(1.45); opacity: .1; }
+    55% { transform: translateY(3px) scale(.97); opacity: 1; }
+    100% { transform: none; }
+  }
+  .card.fx-drop { animation: fxDrop .55s cubic-bezier(.25,.7,.35,1.1); box-shadow: 0 2px 4px rgba(0,0,0,.35); }
+  /* 召喚演出: マナが注ぎ込まれて降臨する */
+  #summon-fx {
+    position: fixed; inset: 0; z-index: 60; display: none;
+    align-items: center; justify-content: center; pointer-events: none;
+  }
+  #summon-fx.show { display: flex; }
+  .sfx-wrap { position: relative; }
+  .sfx-wrap img, .sfx-wrap .card {
+    width: 130px; height: auto; border-radius: 9px;
+    box-shadow: 0 0 36px rgba(201,162,39,.85), 0 0 90px rgba(201,162,39,.4);
+    animation: sfxCard .8s ease forwards;
+  }
+  @keyframes sfxCard {
+    0% { transform: scale(.55); opacity: 0; }
+    22% { transform: scale(1.06); opacity: 1; }
+    70% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(.6) translateY(60px); opacity: 0; }
+  }
+  .sfx-orb {
+    position: absolute; left: 60px; top: 88px; width: 11px; height: 11px; border-radius: 50%;
+    box-shadow: 0 0 8px 2px rgba(201,162,39,.7);
+    animation: sfxOrb .45s ease-in forwards;
+  }
+  @keyframes sfxOrb {
+    0% { transform: translate(var(--ox), var(--oy)) scale(1); opacity: 1; }
+    100% { transform: translate(0, 0) scale(.25); opacity: 0; }
+  }
+  /* 山札カウンタのカウントダウン表示 */
+  .stat b.tick-down { color: var(--rust); }
   /* カードイラスト: 場・手札では顔部分のクローズアップを背景に敷く */
   .card.art {
     background-color: #f2ecdf;
@@ -472,11 +514,11 @@
   <!-- オリジナルルール: フェイズトラッカー -->
   <div id="phasebar" style="display:none">
     <div class="pb-ticks">
-      <span class="pb-tick" id="pb-untap" title="クリンナップ&アンタップ&ドロー">☀</span>
-      <span class="pb-tick" id="pb-attack" title="アタック(土地・呪文・召喚+攻撃宣言)">⚔</span>
-      <span class="pb-tick" id="pb-block" title="ブロック(相手が対応・♥瞬速可)">⛨</span>
-      <span class="pb-tick" id="pb-battle" title="戦闘解決">✦</span>
-      <span class="pb-tick" id="pb-main2" title="メイン(土地・呪文・召喚・ターン終了)">⚚</span>
+      <span class="pb-tick" id="pb-untap" title="アンタップ&ドロー">☀</span>
+      <span class="pb-tick" id="pb-attack" title="第1メイン&アタック(土地・呪文・召喚+攻撃宣言)">⚔</span>
+      <span class="pb-tick" id="pb-block" title="ブロック(相手が対応・♥瞬速可。終了時に戦闘解決)">⛨</span>
+      <span class="pb-tick" id="pb-main2" title="第2メイン(土地・呪文・召喚)">⚚</span>
+      <span class="pb-tick" id="pb-battle" title="クリンナップ(ターン終了時: 全ダメージ・修整回復)">✦</span>
     </div>
   </div>
 
@@ -579,6 +621,9 @@
 
 <div id="cardtext-pop"><div class="ctp-inner"><div id="ctp-card"></div><div id="ctp-text"></div></div></div>
 
+<!-- 召喚演出オーバーレイ -->
+<div id="summon-fx"><div class="sfx-wrap"></div></div>
+
 <!-- 墓地ビューア(墓地カウンタのタップで開く) -->
 <div id="grave-pop"><div class="gvp-inner"><div id="gvp-title"></div><div id="gvp-cards"></div><div class="gvp-hint">タップで閉じる(カード右クリックでテキスト)</div></div></div>
 
@@ -641,11 +686,11 @@
     </div>
     <div class="body" id="rules-original" style="display:none">
       54枚フルデッキ(4色×13+JOKER2枚)同士の1対1。<b>初手7枚・シールドなし・勝利条件はデッキアウトのみ</b>(山札0枚で即敗北・両者同時なら引き分け)。先攻後攻はランダム、後攻は1回フリーマリガン可。<b>先攻の1ターン目はアンタップ&ドローを飛ばす</b>。敗者の手札は公開される。<br><br>
-      <b>フェイズ進行</b>(毎ターン): ☀→⚔→⛨→✦→⚚<br>
-      ☀<b>クリンナップ&amp;アンタップ&amp;ドロー</b>(敵味方全ての戦闘ダメージ回復→アンタップ→ドロー)→ ⚔<b>アタック</b>(<b>土地・呪文・召喚も可能</b>+攻撃を全て宣言)→ ⛨<b>ブロック</b>(<b>相手が</b>ブロック指定+♥の瞬速召喚(♥A含む)も使える)→ ✦<b>戦闘解決</b> → ⚚<b>メイン</b>(土地・呪文・召喚)=ターン終了<br><br>
+      <b>フェイズ進行</b>(毎ターン): ☀→⚔→⛨→⚚→✦<br>
+      ☀<b>アンタップ&amp;ドロー</b> → ⚔<b>第1メイン&amp;アタック</b>(<b>土地・呪文・召喚も可能</b>+攻撃を全て宣言)→ ⛨<b>ブロック</b>(<b>相手が</b>ブロック指定+♥の瞬速召喚(♥A含む)も使える。<b>終了時に戦闘解決</b>)→ ⚚<b>第2メイン</b>(土地・呪文・召喚)→ ✦<b>クリンナップ</b>(ターン終了時: 敵味方全ての戦闘ダメージ・修整が回復)<br><br>
       <b>攻撃</b>: タップ中の敵クリーチャーか、プレイヤー本体。どちらも複数のクリーチャーで攻撃できる。本体に通ると数字ぶん相手の山札が墓地へ<br>
       <b>多重ブロック可</b>: 1体の攻撃を複数のクリーチャーでブロックできる。攻撃側のダメージは<b>数字の大きいブロッカーへ優先して致死分ずつ割り振られ</b>、余りは次へ(例: ♥Qを♠3と♦8でブロック→♦8に8点、♠3に4点)。ブロッカー全員のパワーが攻撃側に返る<br>
-      <b>ダメージは次のクリンナップ(次ターンのアンタップ直前)まで蓄積</b>(数字以上で破壊)。<b>召喚酔いあり</b>(出したターンは攻撃不可)。<b>タップ状態で戦闘フェイズを終えたクリーチャーはパワー0</b>(アンタップで回復)<br><br>
+      <b>ダメージはそのターンのクリンナップ(ターン終了時)まで蓄積</b>(数字以上で破壊)。<b>召喚酔いあり</b>(出したターンは攻撃不可)。<b>タップ状態で戦闘フェイズを終えたクリーチャーはパワー0</b>(アンタップで回復)<br><br>
       <b>A(エース)は1/1のETB蘇生クリーチャー</b>(コスト=自スート1マナ+無色Xマナ。Xは召喚時に選ぶ・0でも可。土地にもできる):<br>
       ・スートのキーワード(♠挑戦/♥瞬速/♦警戒/♣速攻)を持つ。♥Aは瞬速で相手のブロックフェイズにも唱えられる<br>
       ・<b>場に出たとき: 自分の墓地にある同スートのクリーチャーを、数字の合計がX以下になるように望む数だけ場に出す</b>(例: X=5なら♠2と♠3をまとめて。蘇生された側の「場に出たとき」は誘発しない)<br><br>
@@ -952,6 +997,7 @@ function playLand(pi, c) {
   const p = players[pi];
   removeFromHand(p, c);
   p.lands.push({ card: c, tapped: false });
+  fxGrowIds.add(c.id);
   if (!c.joker) landSetUsed++;   // デュエマのモックスジョーカーは1ターン1枚制限の別枠
   sfx("land");
   log(c.joker ? `${p.name}: モックスジョーカーを置いた(4色マナ・セット権消費なし)`
@@ -963,6 +1009,7 @@ function summon(pi, c, free, reduction = 0, pays) {
   const remaining = free ? 0 : Math.max(0, costOf(c) - reduction);
   if (remaining > 0 && !payWith(p, c.suit, remaining, pays)) pay(p, c.suit, remaining);
   p.field.push({ card: c, tapped: false, sick: true, dmg: 0 });
+  fxDropIds.add(c.id);
   if (c.rank < 11) sfx("summon");   // 絵札は降臨演出側で鳴らす
   log(`${p.name}: ${cardLabel(c)} を召喚${free ? "(コストなし!)" : `(${remaining}マナ)`} — ${c.rank}/${c.rank}`);
 }
@@ -1408,7 +1455,7 @@ async function checkDeckOut(causerPi) {
 async function runOriginalTurns(token, secondP) {
   let cur = firstP;
   while (winner === null) {
-    // ☀クリンナップ&アンタップフェイズ(全ダメージ回復+アンタップ+ドロー・自動)。先攻1ターン目はスキップ
+    // ☀アンタップ&ドローフェイズ(自動)。先攻1ターン目はスキップ
     oPhase = { phase: "untap", actor: cur };
     turnP = cur;
     landSetUsed = 0; landSetMax = 1;
@@ -1416,11 +1463,10 @@ async function runOriginalTurns(token, secondP) {
     if (turnNo === 1 && cur === firstP) {
       log(`── ${players[cur].name} のターン1 ── 先攻はアンタップフェイズを飛ばす`);
     } else {
-      players.forEach(p => p.field.forEach(f => { f.dmg = 0; f.buff = 0; f.pbuff = 0; }));   // クリンナップ: 全ダメージ回復+修整の消滅
       players[cur].lands.forEach(l => { l.tapped = false; });
       players[cur].field.forEach(f => { f.tapped = false; f.sick = false; f.pz = false; });
       players[cur].hand.push(players[cur].deck.pop());
-      log(`── ${players[cur].name} のターン${turnNo} ── クリンナップ&アンタップ&ドロー(山札${players[cur].deck.length})`);
+      log(`── ${players[cur].name} のターン${turnNo} ── アンタップ&ドロー(山札${players[cur].deck.length})`);
     }
     render();
     if (await checkDeckOut()) return;
@@ -1581,7 +1627,8 @@ async function runOriginalTurns(token, secondP) {
       render();
     }
 
-    // ターン終了時: ロータス/スティール/ルーターは生贄に。破壊不能も切れる
+    // ✦クリンナップフェイズ(自ターン終了時): アーティファクト生贄→全ダメージ・修整の回復
+    oPhase = { phase: "cleanup", actor: cur }; render();
     for (const pp of players) {
       for (const l of [...pp.lands]) {
         if (l.lotus || l.steel || l.router) {
@@ -1592,7 +1639,10 @@ async function runOriginalTurns(token, secondP) {
       }
       pp.field.forEach(f => { f.indest = false; });
     }
+    players.forEach(pp => pp.field.forEach(f => { f.dmg = 0; f.buff = 0; f.pbuff = 0; }));
+    log("クリンナップ — 戦闘ダメージと修整は消えた");
     render();
+    await wait(450);
     oPhase = null;
     if (cur === secondP) turnNo++;
     cur = 1 - cur;
@@ -2479,6 +2529,7 @@ async function applyMainO(pi, a) {
         if (!tgt) return;
         removeFromHand(p, jk);
         p.lands.push({ card: jk, tapped: false, steel: true });
+        fxGrowIds.add(jk.id);
         tgt.indest = true;
         sfx("trigger");
         await showBanner("破壊不能!", 900, tgt.card);
@@ -2497,6 +2548,7 @@ async function applyMainO(pi, a) {
         for (const g of dis) { p.hand = p.hand.filter(h => h !== g); p.grave.push(g); }
         removeFromHand(p, jk);
         p.lands.push({ card: jk, tapped: false, router: true });
+        fxGrowIds.add(jk.id);
         const n2 = Math.min(7, p.deck.length);
         for (let i2 = 0; i2 < n2; i2++) p.hand.push(p.deck.pop());
         sfx("joker");
@@ -2509,6 +2561,7 @@ async function applyMainO(pi, a) {
       const art = { card: jk, tapped: false };
       art[t2] = true;
       p.lands.push(art);
+      fxGrowIds.add(jk.id);
       sfx("land");
       log(`${p.name}: ${JT_NAME[t2]}を置いた(${t2 === "mox" ? "T: 無色マナ1点" : "T: 望む単色マナ3点・ターン終了時に生贄"})`);
       render();
@@ -2542,7 +2595,9 @@ async function applyMainO(pi, a) {
         pay(p, c.suit, total);
       }
       removeFromHand(p, c);
+      await summonFx(c, total);
       p.field.push({ card: c, tapped: false, sick: c.suit !== 3, dmg: 0 });
+      fxDropIds.add(c.id);
       sfx("summon");
       log(`${p.name}: ${cardLabel(c)} を召喚(X=${X}) — 1/1`);
       // ETB(唱えて出たときのみ): 蘇生されたクリーチャーのETBは誘発しない
@@ -2556,7 +2611,10 @@ async function applyMainO(pi, a) {
       }
       if (picked.length) {
         p.grave = p.grave.filter(g => !picked.includes(g));
-        for (const rc of picked) p.field.push({ card: rc, tapped: false, sick: rc.suit !== 3, dmg: 0 });
+        for (const rc of picked) {
+          p.field.push({ card: rc, tapped: false, sick: rc.suit !== 3, dmg: 0 });
+          fxDropIds.add(rc.id);
+        }
         sfx("trigger");
         await showBanner("エースの救済!", 1000, picked[0]);
         log(`${cardLabel(c)}のETB: 墓地から ${picked.map(g => cardLabel(g)).join("、")} が場に出た!(数字合計${rsum}≦X)`);
@@ -2641,6 +2699,7 @@ async function applySummonO(pi, a) {
     p.grave.push(s.card);
   }
   if (sacs.length) log(`${p.name}: ${sacs.map(f => cardLabel(f.card)).join(" ")} を生贄に捧げた(コスト-${reduction})`);
+  if (c.rank < 11) await summonFx(c, Math.max(0, costOf(c) - reduction));   // マナが注ぎ込まれて降臨
   summon(pi, c, false, reduction, a.pays);
   const cre = p.field[p.field.length - 1];
   cre.sick = c.suit !== 3;   // ♣は速攻(召喚酔いなし・アリスカードも同様)
@@ -2671,6 +2730,7 @@ async function aliceETB(pi, cre, etb) {
     if (!l || l.card.joker || l.card.rank > X) return;
     players[owner].lands = players[owner].lands.filter(x => x !== l);
     players[owner].field.push({ card: l.card, tapped: false, sick: true, dmg: 0 });
+    fxDropIds.add(l.card.id);
     log(`${cardLabel(c)}: 土地 ${cardLabel(l.card)} は${players[owner].name}のクリーチャーになった`);
   } else {                   // ♦J-K: 全クリーチャーに-X/-X(ターン終了時まで)
     log(`${cardLabel(c)}: すべてのクリーチャーは-${X}/-${X}の修整を受ける`);
@@ -2701,6 +2761,7 @@ async function applyMainAction(pi, a) {
         p.grave.push(s.card);
       }
       if (sacs.length) log(`${p.name}: ${sacs.map(f => cardLabel(f.card)).join(" ")} を生贄に捧げた(コスト-${reduction})`);
+      if (c.rank < 11) await summonFx(c, Math.max(0, costOf(c) - reduction));   // マナが注ぎ込まれて降臨
       summon(pi, c, false, reduction, a.pays);
       return false;
     }
@@ -2777,6 +2838,7 @@ async function breakShieldAt(defPi, slot) {
   if (d.v === "summon") {
     removeFromHand(def, c);
     def.field.push({ card: c, tapped: false, sick: true, dmg: 0, stTimer: 2 });   // 次の相手ターン終了時に墓地へ
+    fxDropIds.add(c.id);
     sfx("trigger");
     await showBanner("シールドトリガー!", 1200, c);
     log(`Sトリガー! ${def.name}: ${cardLabel(c)} をコストなしで召喚(次の相手ターン終了時に墓地へ)`);
@@ -4527,6 +4589,65 @@ function artUrl(c) {
   return ART_BASE + n + ".jpg";
 }
 
+/* ---- 入場エフェクト: renderで新規参入カードにアニメクラスを付ける ---- */
+const fxGrowIds = new Set();   // 土地・アーティファクトとして置かれたカードid
+const fxDropIds = new Set();   // 場に出たクリーチャーのカードid
+
+/* 召喚演出: カードにマナが注ぎ込まれて降臨する(コスト分のマナ玉が飛び込む) */
+const SUIT_ORB = ["#5b6fe0", "#d0343f", "#e07020", "#3a9e63"];
+async function summonFx(c, cost) {
+  if (TEST_AUTO || !c) return;
+  const box = document.getElementById("summon-fx");
+  const wrap = box.firstElementChild;
+  wrap.innerHTML = "";
+  const au = artUrl(c);
+  if (au) {
+    const img = document.createElement("img");
+    img.src = au;
+    wrap.appendChild(img);
+  } else {
+    wrap.appendChild(cardEl(c, { pt: !c.joker }));
+  }
+  const n = Math.max(1, Math.min(12, cost | 0));
+  for (let i = 0; i < n; i++) {
+    const orb = document.createElement("div");
+    orb.className = "sfx-orb";
+    const ang = (i / n) * Math.PI * 2 - Math.PI / 2;
+    orb.style.setProperty("--ox", Math.round(Math.cos(ang) * 150) + "px");
+    orb.style.setProperty("--oy", Math.round(Math.sin(ang) * 150) + "px");
+    orb.style.background = i === 0 && c.suit >= 0 ? SUIT_ORB[c.suit] : "#c9a227";
+    orb.style.animationDelay = (i * 0.035).toFixed(3) + "s";
+    wrap.appendChild(orb);
+  }
+  sfx("summon");
+  box.classList.add("show");
+  await wait(720);
+  box.classList.remove("show");
+}
+
+/* 数値のカウントダウン/アップ表示(山札=ライフ用) */
+function setNumTick(el, val) {
+  if (TEST_AUTO) { el.textContent = val; el.__tickShown = val; el.__tickTarget = val; return; }
+  if (el.__tickTarget === val) return;
+  el.__tickTarget = val;
+  const start = el.__tickShown != null ? el.__tickShown : (parseInt(el.textContent, 10) || 0);
+  if (start === val) { el.textContent = val; el.__tickShown = val; return; }
+  if (el.__tickRaf) cancelAnimationFrame(el.__tickRaf);
+  const t0 = performance.now();
+  const dur = Math.min(1000, 150 * Math.abs(val - start) + 150);
+  el.classList.toggle("tick-down", val < start);
+  const step = now => {
+    const k = Math.min(1, (now - t0) / dur);
+    const ease = 1 - (1 - k) * (1 - k);
+    const v = Math.round(start + (val - start) * ease);
+    el.textContent = v;
+    el.__tickShown = v;
+    if (k < 1) el.__tickRaf = requestAnimationFrame(step);
+    else { el.__tickRaf = null; el.classList.remove("tick-down"); }
+  };
+  el.__tickRaf = requestAnimationFrame(step);
+}
+
 function cardEl(c, opts = {}) {
   const el = document.createElement("div");
   if (opts.back) { el.className = "card back" + (opts.sm ? " sm" : ""); return el; }
@@ -4695,7 +4816,7 @@ function render() {
   const yugi = ruleMode === "yugi";
   const duema = ruleMode === "duema";
   const poke = ruleMode === "poke";
-  const PHASE_NAME = { untap: "アンタップ", attack: "アタック", block: "ブロック", battle: "戦闘", main2: "メイン",
+  const PHASE_NAME = { untap: "アンタップ", attack: "アタック", block: "ブロック", battle: "戦闘解決", main2: "メイン", cleanup: "クリンナップ",
                        ydraw: "ドロー", ymain: "メイン", ybattle: "バトル",
                        pdraw: "ドロー", pmain: "メイン", pattack: "バトル" };
   document.getElementById("turn-ind").textContent =
@@ -4725,12 +4846,14 @@ function render() {
     const myTurn = turnP === myIdx;
     pb.classList.toggle("myturn", myTurn);
     const cp = oPhase ? oPhase.phase : null;
-    for (const [ph, id] of [["untap","pb-untap"],["attack","pb-attack"],["block","pb-block"],["battle","pb-battle"],["main2","pb-main2"]]) {
+    for (const [id, phs] of [["pb-untap", ["untap"]], ["pb-attack", ["attack"]],
+                             ["pb-block", ["block", "battle"]], ["pb-main2", ["main2"]],
+                             ["pb-battle", ["cleanup"]]]) {
       const el = document.getElementById(id);
-      const mine = ph === "block" ? !myTurn : myTurn;   // ブロックだけ相手の行動
+      const mine = id === "pb-block" ? !myTurn : myTurn;   // ブロックだけ相手の行動
       el.classList.toggle("orange", mine);
       el.classList.toggle("blue", !mine);
-      el.classList.toggle("active", cp === ph);
+      el.classList.toggle("active", phs.includes(cp));
     }
   }
 
@@ -4740,11 +4863,11 @@ function render() {
   const blockedSet = new Set(pendingBlocks.map(b => b.attacker));
   const blockerSet = new Set(pendingBlocks.map(b => b.blocker));
 
-  document.getElementById("e-deck").textContent = en.deck.length;
+  setNumTick(document.getElementById("e-deck"), en.deck.length);
   document.getElementById("e-hand").textContent = en.hand.length;
   document.getElementById("e-grave").textContent = en.grave.length;
   document.getElementById("e-mana").textContent = (yugi || poke) ? "" : `マナ ${untappedLands(en).length}/${en.lands.length}`;
-  document.getElementById("m-deck").textContent = me.deck.length;
+  setNumTick(document.getElementById("m-deck"), me.deck.length);
   document.getElementById("m-grave").textContent = me.grave.length;
   document.getElementById("m-mana").textContent = (yugi || poke) ? "" : `マナ ${untappedLands(me).length}/${me.lands.length}`;
 
@@ -4818,6 +4941,7 @@ function render() {
       slot.className = "slot" + (l.tapped ? " tapped" : "");
       const el = cardEl(l.card, { sm: true, alice: aliceSide[p === me ? myIdx : 1 - myIdx] });
       el.classList.add("land");
+      if (fxGrowIds.delete(l.card.id)) el.classList.add("fx-grow");
       if (l.lotus) el.innerHTML += `<span class="pt">3</span>`;
       if (l.tapped) el.classList.add("tapped");
       if (paySel && p === me && !l.tapped) {
@@ -4845,6 +4969,7 @@ function render() {
       ? (f.down ? cardEl(null, { back: true }) : cardEl(f.card, { pt: true, yr: true }))
       : cardEl(f.card, { pt: true, dmg: f.dmg, pz: pzZero(f), buff: totBuff(f), pbuff: f.pbuff, alice: aliceSide[1 - myIdx] });
     el.dataset.cid = f.card.id;
+    if (fxDropIds.delete(f.card.id)) el.classList.add("fx-drop");
     if (yugi ? yDef : f.tapped) el.classList.add("tapped");
     if (!yugi && f.sick) el.classList.add("sick");
     if (yugi && f.attacked) el.classList.add("spent");
@@ -4936,6 +5061,7 @@ function render() {
       ? (f.down ? cardEl(f.card, { rmark: true }) : cardEl(f.card, { pt: true, yr: true }))
       : cardEl(f.card, { pt: true, dmg: f.dmg, pz: pzZero(f), buff: totBuff(f), pbuff: f.pbuff, alice: aliceSide[myIdx] });
     el.dataset.cid = f.card.id;
+    if (fxDropIds.delete(f.card.id)) el.classList.add("fx-drop");
     if (yugi ? yDef : f.tapped) el.classList.add("tapped");
     if (!yugi && f.sick) el.classList.add("sick");
     if (yugi && f.attacked) el.classList.add("spent");
