@@ -626,7 +626,7 @@
       ・<b>場に出たとき: 自分の墓地にある同スートのクリーチャーを、数字の合計がX以下になるように望む数だけ場に出す</b>(例: X=5なら♠2と♠3をまとめて。蘇生された側の「場に出たとき」は誘発しない)<br><br>
       <b>スート能力</b>: ♠<b>挑戦</b>(攻撃時、アンタップの敵1体を強制的にブロックへ参加させる。複数ブロック時は挑戦対象へ最優先でダメージ)/ ♥<b>瞬速</b>(相手のブロックフェイズに召喚できる)/ ♦<b>警戒</b>(各戦闘フェイズ後にアンタップ)/ ♣<b>速攻</b>(召喚酔いしない)<br>
       <b>挑戦の操作</b>: ♠アタッカーを選ぶ → アンタップの敵をクリックで挑戦対象を指定 → 本体かタップ中の敵をクリックで攻撃先を確定(挑戦を使わないなら直接攻撃先をクリック)<br>
-      <b>CPUの強さ</b>: 弱=ルールベース、中=αβ探索(アタックフェイズからターン終了までを読み切り、ブロックの応手も読む。瞬速は読まない)<br><br>
+      <b>CPUの強さ</b>: 弱=ルールベース、中=αβ探索(アタックフェイズから<b>次の相手ターン終了まで</b>読む。相手のブロックと返しの攻撃も読むが、相手の召喚・瞬速・ドローの中身は読まない)<br><br>
       <b>デッキ構築</b>: 開始時にデッキ編集画面が開く。52枚+4種のジョーカーのプールから、<b>54枚以下・同じカード1枚まで・ジョーカー2枚まで</b>で自由に構築(保存・ロード3枠)。フルデッキのまま戦ってもよい<br><br>
       <b>JOKER</b>(4種・すべて0マナのアーティファクト、<b>サイクリング(無色1)</b>=捨てて1枚引く、を共通で持つ・アリスルール共通):<br>
       ・<b>モックス</b>: 相手より土地が少ないときのみプレイ(土地ではない)。T: 無色マナ1点<br>
@@ -2763,7 +2763,8 @@ async function breakShieldAt(defPi, slot) {
 /* ================= AI(CPU席・テスト自動化) ================= */
 /* ================= 中CPU: アルファベータ探索(マジックルール) =================
    弱CPU=ルールベース(既存aiO*)、中CPU=本探索。
-   読み範囲: アタックフェイズ開始〜ターン終了。相手の分岐はブロック割り当てのみ(瞬速は無視)。
+   読み範囲: アタックフェイズ開始〜「次の相手ターン終了時」。相手の分岐はブロックと返しの攻撃のみ
+   (相手は引いたカードも手札も土地・召喚に使わない/自分も追加ドローは使わない/瞬速は無視)。
    評価関数(固定重み): (自山札-相手山札) + (自軍パワー計-相手軍パワー計) + (自手札-相手手札)
                       + (自土地-相手土地) + 相手山札0以下:+10000 / 自山札0以下:-10000
    決定性: 打ち切りは時間でなくノード数(MID_BUDGET)。乱数不使用。 */
@@ -2811,12 +2812,13 @@ function midClone(st) {
 }
 
 /* ---- 評価関数 ---- */
+const MID_W = { A: 1, B: 1, C: 1, D: 1 };   // 重み: A=山札差 B=盤面パワー差 C=手札差 D=土地差
 function midEval(st) {
   const pow = pi => st.field[pi].reduce((s, f) => s + midRank(f.code), 0);
-  let v = (st.deckN[st.me] - st.deckN[st.op])
-        + (pow(st.me) - pow(st.op))
-        + ((st.handN[st.me]) - st.handN[st.op])
-        + (st.lands[st.me].length - st.lands[st.op].length);
+  let v = MID_W.A * (st.deckN[st.me] - st.deckN[st.op])
+        + MID_W.B * (pow(st.me) - pow(st.op))
+        + MID_W.C * (st.handN[st.me] - st.handN[st.op])
+        + MID_W.D * (st.lands[st.me].length - st.lands[st.op].length);
   if (st.deckN[st.op] <= 0) v += 10000;
   if (st.deckN[st.me] <= 0) v -= 10000;
   // タイブレーク(合計の絶対値<1): 本評価の全項は整数なので、小数の加点は「同値のときの順位付け」
@@ -2920,18 +2922,20 @@ function midApplyMain(st, a) {
 
 /* ---- シミュレータ: 攻撃+ブロック解決(エンジンのbattleMulti/battle/直接攻撃を再現) ---- */
 function midPow(f) { return f.pz ? 0 : midRank(f.code); }
-function midResolveBattle(st, attacks, blocks) {
+function midResolveBattle(st, attacks, blocks) { return midResolveBattleAs(st, st.me, attacks, blocks); }
+function midResolveBattleAs(st, atkPi, attacks, blocks) {
   midNodes++;
+  const defPi = 1 - atkPi;
   for (const at of attacks) {
-    const atk = st.field[st.me].find(f => f.code === at.cre);
+    const atk = st.field[atkPi].find(f => f.code === at.cre);
     if (atk) atk.tapped = true;
   }
   for (const at of attacks) {
-    const atk = st.field[st.me].find(f => f.code === at.cre);
+    const atk = st.field[atkPi].find(f => f.code === at.cre);
     if (!atk) continue;
-    if (at.tt === "cre" && !st.field[st.op].some(f => f.code === at.tv)) continue;
+    if (at.tt === "cre" && !st.field[defPi].some(f => f.code === at.tv)) continue;
     const bls = blocks.filter(b => b.attacker === at.cre)
-      .map(b => st.field[st.op].find(f => f.code === b.blocker))
+      .map(b => st.field[defPi].find(f => f.code === b.blocker))
       .filter(f => f && !f.tapped);
     if (bls.length) {
       bls.forEach(f => { f.tapped = true; });
@@ -2945,25 +2949,29 @@ function midResolveBattle(st, attacks, blocks) {
       atk.dmg += bls.reduce((s, f) => s + midPow(f), 0);
       for (const f of bls) {
         if (f.dmg >= midRank(f.code) && !f.indest) {
-          st.field[st.op].splice(st.field[st.op].indexOf(f), 1);
+          st.field[defPi].splice(st.field[defPi].indexOf(f), 1);
+          if (defPi === st.me) st.myGrave.push(f.code);
         }
       }
       if (atk.dmg >= midRank(atk.code) && !atk.indest) {
-        st.field[st.me].splice(st.field[st.me].indexOf(atk), 1);
-        st.myGrave.push(atk.code);
+        st.field[atkPi].splice(st.field[atkPi].indexOf(atk), 1);
+        if (atkPi === st.me) st.myGrave.push(atk.code);
       }
     } else if (at.tt === "player") {
-      st.deckN[st.op] = Math.max(0, st.deckN[st.op] - midPow(atk));
-      if (st.deckN[st.op] <= 0) return true;   // 勝ち確定(デッキアウト)
+      st.deckN[defPi] = Math.max(0, st.deckN[defPi] - midPow(atk));
+      if (st.deckN[defPi] <= 0) return true;   // 決着(デッキアウト)
     } else {
-      const t = st.field[st.op].find(f => f.code === at.tv);
+      const t = st.field[defPi].find(f => f.code === at.tv);
       if (!t) continue;
       t.dmg += midPow(atk);
       atk.dmg += midPow(t);
-      if (t.dmg >= midRank(t.code) && !t.indest) st.field[st.op].splice(st.field[st.op].indexOf(t), 1);
+      if (t.dmg >= midRank(t.code) && !t.indest) {
+        st.field[defPi].splice(st.field[defPi].indexOf(t), 1);
+        if (defPi === st.me) st.myGrave.push(t.code);
+      }
       if (atk.dmg >= midRank(atk.code) && !atk.indest) {
-        st.field[st.me].splice(st.field[st.me].indexOf(atk), 1);
-        st.myGrave.push(atk.code);
+        st.field[atkPi].splice(st.field[atkPi].indexOf(atk), 1);
+        if (atkPi === st.me) st.myGrave.push(atk.code);
       }
     }
   }
@@ -3060,11 +3068,73 @@ function midGreedyTail(st) {
 }
 
 /* ---- 探索本体 ---- */
+/* 自ターン終了処理: ロータス/スティール/ルーター生贄+破壊不能切れ */
+function midEndOfMyTurn(st) {
+  st.lands[st.me] = st.lands[st.me].filter(l => !(l.lotus || l.steel || l.router));
+  for (const pi2 of [0, 1]) for (const f of st.field[pi2]) f.indest = false;
+}
+/* 相手ターンの読み: クリンナップ&アンタップ&ドロー → 相手の攻撃(min) → 自分のブロック(max) → 評価
+   制約: 相手は引いたカード(と手札全て)を土地にも召喚にも使わない。自分も追加の召喚はしない */
+function midAfterMyTurn(st, alpha, beta) {
+  const st2 = midClone(st);
+  midEndOfMyTurn(st2);
+  for (const pi2 of [0, 1]) for (const f of st2.field[pi2]) f.dmg = 0;   // クリンナップ(敵味方全ダメージ)
+  for (const f of st2.field[st2.op]) { f.tapped = false; f.sick = false; f.pz = false; }
+  st2.deckN[st2.op]--; st2.handN[st2.op]++;                              // 相手ドロー(内容は見ない)
+  if (st2.deckN[st2.op] <= 0) return midEval(st2);                       // 引けず敗北(+10000側)
+  return midOppAttacks(st2, alpha, beta);
+}
+function midOppAttacks(st, alpha, beta) {   // min節点: 相手の攻撃割り当て(召喚・土地なし)
+  const ready = st.field[st.op].map(f => f.code);
+  const targets = st.field[st.me].filter(f => f.tapped).map(f => f.code);
+  if (!ready.length) return midEval(st);
+  const attacks = [];
+  const rec = (i, b2) => {
+    if (midNodes > MID_BUDGET || i === ready.length) return midMyBlocks(st, attacks, alpha, b2);
+    let best = Infinity;
+    const opts = [null, { tt: "player" }, ...targets.map(t => ({ tt: "cre", tv: t }))];
+    for (const o of opts) {
+      if (o) attacks.push({ cre: ready[i], tt: o.tt, tv: o.tv });
+      const v = rec(i + 1, Math.min(b2, best));
+      if (o) attacks.pop();
+      best = Math.min(best, v);
+      if (best <= alpha) return best;
+    }
+    return best;
+  };
+  return rec(0, beta);
+}
+function midMyBlocks(st, oppAttacks, alpha, beta) {   // max節点: 自分のブロック割り当て
+  const finish = () => {
+    const st2 = midClone(st);
+    midResolveBattleAs(st2, st2.op, oppAttacks, blockAssign);
+    return midEval(st2);
+  };
+  const blockAssign = [];
+  const blockers = st.field[st.me].filter(f => !f.tapped).map(f => f.code);
+  if (!oppAttacks.length || !blockers.length) return finish();
+  const rec = (i, a2) => {
+    if (midNodes > MID_BUDGET || i === blockers.length) return finish();
+    let best = -Infinity;
+    best = Math.max(best, rec(i + 1, a2));
+    if (best >= beta) return best;
+    for (const at of oppAttacks) {
+      blockAssign.push({ attacker: at.cre, blocker: blockers[i] });
+      const v = rec(i + 1, Math.max(a2, best));
+      blockAssign.pop();
+      best = Math.max(best, v);
+      if (best >= beta) return best;
+    }
+    return best;
+  };
+  return rec(0, alpha);
+}
 function midLeaf(st, attacks, blocks) {
   const st2 = midClone(st);
   const ended = midResolveBattle(st2, attacks, blocks);
-  if (!ended) midGreedyTail(st2);
-  return midEval(st2);
+  if (ended) return midEval(st2);
+  midGreedyTail(st2);
+  return midAfterMyTurn(st2, -Infinity, Infinity);
 }
 function midSearchBlocks(st, attacks, alpha, beta) {   // min節点: 相手のブロック割り当て
   const live = attacks.filter(at => at.tt !== "cre" || st.field[st.op].some(f => f.code === at.tv));
@@ -3115,8 +3185,8 @@ function midSearchAttacks(st, alpha, beta) {   // max節点: 攻撃割り当て(
 function midSearchMain(st, minCode, full, depth) {   // max節点: メイン行動列(正規順序)
   midNodes++;
   let best, bestLine;
-  if (full) {   // 第2メイン: 行動を打ち切って終了
-    best = midEval(st);
+  if (full) {   // 第2メイン: 行動を打ち切ってターン終了 → 相手ターンの読みで評価
+    best = midAfterMyTurn(st, -Infinity, Infinity);
     bestLine = [];
   } else {      // アタックフェイズ: 行動を打ち切って攻撃宣言へ
     const r = midSearchAttacks(st, -Infinity, Infinity);
@@ -3244,8 +3314,9 @@ function midDecideBlocks(pi) {
     })
     .filter(at => at && (at.tt !== "cre" || at.tv != null));
   if (!attacks.length) return { k: "oblocks", t: "blocks", list: [] };
-  // 視点を反転した局面: 攻撃側=op
+  // 視点を反転した局面: 攻撃側=op。相手の実手札は見ない(空として扱う)
   const st = midSnapshot(opAtk);   // st.me = 攻撃側, st.op = 自分
+  st.myHand = [];
   const blockers = st.field[st.op].filter(f => !f.tapped).map(f => f.code);
   let best = Infinity, bestAssign = [];
   const assign = [];
