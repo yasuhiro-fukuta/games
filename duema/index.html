@@ -160,6 +160,40 @@
   }
   #ctp-text { font-size: 12px; line-height: 1.9; color: var(--paper); }
   #ctp-text b { color: var(--gold); }
+  /* アカウント行・メニュー */
+  .acct-row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px; font-size: 12px; color: var(--dim);
+  }
+  .acct-row button { font-size: 11px; padding: 5px 10px; background: rgba(251,248,239,.12); color: var(--paper); }
+  .home-rule { font-size: 15px; }
+  .menu-sub { font-size: 11px; color: var(--dim); margin-left: 6px; }
+  .opts button .menu-sub { color: rgba(38,36,31,.6); }
+  .opts button:not(.primary) .menu-sub { color: var(--dim); }
+  /* デッキ一覧 */
+  .deck-item {
+    display: flex; align-items: center; gap: 8px; padding: 8px 10px; margin-top: 8px;
+    background: rgba(251,248,239,.08); border-radius: 8px; font-size: 12.5px;
+  }
+  .deck-item .dname { flex: 1; color: var(--paper); }
+  .deck-item .dreg { color: var(--gold); font-size: 11px; font-weight: 700; }
+  .deck-item button { font-size: 11px; padding: 5px 8px; }
+  /* パック開封 */
+  @keyframes packReveal {
+    0% { transform: rotateY(90deg) scale(.7); opacity: 0; }
+    60% { transform: rotateY(0deg) scale(1.08); opacity: 1; }
+    100% { transform: none; opacity: 1; }
+  }
+  #pack-cards .pcard { position: relative; animation: packReveal .5s ease both; }
+  #pack-cards .pcard img { width: 72px; border-radius: 6px; box-shadow: 0 4px 14px rgba(0,0,0,.5); display: block; }
+  #pack-cards .pcard .newb {
+    position: absolute; top: -7px; right: -7px; background: var(--rust); color: #fff;
+    font-size: 9px; font-weight: 800; padding: 2px 5px; border-radius: 8px;
+  }
+  #pack-cards .pcard .dupb {
+    position: absolute; top: -7px; right: -7px; background: rgba(120,120,120,.9); color: #fff;
+    font-size: 9px; padding: 2px 5px; border-radius: 8px;
+  }
   /* CPU強さ切替 */
   #cpu-level-row { display: flex; gap: 6px; }
   #cpu-level-row .cpulv {
@@ -610,11 +644,14 @@
     <div class="deck-note">54枚以下・同じカードは1枚まで・ジョーカーは4種から2枚まで。カードをタップで抜き差し。</div>
     <div id="deck-grid"></div>
     <div id="deck-count"></div>
-    <div class="deck-btns" id="deck-slots"></div>
+    <div class="deck-btns">
+      <input type="text" id="deck-name" maxlength="20" placeholder="デッキ名"
+             style="flex:1;min-width:120px;background:rgba(251,248,239,.1);border:1px solid rgba(201,162,39,.4);border-radius:8px;color:var(--paper);padding:7px 10px;font-size:12.5px">
+    </div>
     <div class="deck-btns">
       <button id="deck-full">フルデッキに戻す</button>
-      <button id="deck-start" class="primary">この構築で開始</button>
-      <button id="deck-back">タイトルへ</button>
+      <button id="deck-start" class="primary">保存する</button>
+      <button id="deck-back">一覧へ戻る</button>
     </div>
   </div>
 </div>
@@ -639,7 +676,7 @@
 </div>
 
 <!-- タイトル -->
-<div class="overlay show" id="title-overlay">
+<div class="overlay" id="title-overlay">
   <div class="panel">
     <h2>トランプデュエル</h2>
     <div class="rulesel">
@@ -725,18 +762,88 @@
       <b>後攻補正</b>: 後攻は1回だけフリーマリガン(手札5枚を山札に戻して引き直し)できる
     </div>
     <div class="start-row">
-      <button id="btn-cpu">CPU対戦</button>
       <div id="cpu-level-row" style="display:none">
         <button id="cpu-weak" class="cpulv">CPU: 弱(ルールベース)</button>
         <button id="cpu-mid" class="cpulv">CPU: 中(探索)</button>
       </div>
+      <button id="btn-rules-close">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- ログイン -->
+<div class="overlay show" id="login-overlay">
+  <div class="panel">
+    <h2>トランプデュエル</h2>
+    <div class="body" style="text-align:center">アカウントでデッキとコレクションを<br>どの端末からでも引き継げます</div>
+    <div class="opts" style="margin-top:18px">
+      <button id="btn-google" class="primary">Googleでログイン</button>
+      <button id="btn-guest">ゲストで遊ぶ(この端末に保存)</button>
+    </div>
+    <div class="deck-note" id="login-note" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<!-- ホーム(ルール選択) -->
+<div class="overlay" id="home-overlay">
+  <div class="panel">
+    <h2>トランプデュエル</h2>
+    <div class="acct-row"><span id="acct-name"></span><button id="btn-auth-toggle">ログアウト</button></div>
+    <div class="opts">
+      <button class="home-rule" data-rule="duema">デュエマルール</button>
+      <button class="home-rule" data-rule="original">マジックルール</button>
+      <button class="home-rule" data-rule="yugi">遊戯王ルール</button>
+      <button class="home-rule" data-rule="poke">ポケカルール</button>
       <button id="btn-story" style="background:#16141c;color:#cfc9c2;border:1px solid #3a3644">ストーリーモード</button>
+    </div>
+  </div>
+</div>
+
+<!-- ルールメニュー -->
+<div class="overlay" id="mode-overlay">
+  <div class="panel">
+    <h2 id="mode-title"></h2>
+    <div class="opts">
+      <button id="btn-cpu" class="primary">CPU対戦</button>
+      <button id="btn-alice-cpu" style="display:none">CPU対戦(アリスルール)</button>
       <button id="btn-host">オンライン対戦: 部屋を作る</button>
       <div class="joinrow">
         <input type="text" id="join-code" maxlength="5" placeholder="コード">
         <button id="btn-join">部屋に入る</button>
       </div>
-      <div id="online-note"></div>
+      <button id="btn-decks" style="display:none">デッキ構築 <span class="menu-sub" id="regdeck-name"></span></button>
+      <button id="btn-packs" style="display:none">パック開封 <span class="menu-sub" id="pack-count"></span></button>
+      <button id="btn-rulehelp">ルール説明</button>
+      <button id="btn-back-home">ホームへ戻る</button>
+    </div>
+    <div class="deck-note" id="online-note"></div>
+  </div>
+</div>
+
+<!-- デッキ一覧(マジック) -->
+<div class="overlay" id="decks-overlay">
+  <div class="panel">
+    <h2>デッキ構築</h2>
+    <div class="deck-note">レギュラーデッキが対戦で使われます(未設定はフルデッキ54枚)</div>
+    <div id="deck-list"></div>
+    <div class="deck-btns">
+      <button id="btn-deck-new" class="primary">新しいデッキを作る</button>
+      <button id="btn-decks-back">戻る</button>
+    </div>
+  </div>
+</div>
+
+<!-- パック開封(マジック) -->
+<div class="overlay" id="packs-overlay">
+  <div class="panel">
+    <h2>パック開封</h2>
+    <div class="body" style="text-align:center">未開封パック: <b id="packs-n">0</b><br>
+      <span class="deck-note">対戦を終えるとパックがもらえる(勝利で2つ)。中身は絵違いカード5枚</span></div>
+    <div id="pack-cards" class="cardrow" style="min-height:80px;display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin:12px 0"></div>
+    <div class="body" style="text-align:center;font-size:12px" id="col-progress"></div>
+    <div class="deck-btns">
+      <button id="btn-open-pack" class="primary">開封する</button>
+      <button id="btn-packs-back">戻る</button>
     </div>
   </div>
 </div>
@@ -763,6 +870,7 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js" defer></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js" defer></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js" defer></script>
 <script>
 "use strict";
 
@@ -1265,8 +1373,10 @@ function revealHand(container, pi) {
 function win(pi, reason) {
   winner = pi;
   render();
+  const got = grantPacks(pi === myIdx);
   document.getElementById("result-title").textContent = pi === myIdx ? "勝利!" : "敗北…";
-  document.getElementById("result-body").innerHTML = `${reason}<br>${players[pi].name} の勝ち!`;
+  document.getElementById("result-body").innerHTML = `${reason}<br>${players[pi].name} の勝ち!` +
+    (got ? `<br><b style="color:var(--gold)">パック×${got} 獲得!</b><span class="menu-sub">(未開封 ${profile.packs})</span>` : "");
   const rh = document.getElementById("result-hand");
   rh.innerHTML = "";
   revealHand(rh, 1 - pi);   // 敗者の手札は公開される
@@ -1423,10 +1533,12 @@ async function runGame(seed) {
 
 /* ================= オリジナルルール ================= */
 function drawGame(reason) {
+  const got0 = grantPacks(false);
   winner = -1;
   render();
   document.getElementById("result-title").textContent = "引き分け";
-  document.getElementById("result-body").innerHTML = reason;
+  document.getElementById("result-body").innerHTML = reason +
+    (got0 ? `<br><b style="color:var(--gold)">パック×${got0} 獲得!</b><span class="menu-sub">(未開封 ${profile.packs})</span>` : "");
   const rh = document.getElementById("result-hand");
   rh.innerHTML = "";
   revealHand(rh, 0);   // 引き分けは両者の手札を公開
@@ -4419,7 +4531,7 @@ async function hostRoom() {
   const d0 = isMagic ? (myDeckList || FULL_DECK_LIST) : null;
   await roomRef.set({ seed, created: Date.now(), p0: true, rule: aliceVariant ? "alice" : ruleMode,
                       d0: d0 ? JSON.stringify(d0) : null });   // ルールは部屋主が決める
-  document.getElementById("title-overlay").classList.remove("show");
+  SCREENS.forEach(sid => document.getElementById(sid).classList.remove("show"));
   document.getElementById("room-code-big").textContent = code;
   document.getElementById("wait-overlay").classList.add("show");
   roomRef.child("p1").on("value", async s => {
@@ -4462,13 +4574,13 @@ async function joinRoom(code) {
     deckLists = isMagic ? [d0, d1] : null;
     if (d1) await roomRef.child("d1").set(JSON.stringify(d1));   // p1より先に書く(ホストはp1を合図に読む)
     await roomRef.child("p1").set(true);
-    document.getElementById("title-overlay").classList.remove("show");
+    SCREENS.forEach(sid => document.getElementById(sid).classList.remove("show"));
     transport = new FirebaseTransport(code);
     transport.start(onActionArrived);
     runGame(snap.val().seed);
   };
-  if (isMagic) openDeckEditor(proceed);
-  else await proceed();
+  if (isMagic) myDeckList = regularDeckList();
+  await proceed();
 }
 
 /* テスト・同一ブラウザ検証用(BroadcastChannel対戦) */
@@ -4476,7 +4588,7 @@ window.__startBC = function (role, code, seed, rule, d0, d1) {
   mode = role; myIdx = role === "host" ? 0 : 1;
   if (rule) { aliceVariant = rule === "alice"; ruleMode = aliceVariant ? "original" : rule; }
   deckLists = (d0 || d1) ? [d0 || null, d1 || null] : null;
-  document.getElementById("title-overlay").classList.remove("show");
+  SCREENS.forEach(sid => document.getElementById(sid).classList.remove("show"));
   transport = new BCTransport(code);
   transport.start(onActionArrived);
   return runGame(seed);
@@ -4588,6 +4700,7 @@ function artName(c) {
 function artUrl(c) {
   const n = artName(c);
   if (!n) return null;
+  if (!ownsArt(n)) return null;   // 絵違いはパックで入手したものだけ表示(未所持はプレーン)
   if (window.__ART_DATA) return window.__ART_DATA[n] || null;
   return ART_BASE + n + ".jpg";
 }
@@ -5586,7 +5699,7 @@ function storyQuit() {
 /* ---- 入力・配線 ---- */
 document.getElementById("btn-story").addEventListener("click", () => {
   ac();
-  document.getElementById("title-overlay").classList.remove("show");
+  SCREENS.forEach(sid => document.getElementById(sid).classList.remove("show"));
   story.active = true; story.state = "select";
   storyShow("story-select");
 });
@@ -5631,6 +5744,309 @@ document.addEventListener("keydown", e => {
 });
 
 /* ================= 開始 ================= */
+/* ================= プロファイル(アカウント/ゲスト共通) ================= */
+const PROFILE_KEY = "duema-profile";
+let profile = null;
+let fbUser = null;   // Firebaseログイン中のユーザー(未ログイン=null)
+function defaultProfile() {
+  return { name: "ゲスト", packs: 3, col: {}, decks: {}, regular: null, stats: { games: 0, wins: 0 } };
+}
+function profileLoadLocal() {
+  try {
+    const p = JSON.parse(localStorage.getItem(PROFILE_KEY));
+    if (p && p.col && p.decks) return p;
+  } catch (e) {}
+  return null;
+}
+function profileSave() {
+  if (!profile) return;
+  try { localStorage.setItem(PROFILE_KEY, JSON.stringify(profile)); } catch (e) {}
+  if (fbUser && fbReady()) {
+    try { firebase.database().ref("users/" + fbUser.uid).set(profile); } catch (e) {}
+  }
+}
+function profileCreate() {
+  profile = defaultProfile();
+  // 旧デッキ保存枠(スロット1〜3・前回の構築)をインポート
+  try {
+    for (let i = 1; i <= 3; i++) {
+      const a = JSON.parse(localStorage.getItem("duema-deck-slot" + i));
+      if (Array.isArray(a) && a.length) profile.decks["slot" + i] = { name: "保存" + i, list: a };
+    }
+  } catch (e) {}
+  profileSave();
+}
+function ownsArt(name) { return !!(profile && profile.col && profile.col[name] > 0); }
+function regularDeckList() {
+  const d = profile && profile.regular && profile.decks[profile.regular];
+  return d && Array.isArray(d.list) && d.list.length >= 10 ? d.list.slice() : [...FULL_DECK_LIST];
+}
+function regularDeckName() {
+  const d = profile && profile.regular && profile.decks[profile.regular];
+  return d ? d.name : "フルデッキ";
+}
+
+/* ---- 対戦報酬: ゲームが終わるとパック供給 ---- */
+function grantPacks(won, drawn) {
+  if (TEST_AUTO || !profile) return 0;
+  const n = won ? 2 : 1;
+  profile.packs += n;
+  profile.stats.games++;
+  if (won) profile.stats.wins++;
+  profileSave();
+  return n;
+}
+
+/* ================= 画面フロー ================= */
+const SCREENS = ["login-overlay", "home-overlay", "mode-overlay", "title-overlay", "decks-overlay", "packs-overlay", "deck-overlay"];
+function showScreen(id) {
+  for (const sid of SCREENS) document.getElementById(sid).classList.toggle("show", sid === id);
+}
+let curRuleSel = "duema";
+const RULE_LABEL = { duema: "デュエマルール", original: "マジックルール", yugi: "遊戯王ルール", poke: "ポケカルール" };
+
+function showHome() {
+  document.getElementById("acct-name").textContent =
+    fbUser ? (fbUser.displayName || fbUser.email || "アカウント") : "ゲスト(この端末に保存)";
+  document.getElementById("btn-auth-toggle").textContent = fbUser ? "ログアウト" : "ログイン";
+  showScreen("home-overlay");
+}
+function showModeMenu(rule) {
+  curRuleSel = rule;
+  setRule(rule);
+  document.getElementById("mode-title").textContent = RULE_LABEL[rule];
+  const magic = rule === "original";
+  document.getElementById("btn-alice-cpu").style.display = magic ? "" : "none";
+  document.getElementById("btn-decks").style.display = magic ? "" : "none";
+  document.getElementById("btn-packs").style.display = magic ? "" : "none";
+  if (magic) {
+    document.getElementById("regdeck-name").textContent = `(${regularDeckName()})`;
+    document.getElementById("pack-count").textContent = `(未開封 ${profile ? profile.packs : 0})`;
+  }
+  document.getElementById("online-note").textContent = "";
+  showScreen("mode-overlay");
+}
+
+/* ---- ログイン(Google=Firebase Auth / ゲスト=ローカル保存) ---- */
+function authAvailable() {
+  return !!(FIREBASE_CONFIG && typeof firebase !== "undefined" && firebase.auth);
+}
+function bootScreens() {
+  const local = profileLoadLocal();
+  if (local) { profile = local; }
+  if (!authAvailable()) {
+    document.getElementById("btn-google").disabled = true;
+    document.getElementById("login-note").textContent =
+      "Googleログインは本番サイトでのみ利用できます(ゲストで遊べます)";
+    if (profile) { showHome(); return; }
+    showScreen("login-overlay");
+    return;
+  }
+  // Firebase Auth: ログイン状態を監視。ログイン済ならログイン画面をスキップ
+  try {
+    fbReady();
+    firebase.auth().onAuthStateChanged(async user => {
+      fbUser = user || null;
+      if (user) {
+        try {
+          const snap = await firebase.database().ref("users/" + user.uid).get();
+          const cloud = snap.exists() ? snap.val() : null;
+          if (cloud && cloud.col) {
+            // クラウド優先+ゲスト進捗をマージ(枚数・パックはmax、デッキは和集合)
+            if (profile) {
+              for (const k of Object.keys(profile.col || {})) {
+                cloud.col[k] = Math.max(cloud.col[k] || 0, profile.col[k]);
+              }
+              cloud.packs = Math.max(cloud.packs || 0, profile.packs || 0);
+              for (const id of Object.keys(profile.decks || {})) {
+                if (!cloud.decks) cloud.decks = {};
+                if (!cloud.decks[id]) cloud.decks[id] = profile.decks[id];
+              }
+              cloud.stats = cloud.stats || { games: 0, wins: 0 };
+              cloud.stats.games = Math.max(cloud.stats.games || 0, profile.stats.games || 0);
+              cloud.stats.wins = Math.max(cloud.stats.wins || 0, profile.stats.wins || 0);
+            }
+            cloud.decks = cloud.decks || {};
+            cloud.col = cloud.col || {};
+            profile = cloud;
+          } else {
+            if (!profile) profileCreate();
+          }
+          profile.name = user.displayName || profile.name;
+          profileSave();
+        } catch (e) {
+          if (!profile) profileCreate();
+        }
+        showHome();
+      } else if (!profile) {
+        showScreen("login-overlay");
+      } else {
+        showHome();
+      }
+    });
+  } catch (e) {
+    if (!profile) profileCreate();
+    showHome();
+  }
+}
+document.getElementById("btn-google").addEventListener("click", async () => {
+  if (!authAvailable()) return;
+  const note = document.getElementById("login-note");
+  note.textContent = "Googleログインを開いています…";
+  try {
+    fbReady();
+    await firebase.auth().signInWithPopup(new firebase.auth.GoogleAuthProvider());
+    // 遷移は onAuthStateChanged が行う
+  } catch (e) {
+    try {
+      await firebase.auth().signInWithRedirect(new firebase.auth.GoogleAuthProvider());
+    } catch (e2) {
+      note.textContent = "ログインに失敗しました: " + (e && e.message || e);
+    }
+  }
+});
+document.getElementById("btn-guest").addEventListener("click", () => {
+  ac();
+  if (!profile) profileCreate();
+  showHome();
+});
+document.getElementById("btn-auth-toggle").addEventListener("click", async () => {
+  if (fbUser && authAvailable()) {
+    try { await firebase.auth().signOut(); } catch (e) {}
+    fbUser = null;
+    profile = profileLoadLocal();
+    showScreen("login-overlay");
+  } else {
+    showScreen("login-overlay");
+  }
+});
+for (const btn of document.querySelectorAll(".home-rule")) {
+  btn.addEventListener("click", () => { ac(); showModeMenu(btn.dataset.rule); });
+}
+document.getElementById("btn-back-home").addEventListener("click", showHome);
+document.getElementById("btn-rulehelp").addEventListener("click", () => {
+  document.querySelector("#title-overlay .rulesel").style.display = "none";
+  showScreen("title-overlay");
+});
+document.getElementById("btn-rules-close").addEventListener("click", () => showModeMenu(curRuleSel));
+document.getElementById("btn-alice-cpu").addEventListener("click", () => {
+  setRule("alice");
+  deckLists = null;
+  document.getElementById("mode-overlay").classList.remove("show");
+  startCpu();
+});
+
+/* ================= パック開封 ================= */
+const PACK_COMMONS = [];
+const PACK_RARES = [];
+for (let s2 = 0; s2 < 4; s2++) for (let r = 2; r <= 10; r++) PACK_COMMONS.push(`c${s2}_${r}`);
+for (let s2 = 0; s2 < 4; s2++) { PACK_RARES.push(`c${s2}_1`, `c${s2}_11`, `c${s2}_12`, `c${s2}_13`); }
+PACK_RARES.push("joker0", "joker1");
+function packDraw() {
+  // 4枚は通常枠、1枚はレア枠。各枠とも未所持を優先
+  const pick = (pool, picked) => {
+    const un = pool.filter(n => !ownsArt(n) && !picked.includes(n));
+    const from = un.length ? un : pool.filter(n => !picked.includes(n));
+    const from2 = from.length ? from : pool;
+    return from2[Math.floor(Math.random() * from2.length)];
+  };
+  const out = [];
+  for (let i = 0; i < 4; i++) out.push(pick(PACK_COMMONS, out));
+  out.push(pick(PACK_RARES, out));
+  return out;
+}
+function renderPacksScreen() {
+  document.getElementById("packs-n").textContent = profile ? profile.packs : 0;
+  document.getElementById("btn-open-pack").disabled = !profile || profile.packs <= 0;
+  const owned = Object.keys(profile ? profile.col : {}).filter(ownsArt).length;
+  document.getElementById("col-progress").innerHTML = `コレクション: <b>${owned}</b> / 54 種`;
+}
+document.getElementById("btn-packs").addEventListener("click", () => {
+  document.getElementById("pack-cards").innerHTML = "";
+  renderPacksScreen();
+  showScreen("packs-overlay");
+});
+document.getElementById("btn-packs-back").addEventListener("click", () => showModeMenu(curRuleSel));
+document.getElementById("btn-open-pack").addEventListener("click", async () => {
+  if (!profile || profile.packs <= 0) return;
+  profile.packs--;
+  const names = packDraw();
+  const box = document.getElementById("pack-cards");
+  box.innerHTML = "";
+  document.getElementById("btn-open-pack").disabled = true;
+  sfx("joker");
+  for (let i = 0; i < names.length; i++) {
+    const n = names[i];
+    const isNew = !ownsArt(n);
+    profile.col[n] = (profile.col[n] || 0) + 1;
+    const d = document.createElement("div");
+    d.className = "pcard";
+    d.style.animationDelay = (i * 0.28) + "s";
+    const img = document.createElement("img");
+    img.src = window.__ART_DATA ? (window.__ART_DATA[n] || "") : (ART_BASE + n + ".jpg");
+    d.appendChild(img);
+    const b = document.createElement("span");
+    b.className = isNew ? "newb" : "dupb";
+    b.textContent = isNew ? "NEW!" : "×" + profile.col[n];
+    d.appendChild(b);
+    box.appendChild(d);
+    setTimeout(() => sfx("trigger"), i * 280);
+  }
+  profileSave();
+  setTimeout(renderPacksScreen, names.length * 280 + 200);
+});
+
+/* ================= デッキ管理(複数・名前付き・レギュラー選択) ================= */
+let editingDeckId = null;
+function renderDeckList() {
+  const box = document.getElementById("deck-list");
+  box.innerHTML = "";
+  const ids = Object.keys(profile.decks);
+  if (!ids.length) {
+    box.innerHTML = `<div class="deck-note" style="margin-top:10px">まだデッキがありません(対戦はフルデッキ54枚で行われます)</div>`;
+  }
+  for (const id of ids) {
+    const d = profile.decks[id];
+    const row = document.createElement("div");
+    row.className = "deck-item";
+    const isReg = profile.regular === id;
+    row.innerHTML = `<span class="dname">${d.name}<span class="menu-sub">${d.list.length}枚</span></span>` +
+      (isReg ? `<span class="dreg">★レギュラー</span>` : "");
+    const mkBtn = (label, fn, primary) => {
+      const b = document.createElement("button");
+      b.textContent = label;
+      if (primary) b.className = "primary";
+      b.addEventListener("click", fn);
+      row.appendChild(b);
+    };
+    if (!isReg) mkBtn("レギュラーに", () => { profile.regular = id; profileSave(); renderDeckList(); });
+    mkBtn("編集", () => {
+      editingDeckId = id;
+      deckSel = new Set(d.list);
+      showScreen("deck-overlay");
+      renderDeckEditor();
+    });
+    mkBtn("削除", () => {
+      delete profile.decks[id];
+      if (profile.regular === id) profile.regular = null;
+      profileSave();
+      renderDeckList();
+    });
+    box.appendChild(row);
+  }
+}
+document.getElementById("btn-decks").addEventListener("click", () => {
+  renderDeckList();
+  showScreen("decks-overlay");
+});
+document.getElementById("btn-decks-back").addEventListener("click", () => showModeMenu(curRuleSel));
+document.getElementById("btn-deck-new").addEventListener("click", () => {
+  editingDeckId = null;
+  deckSel = new Set(FULL_DECK_LIST);
+  showScreen("deck-overlay");
+  renderDeckEditor();
+});
+
 /* ================= デッキエディタ(マジックルール) ================= */
 let deckSel = null;      // エディタ中の採用カード(コードのSet)
 let deckAfter = null;    // 「この構築で開始」後に実行する処理
@@ -5642,11 +6058,10 @@ function loadDeckList(key) {
   } catch (e) {}
   return null;
 }
-function openDeckEditor(afterFn) {
+function openDeckEditor(afterFn) {   // (旧フロー互換: テスト用に温存)
   deckAfter = afterFn;
   deckSel = new Set(loadDeckList("duema-deck-current") || FULL_DECK_LIST);
-  document.getElementById("title-overlay").classList.remove("show");
-  document.getElementById("deck-overlay").classList.add("show");
+  showScreen("deck-overlay");
   renderDeckEditor();
 }
 function renderDeckEditor() {
@@ -5688,26 +6103,10 @@ function renderDeckEditor() {
     `デッキ: <b>${n}枚</b>(ジョーカー ${nj}/2)` +
     (n < 10 ? `<br><span style="color:var(--rust)">最低10枚必要です</span>` : "");
   document.getElementById("deck-start").disabled = n < 10;
-  const slots = document.getElementById("deck-slots");
-  slots.innerHTML = "";
-  for (let i = 1; i <= 3; i++) {
-    const key = "duema-deck-slot" + i;
-    const has = !!loadDeckList(key);
-    const bs = document.createElement("button");
-    bs.textContent = `保存${i}`;
-    bs.addEventListener("click", () => {
-      try { localStorage.setItem(key, JSON.stringify([...deckSel])); } catch (e) {}
-      renderDeckEditor();
-    });
-    const bl = document.createElement("button");
-    bl.textContent = `ロード${i}`;
-    bl.disabled = !has;
-    bl.addEventListener("click", () => {
-      const a = loadDeckList(key);
-      if (a) { deckSel = new Set(a); renderDeckEditor(); }
-    });
-    slots.appendChild(bs);
-    slots.appendChild(bl);
+  const nameInput = document.getElementById("deck-name");
+  if (document.activeElement !== nameInput) {
+    nameInput.value = editingDeckId && profile && profile.decks[editingDeckId]
+      ? profile.decks[editingDeckId].name : nameInput.value || "";
   }
 }
 document.getElementById("deck-full").addEventListener("click", () => {
@@ -5715,18 +6114,22 @@ document.getElementById("deck-full").addEventListener("click", () => {
   renderDeckEditor();
 });
 document.getElementById("deck-start").addEventListener("click", () => {
-  if (!deckSel || deckSel.size < 10) return;
-  myDeckList = [...deckSel];
-  try { localStorage.setItem("duema-deck-current", JSON.stringify(myDeckList)); } catch (e) {}
-  document.getElementById("deck-overlay").classList.remove("show");
-  const fn = deckAfter;
-  deckAfter = null;
-  if (fn) fn();
+  if (!deckSel || deckSel.size < 10 || !profile) return;
+  const name = (document.getElementById("deck-name").value || "").trim() || "新しいデッキ";
+  const id = editingDeckId || ("d" + Date.now().toString(36));
+  profile.decks[id] = { name, list: [...deckSel] };
+  if (!profile.regular) profile.regular = id;   // 最初のデッキは自動でレギュラー
+  profileSave();
+  editingDeckId = null;
+  document.getElementById("deck-name").value = "";
+  renderDeckList();
+  showScreen("decks-overlay");
 });
 document.getElementById("deck-back").addEventListener("click", () => {
-  document.getElementById("deck-overlay").classList.remove("show");
-  document.getElementById("title-overlay").classList.add("show");
-  deckAfter = null;
+  editingDeckId = null;
+  document.getElementById("deck-name").value = "";
+  renderDeckList();
+  showScreen("decks-overlay");
 });
 
 function setRule(r) {
@@ -5770,19 +6173,20 @@ document.getElementById("btn-mute").addEventListener("click", () => {
 function startCpu() {
   mode = "cpu"; myIdx = 0;
   ac();   // ユーザー操作のタイミングでAudioContextを起こす
-  document.getElementById("title-overlay").classList.remove("show");
+  SCREENS.forEach(sid => document.getElementById(sid).classList.remove("show"));
   transport = new LocalTransport();
   transport.start(onActionArrived);
   runGame(Math.floor(Math.random() * 2 ** 31));
 }
 const isMagicDeckMode = () => ruleMode === "original" && !aliceVariant && !story.active;
 document.getElementById("btn-cpu").addEventListener("click", () => {
-  if (isMagicDeckMode()) openDeckEditor(() => { deckLists = [myDeckList, null]; startCpu(); });
-  else { deckLists = null; startCpu(); }
+  if (isMagicDeckMode()) { myDeckList = regularDeckList(); deckLists = [myDeckList, null]; }
+  else deckLists = null;
+  startCpu();
 });
 document.getElementById("btn-host").addEventListener("click", () => {
-  if (isMagicDeckMode()) openDeckEditor(hostRoom);
-  else hostRoom();
+  if (isMagicDeckMode()) myDeckList = regularDeckList();
+  hostRoom();
 });
 document.getElementById("btn-join").addEventListener("click", () => joinRoom(document.getElementById("join-code").value));
 function resetToTitle() {
@@ -5809,12 +6213,14 @@ function resetToTitle() {
   document.getElementById("my-side").classList.remove("defeated");
   document.getElementById("enemy-side").classList.remove("defeated");
   document.getElementById("btn-end").disabled = true;
-  document.getElementById("title-overlay").classList.add("show");
+  if (profile) showHome();
+  else showScreen("login-overlay");
 }
 document.getElementById("btn-again").addEventListener("click", resetToTitle);
 
 window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("btn-mute").textContent = muted ? "🔇" : "🔊";
+  bootScreens();
   if (!FIREBASE_CONFIG) {
     document.getElementById("btn-host").disabled = true;
     document.getElementById("btn-join").disabled = true;
