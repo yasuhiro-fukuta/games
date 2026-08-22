@@ -506,8 +506,19 @@
     background: #0c0b10; border: 1px solid #3a3644; color: #e5dfd8; font-size: 16px;
     padding: 10px 14px; border-radius: 4px; text-align: center; letter-spacing: .15em; width: 240px;
   }
-  #story-dpad { display: flex; gap: 6px; margin-top: 10px; }
-  #story-dpad button { padding: 8px 16px; background: #101016; color: #8d8798; border: 1px solid #2c2936; font-size: 14px; }
+  #story-dpad {
+    display: grid; grid-template-columns: repeat(3, 58px); grid-template-rows: repeat(2, 48px);
+    gap: 6px; margin-top: 12px; justify-content: center;
+  }
+  #story-dpad button {
+    background: #101016; color: #b9b2a6; border: 1px solid #2c2936; border-radius: 10px;
+    font-size: 19px; padding: 0; touch-action: manipulation; user-select: none;
+  }
+  #story-dpad button:active { background: #23202e; color: #fff; }
+  #story-dpad button[data-d="u"] { grid-column: 2; grid-row: 1; }
+  #story-dpad button[data-d="l"] { grid-column: 1; grid-row: 2; }
+  #story-dpad button[data-d="d"] { grid-column: 2; grid-row: 2; }
+  #story-dpad button[data-d="r"] { grid-column: 3; grid-row: 2; }
   #story-quit { position: absolute; right: 12px; bottom: 10px; font-size: 10px; color: #3f3b49; cursor: pointer; letter-spacing: .1em; }
   #story-quit:hover { color: #8d8798; }
   #story-go-text, #story-tbc-text { color: #b9b2a6; font-size: 16px; letter-spacing: .2em; line-height: 2.6; text-align: center; font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; }
@@ -622,7 +633,7 @@
     <div id="story-dpad">
       <button data-d="l">←</button><button data-d="u">↑</button><button data-d="d">↓</button><button data-d="r">→</button>
     </div>
-    <div class="story-note">移動: 矢印キー / WASD。文はクリックで進む</div>
+    <div class="story-note">移動: 十字ボタンをタップ(PCは矢印キー / WASD)。文はタップで進む</div>
     <div id="story-quit">— 目を覚ますのをあきらめる —</div>
   </div>
   <div class="story-screen" id="story-go">
@@ -794,7 +805,6 @@
       <button class="home-rule" data-rule="original">マジックルール</button>
       <button class="home-rule" data-rule="yugi">遊戯王ルール</button>
       <button class="home-rule" data-rule="poke">ポケカルール</button>
-      <button id="btn-story" style="background:#16141c;color:#cfc9c2;border:1px solid #3a3644">ストーリーモード</button>
     </div>
   </div>
 </div>
@@ -804,8 +814,8 @@
   <div class="panel">
     <h2 id="mode-title"></h2>
     <div class="opts">
+      <button id="btn-story" style="display:none;background:#16141c;color:#cfc9c2;border:1px solid #3a3644">チュートリアルモード</button>
       <button id="btn-cpu" class="primary">CPU対戦</button>
-      <button id="btn-alice-cpu" style="display:none">CPU対戦(アリスルール)</button>
       <button id="btn-host">オンライン対戦: 部屋を作る</button>
       <div class="joinrow">
         <input type="text" id="join-code" maxlength="5" placeholder="コード">
@@ -5700,8 +5710,9 @@ function storyQuit() {
 document.getElementById("btn-story").addEventListener("click", () => {
   ac();
   SCREENS.forEach(sid => document.getElementById(sid).classList.remove("show"));
-  story.active = true; story.state = "select";
-  storyShow("story-select");
+  story.active = true; story.state = "name";   // ルールはマジック固定なので選択画面は飛ばす
+  storyShow("story-name");
+  document.getElementById("story-name-input").focus();
 });
 document.getElementById("story-back").addEventListener("click", storyQuit);
 document.getElementById("story-rule-magic").addEventListener("click", () => {
@@ -5816,7 +5827,7 @@ function showModeMenu(rule) {
   setRule(rule);
   document.getElementById("mode-title").textContent = RULE_LABEL[rule];
   const magic = rule === "original";
-  document.getElementById("btn-alice-cpu").style.display = magic ? "" : "none";
+  document.getElementById("btn-story").style.display = magic ? "" : "none";
   document.getElementById("btn-decks").style.display = magic ? "" : "none";
   document.getElementById("btn-packs").style.display = magic ? "" : "none";
   if (magic) {
@@ -5929,12 +5940,6 @@ document.getElementById("btn-rulehelp").addEventListener("click", () => {
   showScreen("title-overlay");
 });
 document.getElementById("btn-rules-close").addEventListener("click", () => showModeMenu(curRuleSel));
-document.getElementById("btn-alice-cpu").addEventListener("click", () => {
-  setRule("alice");
-  deckLists = null;
-  document.getElementById("mode-overlay").classList.remove("show");
-  startCpu();
-});
 
 /* ================= パック開封 ================= */
 const PACK_COMMONS = [];
