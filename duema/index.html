@@ -495,6 +495,33 @@
     position: absolute; inset: 0; background: #000; pointer-events: none;
     opacity: 0; transition: opacity 1.6s ease; z-index: 5;
   }
+  /* ---- チュートリアル誘導(青発光+アドバイス+ウサギ台詞) ---- */
+  .tut-glow {
+    box-shadow: 0 0 0 3px #3fa7ff, 0 0 16px 5px rgba(63,167,255,.75) !important;
+    animation: tutPulse 1.1s ease-in-out infinite;
+    border-radius: 6px;
+  }
+  @keyframes tutPulse {
+    50% { box-shadow: 0 0 0 3px #b5dcff, 0 0 26px 9px rgba(63,167,255,.95); }
+  }
+  #tut-hint {
+    display: none; position: fixed; top: 46px; left: 50%; transform: translateX(-50%);
+    max-width: min(92vw, 560px); background: rgba(6,18,38,.94);
+    border: 1px solid #3fa7ff; border-radius: 8px; color: #d8ecff;
+    font-size: 13px; letter-spacing: .04em; padding: 7px 14px;
+    z-index: 340; pointer-events: none; text-align: center;
+    box-shadow: 0 0 14px rgba(63,167,255,.45);
+  }
+  #tut-dialog {
+    display: none; position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%);
+    width: min(92vw, 620px); min-height: 60px; background: rgba(2,2,4,.96);
+    border: 1px solid #3a3644; border-radius: 6px; color: #cfc9c2;
+    font-size: 14px; line-height: 1.85; letter-spacing: .06em;
+    padding: 10px 16px 12px; cursor: pointer; user-select: none; z-index: 350;
+  }
+  #tut-dialog.on { display: block; }
+  #tut-dialog .tut-who { display: block; color: #8f8a99; font-size: 11px; letter-spacing: .2em; margin-bottom: 2px; }
+  #tut-dialog .adv { float: right; color: #6a6472; animation: advBlink 1s infinite; }
   .story-title { color: #b9b2a6; font-size: 22px; letter-spacing: .35em; font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; }
   .story-sub { color: #5d5866; font-size: 12px; letter-spacing: .25em; margin-top: 14px; }
   .story-note { color: #6a6472; font-size: 11px; margin-top: 18px; letter-spacing: .1em; }
@@ -592,6 +619,10 @@
       <button id="btn-paymode" title="マナコストの支払い方法">支払: 自動</button>
     </div>
   </div>
+
+  <!-- チュートリアル誘導UI -->
+  <div id="tut-hint"></div>
+  <div id="tut-dialog"><span class="tut-who">ウサギ紳士</span><span id="tut-dialog-text"></span><span class="adv">▼</span></div>
 
   <!-- 攻撃・ブロックの矢印オーバーレイ -->
   <svg id="arrows">
@@ -1427,7 +1458,10 @@ function pump() {
   }
 }
 function nextAction() { return new Promise(res => { pendingResolve = res; pump(); }); }
-function act(a) { transport.send(a); }
+function act(a) {
+  if (tutActive && tutCur && a.k === tutCur.k) { tutCur = null; tutApply(); }   // 誘導ステップ完了
+  transport.send(a);
+}
 
 // 席 pi の操作者: 'human'(この画面) / 'ai'(CPU) / 'remote'(相手の画面)
 function controller(pi) {
@@ -1450,6 +1484,7 @@ function promptFor(pi, kind, ctx, token) {
   const who = controller(pi);
   if (who === "remote") { setHint(`${players[pi].name} の操作を待っています…`); return; }
   if (who === "ai") {
+    if (tutActive) { tutCpu(pi, kind, ctx, token); return; }   // チュートリアル: ウサギは台本どおり
     setTimeout(() => {
       if (token !== gameToken || winner !== null) return;
       act(aiDecide(pi, kind, ctx));
@@ -1457,6 +1492,7 @@ function promptFor(pi, kind, ctx, token) {
     return;
   }
   humanPrompt(pi, kind, ctx);   // human: モーダル/盤面UIを開く(送信はハンドラ側)
+  if (tutActive) tutGuide(pi, kind);   // チュートリアル: 次の一手を誘導
 }
 function setHint(t) { document.getElementById("hint").textContent = t; }
 
@@ -1482,6 +1518,8 @@ async function runGame(seed) {
   }
   oPhase = null; declaredAttacks = []; activeBlocks = []; pendingAttacks = []; pendingBlocks = []; selTargetAtt = null; provSel = null;
   firstP = rng() < 0.5 ? 0 : 1;
+  if (tutActive && !(story.active && story.room === 1)) tutTeardown();   // 保険: チュートリアル以外の対戦
+  if (tutActive) { tutSetup(); firstP = myIdx; }   // 積み込みデッキ+プレイヤー先攻固定
   turnP = firstP; turnNo = 1;
   landSetUsed = 0; landSetMax = 1;
   winner = null; uiMain = false; selAttacker = null; midPlan = null;
@@ -4622,10 +4660,12 @@ function choose(title, opts, card, bodyHtml) {
       if (o.primary) b.className = "primary";
       if (o.danger) b.className = "danger";
       b.disabled = !!o.disabled;
+      b.dataset.tv = String(o.value);
       b.addEventListener("click", () => { ov.classList.remove("show"); res(o.value); });
       mo.appendChild(b);
     }
     ov.classList.add("show");
+    if (tutActive) tutApply();
   });
 }
 /* 複数枚トグル選択モーダル。footerFn(選択配列)→{text, ok}。確定で配列、キャンセルで null */
@@ -4647,9 +4687,11 @@ function chooseMulti(title, cards, footerFn, confirmLabel, cancelLabel) {
       const f = footerFn(sel);
       bodyEl.innerHTML = f.text;
       confirmBtn.disabled = !f.ok;
+      if (tutActive) tutApply();
     };
     for (const c of cards) {
       const el = cardEl(c, { pt: true });
+      el.dataset.cid = c.id;
       el.addEventListener("click", () => {
         selected.has(c.id) ? selected.delete(c.id) : selected.add(c.id);
         el.style.outline = selected.has(c.id) ? "3px solid var(--gold)" : "";
@@ -4668,6 +4710,7 @@ function chooseMulti(title, cards, footerFn, confirmLabel, cancelLabel) {
     mo.append(confirmBtn, cancelBtn);
     update();
     ov.classList.add("show");
+    if (tutActive) tutApply();
   });
 }
 
@@ -5358,6 +5401,7 @@ function render() {
   }
 
   requestAnimationFrame(drawArrows);
+  if (tutActive) tutApply();   // チュートリアル: 発光・アドバイスを貼り直す
 }
 
 /* 攻撃・ブロックの矢印(自分のクリーチャーの行動=オレンジ、相手の=青) */
@@ -5627,6 +5671,9 @@ function storyStartBattle() {
   ruleMode = "original";
   deckLists = null;   // ストーリーは常にフルデッキ
   mode = "cpu"; myIdx = 0;
+  // 1匹目のウサギ = 台本チュートリアル(TEST_AUTO中は従来どおり素のCPU戦)
+  if (story.room === 1 && !TEST_AUTO) { tutActive = true; tutReset(); }
+  else tutTeardown();
   ac();
   if (transport) { try { transport.stop(); } catch (e) {} }
   transport = new LocalTransport();
@@ -5635,6 +5682,8 @@ function storyStartBattle() {
 }
 
 function storyBattleEnd(winnerPi) {
+  const wasTut = tutActive;
+  tutTeardown();
   if (winnerPi === myIdx) {
     if (story.room === 3) {   // アリスに勝利 → to be continued
       story.state = "fade";
@@ -5652,7 +5701,9 @@ function storyBattleEnd(winnerPi) {
     storySetFade(1);
     storyDraw();
     storyFade(false, 1400).then(() => {
-      storyDialog(["……。", "ウサギ紳士は、静かに動かなくなった。", "部屋の奥で、ドアの錠が外れる音がした。"]);
+      storyDialog(wasTut
+        ? ["…………", "……アリス……", "アリスを……たのみます", "ウサギ紳士は、静かに動かなくなった。", "部屋の奥で、ドアの錠が外れる音がした。"]
+        : ["……。", "ウサギ紳士は、静かに動かなくなった。", "部屋の奥で、ドアの錠が外れる音がした。"]);
     });
   } else {
     story.state = "over";
@@ -5695,6 +5746,7 @@ async function storyNextRoom() {
 }
 
 function storyQuit() {
+  tutTeardown();
   story.active = false;
   story.state = "idle";
   clearInterval(stTyping); stTyping = null; stDq = []; stCb = null;
@@ -5705,6 +5757,430 @@ function storyQuit() {
   }
   resetToTitle();
 }
+
+/* ================= チュートリアル(1匹目のウサギ・台本再生) =================
+   ユーザー承認済み台本『チュートリアル1「ウサギ紳士の犠牲 case xxxx1」』を実装する。
+   - 両者プレーン54枚フルデッキを積み込み(初期手札・ドロー順・被ミル位置まで固定)
+   - ウサギ(CPU)は TUT_C の台本どおりに行動し、台詞ポップアップで解説する
+   - プレイヤーは TUT_P の誘導ステップ(青発光+他入力ロック+【】アドバイス)で進む
+   - J のパワーは11(ランク)のため、台本の最終打点調整として T7 に♦3の攻撃を追加
+     (警戒でアンタップしている♦3の実演を兼ねる)。T10 の♥J+♣5=16点で残り山札14→0 */
+let tutActive = false;
+let tutCi = 0, tutPi = 0;     // ウサギ/プレイヤーの台本ポインタ
+let tutCur = null;            // 進行中のプレイヤー誘導ステップ
+let tutSaying = false;        // ウサギ台詞ポップアップ表示中
+let tutSayQ = [], tutSayRes = null, tutTyping2 = null, tutFull2 = "";
+let tutPaySaved = null;       // 支払いモードの退避(チュートリアル中は自動固定)
+
+/* ---- 積み込みデッキ ----
+   手札は山札の先頭7枚、ドローと被ミルはどちらも山札の末尾から消費される。
+   TAIL は「消費される順」の並び(null = 任意のカードで良い位置 = 被ミルなど) */
+const TUT_P_HAND = [[0,10],[2,9],[1,8],[0,2],[2,3],[1,4],[3,5]];   // ♠10♦9♥8♠2♦3♥4♣5
+const TUT_C_HAND = [[0,10],[2,9],[1,8],[0,1],[2,2],[1,3],[3,4]];   // ♠10♦9♥8♠A♦2♥3♣4
+const TUT_P_TAIL = [                       // あなた: T2♣7→(被1)→T3♠9→T4♦6→T5♥2→(被4)→T6♦4→T7♥J→T8♦5
+  [3,7], null, [0,9], [2,6], [1,2], null, null, null, null, [2,4], [1,11], [2,5],
+];
+const TUT_C_TAIL = [                       // ウサギ: T1♣7→T2♦10→T3♥7→(被2)→T4♣6→T5♠5→(被3)→T6♥A→(被8)→T7♣3
+  [3,7], [2,10], [1,7], null, null, [3,6], [0,5], null, null, null, [1,1],
+  null, null, null, null, null, null, null, null, [3,3],
+];
+
+function tutSetup() {
+  const stack = (base, handSpec, tailSpec) => {
+    const all = buildDeckFromList(FULL_DECK_LIST, base);
+    const take = (s, r) => { const i = all.findIndex(c => !c.joker && c.suit === s && c.rank === r); return all.splice(i, 1)[0]; };
+    const hand = handSpec.map(([s, r]) => take(s, r));
+    const named = tailSpec.map(sp => sp ? take(sp[0], sp[1]) : null);
+    const tail = named.map(c => c || all.pop());
+    return { hand, deck: [...all, ...tail.reverse()] };   // 末尾=先に消費される側
+  };
+  const P = stack(0, TUT_P_HAND, TUT_P_TAIL);
+  const C = stack(200, TUT_C_HAND, TUT_C_TAIL);
+  players[myIdx].hand = P.hand; players[myIdx].deck = P.deck;
+  players[1 - myIdx].hand = C.hand; players[1 - myIdx].deck = C.deck;
+}
+
+function tutReset() {
+  tutCi = 0; tutPi = 0; tutCur = null;
+  tutSaying = false; tutSayQ = []; tutSayRes = null;
+  clearInterval(tutTyping2); tutTyping2 = null;
+  tutPaySaved = manualPay; manualPay = false;   // 誘導を単純にするため自動支払い固定
+}
+
+function tutTeardown() {
+  tutActive = false; tutCur = null;
+  tutSaying = false; tutSayQ = []; tutSayRes = null;
+  clearInterval(tutTyping2); tutTyping2 = null;
+  if (tutPaySaved !== null) { manualPay = tutPaySaved; tutPaySaved = null; }
+  const d = document.getElementById("tut-dialog");
+  if (d) d.classList.remove("on");
+  const h = document.getElementById("tut-hint");
+  if (h) h.style.display = "none";
+  for (const el of document.querySelectorAll(".tut-glow")) el.classList.remove("tut-glow");
+  for (const el of document.querySelectorAll(".tut-allow")) el.classList.remove("tut-allow");
+}
+
+/* ---- ウサギ台詞ポップアップ(タップで送る) ---- */
+function tutSay(lines) {
+  return new Promise(res => {
+    tutSaying = true;
+    tutSayQ = [...lines];
+    tutSayRes = res;
+    document.getElementById("tut-dialog").classList.add("on");
+    tutApply();
+    tutSayNext();
+  });
+}
+function tutSayNext() {
+  const el = document.getElementById("tut-dialog-text");
+  if (!tutSayQ.length) {
+    document.getElementById("tut-dialog").classList.remove("on");
+    el.textContent = "";
+    tutSaying = false;
+    const r = tutSayRes; tutSayRes = null;
+    tutApply();
+    if (r) r();
+    return;
+  }
+  tutFull2 = tutSayQ.shift();
+  el.textContent = "";
+  clearInterval(tutTyping2);
+  let i = 0;
+  tutTyping2 = setInterval(() => {
+    el.textContent = tutFull2.slice(0, ++i);
+    if (i >= tutFull2.length) { clearInterval(tutTyping2); tutTyping2 = null; }
+  }, 24);
+}
+function tutSayAdvance() {
+  if (!tutSaying) return;
+  if (tutTyping2) {
+    clearInterval(tutTyping2); tutTyping2 = null;
+    document.getElementById("tut-dialog-text").textContent = tutFull2;
+    return;
+  }
+  tutSayNext();
+}
+
+/* ---- カード探索(スート・ランク → id / 要素) ---- */
+const tutH = (pi, s, r) => { const c = players[pi].hand.find(x => !x.joker && x.suit === s && x.rank === r); return c ? c.id : -1; };
+const tutF = (pi, s, r) => { const f = players[pi].field.find(x => x.card.suit === s && x.card.rank === r); return f ? f.card.id : -1; };
+const tutG = (pi, s, r) => { const c = players[pi].grave.find(x => !x.joker && x.suit === s && x.rank === r); return c ? c.id : -1; };
+const tutHandEl = (s, r) => {
+  const i = players[myIdx].hand.findIndex(c => !c.joker && c.suit === s && c.rank === r);
+  return i < 0 ? null : document.getElementById("hand-zone").children[i] || null;
+};
+const tutMyFieldEl = (s, r) => document.querySelector(`#m-field [data-cid="${tutF(myIdx, s, r)}"]`);
+const tutEnFieldEl = (s, r) => document.querySelector(`#e-field [data-cid="${tutF(1 - myIdx, s, r)}"]`);
+const tutBtnEnd = () => document.getElementById("btn-end");
+const tutModalBtn = v => document.querySelector(`#modal.show #modal-opts button[data-tv="${v}"]`);
+const tutModalOpen = () => document.getElementById("modal").classList.contains("show");
+const tutSelIs = (s, r) => { const f = players[myIdx].field[selAttacker]; return !!f && f.card.suit === s && f.card.rank === r; };
+const tutPAHas = (s, r) => pendingAttacks.some(a => a.cre === tutF(myIdx, s, r));
+
+/* ---- 誘導ステージ部品 ---- */
+const tgBtn = hint => ({ hint, glow: () => [tutBtnEnd()] });
+const tgFieldSel = (s, r, hint) => ({ hint, glow: () => [tutMyFieldEl(s, r)],
+  done: () => tutSelIs(s, r) || tutPAHas(s, r) });
+const tgAtkPlayer = (s, r) => ({ hint: "【相手プレイヤー(上の名前のあたり)をタップ】",
+  glow: () => [document.querySelector("#enemy-side .side-head")],
+  done: () => tutPAHas(s, r) });
+const tgAtkCre = (s, r, ts, tr, hint) => ({ hint, glow: () => [tutEnFieldEl(ts, tr)],
+  done: () => tutPAHas(s, r) });
+const tgBlockSel = (s, r, hint) => ({ hint, glow: () => [tutMyFieldEl(s, r)],
+  done: () => selTargetAtt === tutF(myIdx, s, r) || pendingBlocks.some(b => b.blocker === tutF(myIdx, s, r)) });
+const tgBlockTgt = (bs, br, as2, ar, hint) => ({ hint, glow: () => [tutEnFieldEl(as2, ar)],
+  done: () => pendingBlocks.some(b => b.blocker === tutF(myIdx, bs, br)) });
+const tpSet = (s, r, hint, say) => ({ k: "oattacks", say, stages: [
+  { hint, glow: () => [tutHandEl(s, r)], done: tutModalOpen },
+  { hint: "【「土地に置く」を選んでください】", glow: () => [tutModalBtn("land")] },
+]});
+const tpSummon = (s, r, hint, say) => ({ k: "oattacks", say, stages: [
+  { hint, glow: () => [tutHandEl(s, r)], done: tutModalOpen },
+  { hint: "【「召喚する」を選んでください】", glow: () => [tutModalBtn("summon")] },
+]});
+const tpBtn = (k, hint, say) => ({ k, say, stages: [tgBtn(hint)] });
+
+/* ---- プレイヤー誘導台本(あなたの意思決定1回 = 1エントリ) ---- */
+const TUT_P = [
+  // ── ターン1(あなた) ──
+  tpSet(0, 10, "【手札を場に「セット」してください】", ["まずは、カードの置き方からお教えしましょう。"]),
+  tpBtn("oattacks", "【フェイズを終了してください】",
+    ["あなたが場にセットしたカードは、エネルギー — マナを放ちます。セットは毎ターン1回だけです。"]),
+  tpBtn("omain", "【ターンを終了してください】"),
+  // ── ターン1(ウサギ)のブロックフェイズ ──
+  tpBtn("oblocks", "【フェイズを終了してください】",
+    ["フェーズ3、ブロックフェイズ。相手のターンに、あなたが動ける唯一のフェイズです。",
+     "今のあなたにできることはないはず。フェイズをスキップしてください。"]),
+  // ── ターン2(あなた) ──
+  tpSet(2, 9, "【カードをセットしてください】"),
+  tpBtn("oattacks", "【フェイズを終了してください】",
+    ["あなたの♠2の召喚には、♠のマナ1つと、いずれかのマナ2つ — 合計3マナが要ります。",
+     "まだ足りませんね。あなたにできることはありません。"]),
+  tpBtn("omain", "【ターンを終了してください】"),
+  // ── ターン2(ウサギ): ♠Aの攻撃を受ける ──
+  tpBtn("oblocks", "【フェイズを終了してください】", ["あなたに防ぐ術はありません。フェイズを終了してください。"]),
+  // ── ターン3(あなた) ──
+  tpSet(1, 8, "【カードをセットしてください】"),
+  tpSummon(0, 2, "【♠2をタップして召喚してください】", ["♠2の召喚の準備が整いましたね。"]),
+  tpBtn("oattacks", "【フェイズを終了してください】", ["召喚したターンは、動けません。"]),
+  tpBtn("omain", "【ターンを終了してください】"),
+  // ── ターン3(ウサギ): ♠Aを♠2でブロック ──
+  { k: "oblocks", say: ["今度は防げます。アンタップ状態のクリーチャーは、相手の攻撃をブロックできる。"], stages: [
+    tgBlockSel(0, 2, "【♠2でブロックしてください】"),
+    tgBlockTgt(0, 2, 0, 1, "【攻撃中の♠Aをタップしてブロック】"),
+    tgBtn("【ブロックを確定してください】"),
+  ]},
+  // ── ターン4(あなた) ──
+  tpSet(2, 6, "【♦6をセットしてください】",
+    ["あなたの♠2の傷は癒えました。クリンナップは敵味方すべてを回復します。"]),
+  tpSummon(2, 3, "【♦3を召喚してください】"),
+  { k: "oattacks", say: ["♦のクリーチャーは警戒を持ちます。攻撃してもタップしない — 明日をご覧に入れましょう。"], stages: [
+    tgFieldSel(0, 2, "【♠2で相手プレイヤーを攻撃してください】"),
+    tgAtkPlayer(0, 2),
+    tgBtn("【攻撃を確定してください】"),
+  ]},
+  tpBtn("omain", "【ターンを終了してください】", ["……フェイズを終了してください。"]),
+  // ── ターン4(ウサギ)のブロックフェイズ ──
+  tpBtn("oblocks", "【フェイズを終了してください】"),
+  // ── ターン5(あなた) ──
+  tpSet(1, 2, "【♥2をセットしてください】"),
+  { k: "oattacks", stages: [
+    tgFieldSel(0, 2, "【♠2で攻撃してください】"),
+    tgAtkPlayer(0, 2),
+    tgBtn("【攻撃を確定してください】"),
+  ]},
+  tpBtn("omain", "【ターンを終了してください】",
+    ["これが♥の瞬速 — 相手のブロックフェイズにのみ、召喚できる力です。",
+     "同じ事を、あなたの♥4も行うことができます。"]),
+  // ── ターン5(ウサギ): ♣4+♥3の攻撃 → ♥4を瞬速召喚してブロック ──
+  { k: "oblocks", stages: [
+    { hint: "【♥4を瞬速召喚してください】", glow: () => [tutHandEl(1, 4)], done: tutModalOpen },
+    { hint: "【「瞬速で召喚する」を選んでください】", glow: () => [tutModalBtn("summon")] },
+  ]},
+  { k: "oblocks", stages: [
+    tgBlockSel(1, 4, "【♥4で♥3をブロックしてください】"),
+    tgBlockTgt(1, 4, 1, 3, "【攻撃中の♥3をタップしてブロック】"),
+    tgBtn("【ブロックを確定してください】"),
+  ]},
+  // ── ターン6(あなた) ──
+  tpSet(2, 4, "【♦4をセットしてください】"),
+  { k: "oattacks", say: ["私の♣4は攻撃の後、タップしたまま — パワー0の無防備です。"], stages: [
+    tgFieldSel(1, 4, "【♥4でタップ中の♣4を攻撃してください】"),
+    tgAtkCre(1, 4, 3, 4, "【タップ中の♣4をタップして攻撃対象に】"),
+    tgFieldSel(2, 3, "【♦3で相手プレイヤーを攻撃してください】"),
+    tgAtkPlayer(2, 3),
+    tgBtn("【攻撃を確定してください】"),
+  ]},
+  tpBtn("omain", "【ターンを終了してください】",
+    ["タップした獲物は無防備。……攻撃には、常にこの隙が伴うのです。",
+     "これが♦の警戒。攻めてなお、隙を見せません。"]),
+  // ── ターン7(あなた) ──
+  tpSet(3, 7, "【♣7をセットしてください】"),
+  tpSummon(3, 5, "【♣5を召喚してください】"),
+  { k: "oattacks", say: ["♣の速攻、あなたも使うことができます。"], stages: [
+    tgFieldSel(3, 5, "【そのまま♣5で攻撃してください】"),
+    tgAtkPlayer(3, 5),
+    tgFieldSel(2, 3, "【警戒で立っている♦3でも攻撃してください】"),
+    tgAtkPlayer(2, 3),
+    tgBtn("【攻撃を確定してください】"),
+  ]},
+  tpBtn("omain", "【ターンを終了してください】", ["………"]),
+  // ── ターン7(ウサギ)のブロックフェイズ ──
+  tpBtn("oblocks", "【フェイズを終了してください】"),
+  // ── ターン8(あなた) ──
+  tpSet(2, 5, "【♦5をセットしてください】"),
+  { k: "oattacks", say: ["絵札は生贄召喚を持ちます。同じスートの仲間を生贄に、その数字ぶんコストを軽くして降臨する。"], stages: [
+    { hint: "【♥Jを選んでください】", glow: () => [tutHandEl(1, 11)], done: tutModalOpen },
+    { hint: "【「生贄召喚」を選んでください】", glow: () => [tutModalBtn("sacsummon")],
+      done: () => !!document.querySelector("#modal.show #modal-grid [data-cid]") },
+    { hint: "【生贄にする♥4を選んでください】",
+      glow: () => [document.querySelector(`#modal.show #modal-grid [data-cid="${tutF(myIdx, 1, 4)}"]`)],
+      done: () => { const b = document.querySelector("#modal.show #modal-opts button.primary"); return !!b && !b.disabled; } },
+    { hint: "【「この生贄で召喚する」で確定!】",
+      glow: () => [document.querySelector("#modal.show #modal-opts button.primary")] },
+  ]},
+  { k: "oattacks", say: ["そうです。ただし出たターンは動けません。"], stages: [
+    tgFieldSel(3, 5, "【♣5で攻撃してください】"),
+    tgAtkPlayer(3, 5),
+    tgBtn("【攻撃を確定してください】"),
+  ]},
+  tpBtn("omain", "【ターンを終了してください】"),
+  // ── ターン9(あなた) ──
+  { k: "oattacks", stages: [
+    tgFieldSel(1, 11, "【♥Jで相手プレイヤーを攻撃してください】"),
+    tgAtkPlayer(1, 11),
+    tgBtn("【攻撃を確定してください】"),
+  ]},
+  tpBtn("omain", "【ターンを終了してください】", ["……私の命も、あと僅か。"]),
+  // ── ターン9(ウサギ): ♠5の挑戦(♦3が強制ブロック) ──
+  tpBtn("oblocks", "【フェイズを終了してください】"),
+  // ── ターン10(あなた): とどめ ──
+  { k: "oattacks", stages: [
+    tgFieldSel(1, 11, "【♥Jと♣5で、相手プレイヤーを攻撃してください】"),
+    tgAtkPlayer(1, 11),
+    tgFieldSel(3, 5, "【続けて♣5でも攻撃してください】"),
+    tgAtkPlayer(3, 5),
+    tgBtn("【攻撃を確定してください】"),
+  ]},
+];
+
+/* ---- ウサギ(CPU)台本(ウサギの意思決定1回 = 1エントリ) ---- */
+const TUT_C = [
+  { k: "mull", a: () => ({ k: "mull", v: false }) },
+  // T1(あなた)のブロックフェイズ
+  { k: "oblocks", a: () => ({ k: "oblocks", t: "blocks", list: [] }) },
+  // ── ターン1(ウサギ) ──
+  { k: "oattacks", say: [
+      "このように、ターンを交代しながら進めます。1ターンには5つのフェイズがあります。",
+      "フェーズ1、アンタップフェイズ。タップしたカードを起こし、1枚引きます。",
+      "あなたは先攻1ターン目だったので、これはスキップされていました。",
+      "フェーズ2、アタックフェイズ。",
+    ], a: () => ({ k: "oattacks", t: "land", card: tutH(1 - myIdx, 0, 10) }) },
+  { k: "oattacks", a: () => ({ k: "oattacks", t: "acecast", card: tutH(1 - myIdx, 0, 1), x: 0, revive: [] }) },
+  { k: "oattacks", say: [
+      "セットしたカードはタップすることでマナを供給します。このクリーチャーには♠のマナが1つ必要でした。",
+      "エースだけは合計1マナで召喚できる。それだけ特別なカードなのです。",
+      "このターンに出たクリーチャーは、動けません。",
+    ], a: () => ({ k: "oattacks", t: "attacks", list: [] }) },
+  { k: "omain", say: [
+      "フェーズ4、メインフェイズ。他にプレイしたい呪文があれば、ここで。……今の私にはありません。",
+      "そしてフェーズ5、クリンナップフェイズ。クリーチャーの傷はすべて癒え、ターンが移ります。",
+    ], a: () => ({ k: "omain", t: "done" }) },
+  // T2(あなた)のブロックフェイズ
+  { k: "oblocks", a: () => ({ k: "oblocks", t: "blocks", list: [] }) },
+  // ── ターン2(ウサギ): ♠Aで攻撃 ──
+  { k: "oattacks", say: ["クリーチャーをタップさせることで、相手プレイヤーを攻撃できます。"],
+    a: () => ({ k: "oattacks", t: "attacks", list: [{ cre: tutF(1 - myIdx, 0, 1), tt: "player" }] }) },
+  { k: "omain", say: [
+      "ダメージを受けると、その枚数ぶん山札から墓地へ送られます。",
+      "山札の枚数が、あなたの寿命です。",
+    ], a: () => ({ k: "omain", t: "land", card: tutH(1 - myIdx, 2, 10) }) },
+  { k: "omain", say: ["ターンを終了します。"], a: () => ({ k: "omain", t: "done" }) },
+  // T3(あなた)のブロックフェイズ
+  { k: "oblocks", a: () => ({ k: "oblocks", t: "blocks", list: [] }) },
+  // ── ターン3(ウサギ): ♠Aで再攻撃(♠2にブロックされて散る) ──
+  { k: "oattacks", a: () => ({ k: "oattacks", t: "attacks", list: [{ cre: tutF(1 - myIdx, 0, 1), tt: "player" }] }) },
+  { k: "omain", say: ["ブロックした者同士は戦闘を行います。私のエースは力尽きました。"],
+    a: () => ({ k: "omain", t: "land", card: tutH(1 - myIdx, 1, 7) }) },
+  { k: "omain", a: () => ({ k: "omain", t: "done" }) },
+  // T4(あなた)のブロックフェイズ(♠2の攻撃は素通し)
+  { k: "oblocks", a: () => ({ k: "oblocks", t: "blocks", list: [] }) },
+  // ── ターン4(ウサギ) ──
+  { k: "oattacks", a: () => ({ k: "oattacks", t: "land", card: tutH(1 - myIdx, 3, 6) }) },
+  { k: "oattacks", say: ["♥のカードは、手札の中で牙を研ぐもの。……次のあなたの攻撃で、お見せしましょう。"],
+    a: () => ({ k: "oattacks", t: "attacks", list: [] }) },
+  { k: "omain", a: () => ({ k: "omain", t: "done" }) },
+  // T5(あなた): ♠2の攻撃に♥3を瞬速召喚してブロック
+  { k: "oblocks", a: () => ({ k: "oblocks", t: "summon", card: tutH(1 - myIdx, 1, 3) }) },
+  { k: "oblocks", a: () => ({ k: "oblocks", t: "blocks",
+      list: [{ attacker: tutF(myIdx, 0, 2), blocker: tutF(1 - myIdx, 1, 3) }] }) },
+  // ── ターン5(ウサギ): ♦9セット→♣4召喚→♣4+♥3で攻撃 ──
+  { k: "oattacks", a: () => ({ k: "oattacks", t: "land", card: tutH(1 - myIdx, 2, 9) }) },
+  { k: "oattacks", a: () => ({ k: "oattacks", t: "summon", card: tutH(1 - myIdx, 3, 4) }) },
+  { k: "oattacks", say: ["♣は速攻 — 召喚酔いの影響を受けません。"],
+    a: () => ({ k: "oattacks", t: "attacks", list: [
+      { cre: tutF(1 - myIdx, 3, 4), tt: "player" },
+      { cre: tutF(1 - myIdx, 1, 3), tt: "player" },
+    ] }) },
+  { k: "omain", say: ["ライフよりも相打ちを避ける。正しい判断です。"], a: () => ({ k: "omain", t: "done" }) },
+  // T6(あなた)のブロックフェイズ
+  { k: "oblocks", a: () => ({ k: "oblocks", t: "blocks", list: [] }) },
+  // ── ターン6(ウサギ) ──
+  { k: "oattacks", a: () => ({ k: "oattacks", t: "land", card: tutH(1 - myIdx, 3, 7) }) },
+  { k: "oattacks", a: () => ({ k: "oattacks", t: "summon", card: tutH(1 - myIdx, 2, 2) }) },
+  { k: "oattacks", say: ["小さな駒にも、役目があります。"], a: () => ({ k: "oattacks", t: "attacks", list: [] }) },
+  { k: "omain", a: () => ({ k: "omain", t: "done" }) },
+  // T7(あなた)のブロックフェイズ(♦2はブロックしない)
+  { k: "oblocks", a: () => ({ k: "oblocks", t: "blocks", list: [] }) },
+  // ── ターン7(ウサギ): ♣3セット→♥A(X=3)で♥3を蘇生 ──
+  { k: "oattacks", a: () => ({ k: "oattacks", t: "land", card: tutH(1 - myIdx, 3, 3) }) },
+  { k: "oattacks", a: () => ({ k: "oattacks", t: "acecast", card: tutH(1 - myIdx, 1, 1), x: 3,
+      revive: [tutG(1 - myIdx, 1, 3)] }) },
+  { k: "oattacks", say: [
+      "エースは、追加でXマナ支払うことで、墓地から同じスートのカードを戻すことができます。",
+      "あなたのデッキのエースも、同じ事です。",
+    ], a: () => ({ k: "oattacks", t: "attacks", list: [] }) },
+  { k: "omain", a: () => ({ k: "omain", t: "done" }) },
+  // T8(あなた): ♣5の攻撃を♦2でチャンプブロック
+  { k: "oblocks", say: ["助からないならば、盾として使います。"],
+    a: () => ({ k: "oblocks", t: "blocks",
+      list: [{ attacker: tutF(myIdx, 3, 5), blocker: tutF(1 - myIdx, 2, 2) }] }) },
+  // ── ターン8(ウサギ) ──
+  { k: "oattacks", a: () => ({ k: "oattacks", t: "land", card: tutH(1 - myIdx, 1, 8) }) },
+  { k: "oattacks", a: () => ({ k: "oattacks", t: "summon", card: tutH(1 - myIdx, 0, 5) }) },
+  { k: "oattacks", say: ["このターンは何もしません。"], a: () => ({ k: "oattacks", t: "attacks", list: [] }) },
+  { k: "omain", a: () => ({ k: "omain", t: "done" }) },
+  // T9(あなた): ♥Jの攻撃を受ける
+  { k: "oblocks", say: ["……受けましょう。"], a: () => ({ k: "oblocks", t: "blocks", list: [] }) },
+  // ── ターン9(ウサギ): ♠5の挑戦(♦3を強制ブロックさせる) ──
+  { k: "oattacks", say: ["♠は挑戦 — 壁の裏に隠れる者を、戦いの場へ引きずり出す力。あなたの♠も同じ力を持っています。"],
+    a: () => ({ k: "oattacks", t: "attacks",
+      list: [{ cre: tutF(1 - myIdx, 0, 5), tt: "player", prov: tutF(myIdx, 2, 3) }] }) },
+  { k: "omain", say: ["……以上で、チュートリアルを終わります。", "私を殺して、先に進んでください。"],
+    a: () => ({ k: "omain", t: "done" }) },
+  // T10(あなた): とどめを受ける
+  { k: "oblocks", a: () => ({ k: "oblocks", t: "blocks", list: [] }) },
+];
+
+/* ---- ウサギの意思決定(台本消費) ---- */
+async function tutCpu(pi, kind, ctx, token) {
+  const e = TUT_C[tutCi];
+  if (!e || e.k !== kind) {
+    console.warn("チュートリアル: ウサギ台本のずれ", tutCi, kind);
+    const safe = {
+      mull: { k: "mull", v: false },
+      oblocks: { k: "oblocks", t: "blocks", list: [] },
+      oattacks: { k: "oattacks", t: "attacks", list: [] },
+      omain: { k: "omain", t: "done" },
+    }[kind];
+    setTimeout(() => { if (token === gameToken && winner === null && safe) act(safe); }, CPU_DELAY);
+    return;
+  }
+  tutCi++;
+  if (e.say) await tutSay(e.say);
+  await wait(CPU_DELAY);
+  if (token !== gameToken || winner !== null || !tutActive) return;
+  act(e.a());
+}
+
+/* ---- プレイヤーの誘導(台本消費) ---- */
+async function tutGuide(pi, kind) {
+  if (pi !== myIdx) return;
+  const e = TUT_P[tutPi];
+  if (!e || e.k !== kind) { console.warn("チュートリアル: 誘導台本のずれ", tutPi, kind); return; }
+  tutPi++;
+  const token = gameToken;
+  if (e.say) await tutSay(e.say);
+  if (token !== gameToken || !tutActive) return;
+  tutCur = e;
+  tutApply();
+}
+
+/* ---- 発光・アドバイスの貼り直し(render/モーダル表示のたびに呼ばれる) ---- */
+function tutApply() {
+  for (const el of document.querySelectorAll(".tut-glow")) el.classList.remove("tut-glow");
+  for (const el of document.querySelectorAll(".tut-allow")) el.classList.remove("tut-allow");
+  const hint = document.getElementById("tut-hint");
+  if (!hint) return;
+  if (!tutActive || !tutCur || tutSaying || winner !== null) { hint.style.display = "none"; return; }
+  const st = tutCur.stages.find(s => !(s.done && s.done()));
+  if (!st) { hint.style.display = "none"; return; }
+  hint.textContent = st.hint || "";
+  hint.style.display = st.hint ? "" : "none";
+  for (const el of (st.glow ? st.glow() : [])) if (el) el.classList.add("tut-glow", "tut-allow");
+  if (st.allow) for (const el of st.allow()) if (el) el.classList.add("tut-allow");
+}
+
+/* ---- 入力ロック: 発光している要素(と台詞送り)以外のクリックを遮断 ---- */
+document.getElementById("tut-dialog").addEventListener("click", e => { e.stopPropagation(); tutSayAdvance(); });
+document.addEventListener("click", e => {
+  if (!tutActive) return;
+  if (e.target.closest("#tut-dialog")) return;                       // 台詞送り
+  if (tutSaying) { e.stopPropagation(); e.preventDefault(); tutSayAdvance(); return; }   // どこをタップしても送れる
+  if (e.target.closest(".gravebtn")) { e.stopPropagation(); e.preventDefault(); return; } // 墓地ビューアは封印
+  if (e.target.closest(".tut-allow")) return;
+  e.stopPropagation(); e.preventDefault();
+}, true);
 
 /* ---- 入力・配線 ---- */
 document.getElementById("btn-story").addEventListener("click", () => {
@@ -6197,6 +6673,7 @@ document.getElementById("btn-join").addEventListener("click", () => joinRoom(doc
 function resetToTitle() {
   // reloadせずタイトルに戻す(環境によってはreloadで白画面になるため)
   gameToken++;                                   // 走行中の非同期処理を無効化
+  tutTeardown();
   if (transport) { try { transport.stop(); } catch (e) {} transport = null; }
   players = null; winner = null; oPhase = null; paySel = null; deckLists = null;
   uiMain = false; selAttacker = null; selTargetAtt = null;
