@@ -1517,7 +1517,12 @@ async function runGame(seed) {
     { name: myIdx === 1 ? "あなた" : (mode === "cpu" ? "CPU" : "相手"), deck: shuffle(deckFor(1, 200)), hand: [], shields: [], lands: [], field: [], grave: [], traps: [], active: null, bench: [], ench: [] },
   ];
   if (story.active) { players[myIdx].name = story.name || "あなた"; players[1 - myIdx].name = story.room === 4 ? "アリス" : "ウサギ執事"; }
-  aliceSide = aliceVariant ? [true, true] : [false, false];   // ストーリーのアリスも通常マジックカードを使う
+  // マジックCPU対戦の隠しマッチ: アリスだけが白黒反転のアリスルールのカードを使う
+  const sAlice = secretAlice && mode === "cpu" && !story.active && ruleMode === "original" && !aliceVariant;
+  if (sAlice) players[1 - myIdx].name = "アリス";
+  aliceSide = aliceVariant ? [true, true]
+    : sAlice ? (myIdx === 0 ? [false, true] : [true, false])
+    : [false, false];                                         // ストーリーのアリスは通常マジックカードを使う
   artFullForce = story.active && story.room === 4;            // アリスの札はフル絵柄で表示
   for (const p of players) {
     if (ruleMode === "duema") p.shields = p.deck.splice(0, 6);
@@ -1540,6 +1545,11 @@ async function runGame(seed) {
   document.getElementById("e-name").textContent = players[1 - myIdx].name;
   log(`デュエル開始!先攻は ${players[firstP].name}`);
   render();
+  if (sAlice) {
+    log("……アリスと、出会ってしまった。");
+    await showBanner("……アリスと、出会ってしまった。", 1600);
+    if (token !== gameToken) return;
+  }
   await showBanner(myIdx === firstP ? "あなたは先攻です" : "あなたは後攻です");
   if (token !== gameToken) return;
 
@@ -5475,6 +5485,7 @@ window.addEventListener("resize", () => requestAnimationFrame(drawArrows));
 const story = { active: false, name: "", room: 1, state: "idle", px: 7, py: 8, rabbitDead: false, deckList: null };
 let deckStoryMode = false;   // ウサギ3戦前のデッキ調整画面(ストーリー用エディタ)
 let artFullForce = false;    // 部屋4のアリス: 手持ちに関係なく敵カード(id≧200)をフル絵柄表示
+let secretAlice = false;     // マジックCPU対戦: 百回に一回のアリスとの遭遇(白黒反転のアリスカード使用)
 const ST = { T: 16, W: 15, H: 11, RX: 7, RY: 4, DX: 7 };   // タイル・部屋サイズ・ウサギ/ドア位置
 
 function storyShow(screen) {
@@ -7018,6 +7029,9 @@ document.getElementById("btn-mute").addEventListener("click", () => {
 
 function startCpu() {
   mode = "cpu"; myIdx = 0;
+  // マジックのCPU対戦: 百回に一回、アリスとマッチングする(白黒反転のアリスルールのカードを使う)
+  secretAlice = ruleMode === "original" && !aliceVariant && !story.active && !TEST_AUTO &&
+    Math.floor(Math.random() * 100) === 0;
   ac();   // ユーザー操作のタイミングでAudioContextを起こす
   SCREENS.forEach(sid => document.getElementById(sid).classList.remove("show"));
   transport = new LocalTransport();
