@@ -3054,6 +3054,7 @@ const midBudget = () => MID2_BUDGET * [0.5, 1, 5, 10][Math.max(0, Math.min(3, mi
 let midNodes = 0;
 let midPlan = null;               // {turnNo, mains:[simAction...], attacks:[{cre,tt,tv}]}
 let trainSides = null;            // 訓練用: [side0レベル, side1レベル](null=通常判定)
+let trainW = null;                // 訓練用: [side0重み, side1重み](null=MID2_W を両席で使用)
 let trainCollect = null;          // 訓練用: 特徴量ログの配列(nullで無効)
 
 const midCode = c => c.joker ? 52 + Math.max(0, JT_ORDER.indexOf(c.jt)) : c.suit * 13 + (c.rank - 1);
@@ -3182,8 +3183,9 @@ function midFeat(st, me) {
 }
 function midEvalW(st, me) {
   const f = midFeat(st, me);
+  const W = trainW ? trainW[me] : MID2_W;   // 訓練用: 席ごとに別の重み(通常はnull)
   let v = 0;
-  for (let i = 0; i < MID2_FEATS; i++) v += MID2_W[i] * f[i];
+  for (let i = 0; i < MID2_FEATS; i++) v += W[i] * f[i];
   return v;
 }
 
