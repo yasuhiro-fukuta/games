@@ -3736,7 +3736,7 @@ function midSearchTurn(me) {
     }
   }
   let best = null, bestV = -Infinity;
-  for (const p of plans) {
+  for (const p of plans.slice(0, 10)) {   // フル読みで本評価するプラン数の上限
     let sum = 0;
     for (const w of worlds) {
       midNodes = 0;
@@ -3933,22 +3933,33 @@ function midDecideBlocks(pi) {
       if (pack && pack.x >= 1 && pack.revive.length) flashOpts.push({ t: "acecast", code: 13, x: pack.x, revive: pack.revive });
     }
   }
-  let best = null, bestV = -Infinity, bestFlash = null;
+  // 二段構え: 全割り当てを軽量1手読み(戦闘解決+静的評価)で足切りし、上位だけフル読みで本評価。
+  // 盤面が並ぶと割り当て数が爆発する(最大4000×瞬速3×世界2)ため、全候補フル読みは禁止
+  const screen = [];
   for (const fo of flashOpts) {
     const extra = fo ? [fo.code, ...(fo.revive || [])] : [];
     const assigns = buildAssigns([...blockers, ...extra]);
     for (const asg of assigns) {
-      const full = [...forced, ...asg];
-      let sum = 0;
-      for (const w of worlds) {
-        midNodes = 0;
-        const st = midClone(w);
-        if (fo) midApplyMain(st, pi, fo);
-        sum += midTurnLeaf(st, pi, midDepth, attacks, full, -Infinity, Infinity, true);
-      }
-      const v = sum / worlds.length;
-      if (v > bestV) { bestV = v; best = asg; bestFlash = fo; }
+      const st = midClone(worlds[0]);
+      if (fo) midApplyMain(st, pi, fo);
+      midNodes = 0;
+      const v = midTurnLeaf(st, pi, 1, attacks, [...forced, ...asg], -Infinity, Infinity, false);
+      screen.push({ fo, asg, v });
     }
+  }
+  screen.sort((a, b) => b.v - a.v);
+  let best = null, bestV = -Infinity, bestFlash = null;
+  for (const cand of screen.slice(0, 8)) {
+    const full = [...forced, ...cand.asg];
+    let sum = 0;
+    for (const w of worlds) {
+      midNodes = 0;
+      const st = midClone(w);
+      if (cand.fo) midApplyMain(st, pi, cand.fo);
+      sum += midTurnLeaf(st, pi, midDepth, attacks, full, -Infinity, Infinity, true);
+    }
+    const v = sum / worlds.length;
+    if (v > bestV) { bestV = v; best = cand.asg; bestFlash = cand.fo; }
   }
   if (bestFlash) {   // 瞬速する価値が最良 → まず召喚(ブロック割り当ては次の意思決定で確定)
     const cardId = midCardId(pi, bestFlash.code, "hand");
