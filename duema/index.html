@@ -3169,10 +3169,11 @@ function midClone(st) {
 }
 
 /* ---- 評価関数: 特徴量×重み(重みは自己対戦で学習) ---- */
-const MID2_FEATS = 48;   // 基礎16特徴 × フェーズ3(序盤/中盤/終盤の所属度を掛けた値)
+const MID2_FEATS = 51;   // 基礎16特徴×フェーズ3 + 手札ジョーカー枚数×フェーズ3
 let MID2_W = [0.3884, 0.7868, 1.1748, 0.4382, 0.0233, 0.1146, 0.0718, 0.4587, 0.1105, 0.8457, 0.4181, 0.4382, -0.1114, 0.9662, 0.6592, 0.3457,
                0.3884, 0.7868, 1.1748, 0.4382, 0.0233, 0.1146, 0.0718, 0.4587, 0.1105, 0.8457, 0.4181, 0.4382, -0.1114, 0.9662, 0.6592, 0.3457,
-               0.3884, 0.7868, 1.1748, 0.4382, 0.0233, 0.1146, 0.0718, 0.4587, 0.1105, 0.8457, 0.4181, 0.4382, -0.1114, 0.9662, 0.6592, 0.3457];   // 自己対戦で学習した16重み×3フェーズ(同値初期化=挙動は非フェーズ版と同一。再学習でフェーズ差がつく)
+               0.3884, 0.7868, 1.1748, 0.4382, 0.0233, 0.1146, 0.0718, 0.4587, 0.1105, 0.8457, 0.4181, 0.4382, -0.1114, 0.9662, 0.6592, 0.3457,
+               -0.4239, -0.0558, -0.0047];   // 16重み×3フェーズ(同値)+死にジョーカー係数×3(凍結学習・手番パリティ正規化)
 /* フェーズ所属度(序盤/中盤/終盤、合計1の滑らかな混合)。境界の段差を作らないtapered評価 */
 function midPhase(st) {
   const maxLands = Math.max(st.lands[0].filter(l => l.code < 52).length, st.lands[1].filter(l => l.code < 52).length);
@@ -3185,8 +3186,23 @@ function midPhase(st) {
 function midFeat(st, me) {
   const f = midFeatBase(st, me);
   const ph = midPhase(st);
-  const out = new Array(f.length * 3);
+  const out = new Array(f.length * 3 + 3);
   for (let p = 0; p < 3; p++) for (let i = 0; i < f.length; i++) out[p * f.length + i] = f[i] * ph[p];
+  // 追加特徴49-51: 「今プレイ不能なジョーカー」枚数差×フェーズ(死に札割引を学習させる)。
+  // mox/lotus=土地数で負けていない時、router=手札4スート不揃いの時は腐っている。steelは場があれば可
+  const jk = pi => {
+    // 手番パリティ正規化: 相手ターン中の評価では自分の未セット土地ぶん+1して比較する
+    // (シミュのリーフは常に「相手が置いた直後」なので、素の比較だと腐り判定が毎回裏返る)
+    const myL = st.lands[pi].filter(l => l.code < 52).length + (st.turn !== pi ? 1 : 0);
+    const behind = myL < st.lands[1 - pi].filter(l => l.code < 52).length;
+    const suits = new Set(st.hand[pi].filter(c => c < 52).map(c => midSuit(c))).size;
+    return st.hand[pi].filter(c =>
+      (c === 52 || c === 53) ? !behind :
+      c === 54 ? !st.field[pi].length :
+      c === 55 ? suits < 4 : false).length;
+  };
+  const jd = (jk(me) - jk(1 - me)) / 2;
+  for (let p = 0; p < 3; p++) out[f.length * 3 + p] = jd * ph[p];
   return out;
 }
 function midFeatBase(st, me) {
@@ -3295,6 +3311,14 @@ function midApplyMain(st, pi, a) {
           st.field[pi].push({ code: rc, tapped: false, sick: midSuit(rc) !== 3, pz: false, dmg: 0, indest: false });
         }
       }
+      return;
+    }
+    case "jcycle": {
+      const src = st.lands[pi].find(l => !l.tapped && l.code < 52 && !l.lotus) || st.lands[pi].find(l => !l.tapped);
+      if (src) src.tapped = true;
+      midRemoveHand(st, pi, a.code);
+      st.grave[pi].push(a.code);
+      if (st.deck[pi].length) st.hand[pi].push(st.deck[pi].pop());
       return;
     }
     case "jplay": {
@@ -3446,6 +3470,11 @@ function midGenMain(st, pi, minCode, full) {
         dis.push(g);
       }
       if (dis.length === 4) out.push({ t: "jplay", code: c, discards: dis, ord: c });
+    }
+    // サイクリング(無色1): 使い道のないジョーカーをドローに変える。引いた札で後続の
+    // 手が変わるため、土地と同様に順序制約(minCode)を素通しにして枝刈りさせない
+    if (st.deck[pi].length > 0 && st.lands[pi].some(l => !l.tapped)) {
+      out.push({ t: "jcycle", code: c, ord: minCode });
     }
   }
   return out;
@@ -3738,6 +3767,7 @@ function midMainToAction(pi, a) {
     case "acecast":
       return { t: "acecast", card: midCardId(pi, a.code, "hand"), x: a.x,
                revive: (a.revive || []).map(c => midCardId(pi, c, "grave")).filter(x => x != null) };
+    case "jcycle": return { t: "jcycle", jk: midCardId(pi, a.code, "hand") };
     case "jplay": {
       const act2 = { t: "jplay", jk: midCardId(pi, a.code, "hand") };
       if (a.tgt != null) act2.tgt = midCardId(pi, a.tgt, "field");
@@ -3760,6 +3790,9 @@ function midMainValid(pi, a) {   // 実盤面での妥当性チェック(ズレ�
   }
   if (a.t === "acecast") {
     return act2.card != null && canPay(p, midSuit(a.code), 1 + a.x) ? act2 : null;
+  }
+  if (a.t === "jcycle") {
+    return act2.jk != null && canPayC(p, 1) ? act2 : null;
   }
   if (a.t === "jplay") {
     if (act2.jk == null) return null;
