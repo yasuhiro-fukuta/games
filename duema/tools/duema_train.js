@@ -125,5 +125,24 @@ function fit(paths) {
       process.argv[10] || null);
   } else if (cmd === 'fit') {
     fit(process.argv.slice(3));
+  } else if (cmd === 'convert') {
+    // 棋譜(gameRecord形式)→ fit用サンプルへ変換
+    // usage: convert <records.json> <out.json>   records.json = localStorage "duema-records" の配列
+    //        (またはFirebase /records のエクスポート = {key: rec, ...})
+    const raw = JSON.parse(fs.readFileSync(process.argv[3]));
+    const recs = Array.isArray(raw) ? raw : Object.values(raw);
+    const samples = [];
+    let used = 0;
+    for (const r of recs) {
+      if (!r || !Array.isArray(r.pos) || (r.winner !== 0 && r.winner !== 1)) continue;
+      if (r.alice) continue;                       // アリス混成対局は特徴量の意味が別物なので除外
+      used++;
+      for (const p of r.pos) {
+        if (p.t < 2) continue;
+        samples.push({ f: p.f, y: r.winner === 0 ? 1 : 0 });   // fは席0視点・yは席0勝敗(fit側の対称化が視点を吸収)
+      }
+    }
+    fs.writeFileSync(process.argv[4], JSON.stringify({ lv0: 'human', lv1: 'cpu', samples }));
+    console.log(`converted: ${used}/${recs.length} games -> ${samples.length} samples -> ${process.argv[4]}`);
   }
 })();

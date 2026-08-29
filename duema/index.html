@@ -863,6 +863,7 @@
         <span id="mid-depth-row">読み:
           <button class="mdep" data-d="1">1</button><button class="mdep" data-d="2">2</button><button class="mdep" data-d="3">3</button><button class="mdep" data-d="4">4</button>
         </span>
+        <button id="btn-export-rec" class="cpulv" title="この端末に記録されたCPU対戦の棋譜(学習用データ)をクリップボードへ">棋譜コピー</button>
       </div>
       <button id="btn-host">オンライン対戦: 部屋を作る</button>
       <div class="joinrow">
@@ -1428,7 +1429,23 @@ function revealHand(container, pi) {
   container.appendChild(wrap);
 }
 
+function recordSave(w) {
+  if (!gameRecord || gameRecord.pos.length < 3) { gameRecord = null; return; }
+  const rec = { ...gameRecord, winner: w };
+  gameRecord = null;
+  try {
+    const key = "duema-records";
+    const arr = JSON.parse(localStorage.getItem(key) || "[]");
+    arr.push(rec);
+    while (arr.length > 40) arr.shift();   // 端末には直近40局
+    localStorage.setItem(key, JSON.stringify(arr));
+  } catch (e) {}
+  try {
+    if (fbUser && authAvailable()) firebase.database().ref("records").push(rec);   // ログイン時は共有プールへ
+  } catch (e) {}
+}
 function win(pi, reason) {
+  recordSave(pi);
   winner = pi;
   render();
   const got = grantPacks(pi === myIdx);
@@ -1532,6 +1549,10 @@ async function runGame(seed) {
     : sAlice ? (myIdx === 0 ? [false, true] : [true, false])
     : [false, false];                                         // ストーリーのアリスは通常マジックカードを使う
   artFullForce = story.active && story.room === 4;            // アリスの札はフル絵柄で表示
+  // 棋譜記録: 人間対CPUのマジック対戦を学習データとして残す(台本チュートリアル・訓練ハーネスは除外)
+  gameRecord = (ruleMode === "original" && mode === "cpu" && !trainSides && !TEST_AUTO && !tutActive)
+    ? { v: 2, when: Date.now(), myIdx, cpuLevel, midDepth, alice: aliceSide[0] || aliceSide[1], story: story.active ? story.room : 0, pos: [] }
+    : null;
   for (const p of players) {
     if (ruleMode === "duema") p.shields = p.deck.splice(0, 6);
     else p.shields = [];                       // マジック・遊戯王: シールドなし
@@ -1659,6 +1680,7 @@ async function runOriginalTurns(token, secondP) {
     render();
     if (await checkDeckOut()) return;
     if (trainCollect) trainCollect.push({ turn: turnNo, cur, f: midFeat(midWorldReal(), 0) });   // 訓練: 特徴量記録
+    if (gameRecord) gameRecord.pos.push({ t: turnNo, f: midFeat(midWorldReal(), 0).map(v => +v.toFixed(3)) });   // 棋譜
     await showBanner(cur === myIdx ? "あなたのターン" : "相手のターン", 900);
     if (token !== gameToken) return;
 
@@ -3055,6 +3077,7 @@ let midNodes = 0;
 let midPlan = null;               // {turnNo, mains:[simAction...], attacks:[{cre,tt,tv}]}
 let trainSides = null;            // 訓練用: [side0レベル, side1レベル](null=通常判定)
 let trainW = null;                // 訓練用: [side0重み, side1重み](null=MID2_W を両席で使用)
+let gameRecord = null;            // 棋譜記録(マジックCPU対戦): {pos:[{t,f}], ...} → 終局時に保存
 let trainCollect = null;          // 訓練用: 特徴量ログの配列(nullで無効)
 
 const midCode = c => c.joker ? 52 + Math.max(0, JT_ORDER.indexOf(c.jt)) : c.suit * 13 + (c.rank - 1);
@@ -3146,9 +3169,27 @@ function midClone(st) {
 }
 
 /* ---- 評価関数: 特徴量×重み(重みは自己対戦で学習) ---- */
-const MID2_FEATS = 16;
-let MID2_W = [0.3884, 0.7868, 1.1748, 0.4382, 0.0233, 0.1146, 0.0718, 0.4587, 0.1105, 0.8457, 0.4181, 0.4382, -0.1114, 0.9662, 0.6592, 0.3457];   // 自己対戦で学習(ゼロ初期化→基礎13重み→凍結して山札ヒンジ3重みを追加学習)
+const MID2_FEATS = 48;   // 基礎16特徴 × フェーズ3(序盤/中盤/終盤の所属度を掛けた値)
+let MID2_W = [0.3884, 0.7868, 1.1748, 0.4382, 0.0233, 0.1146, 0.0718, 0.4587, 0.1105, 0.8457, 0.4181, 0.4382, -0.1114, 0.9662, 0.6592, 0.3457,
+               0.3884, 0.7868, 1.1748, 0.4382, 0.0233, 0.1146, 0.0718, 0.4587, 0.1105, 0.8457, 0.4181, 0.4382, -0.1114, 0.9662, 0.6592, 0.3457,
+               0.3884, 0.7868, 1.1748, 0.4382, 0.0233, 0.1146, 0.0718, 0.4587, 0.1105, 0.8457, 0.4181, 0.4382, -0.1114, 0.9662, 0.6592, 0.3457];   // 自己対戦で学習した16重み×3フェーズ(同値初期化=挙動は非フェーズ版と同一。再学習でフェーズ差がつく)
+/* フェーズ所属度(序盤/中盤/終盤、合計1の滑らかな混合)。境界の段差を作らないtapered評価 */
+function midPhase(st) {
+  const maxLands = Math.max(st.lands[0].filter(l => l.code < 52).length, st.lands[1].filter(l => l.code < 52).length);
+  const minDeck = Math.min(st.deck[0].length, st.deck[1].length);
+  let e = Math.max(0, Math.min(1, (7 - maxLands) / 3));        // 土地4以下=1 → 7で0
+  const l = Math.max(0, Math.min(1, (18 - minDeck) / 12));     // 山札18から立ち上がり6で1
+  e = Math.min(e, 1 - l);                                       // 早死にゲームは終盤扱いを優先
+  return [e, 1 - e - l, l];
+}
 function midFeat(st, me) {
+  const f = midFeatBase(st, me);
+  const ph = midPhase(st);
+  const out = new Array(f.length * 3);
+  for (let p = 0; p < 3; p++) for (let i = 0; i < f.length; i++) out[p * f.length + i] = f[i] * ph[p];
+  return out;
+}
+function midFeatBase(st, me) {
   const op = 1 - me;
   const pow = pi => st.field[pi].reduce((s, f) => s + midRank(f.code), 0);
   const cnt = pi => st.field[pi].length;
@@ -3444,11 +3485,14 @@ function midCleanup(st) {
   st.hand[N].push(st.deck[N].pop());
   return false;
 }
+/* 敗北時の「抵抗度」: 同じ死でも盤面を残して死ぬラインを僅かに好む(全手同点→
+   先頭の「何もしない」が選ばれて投了モード化する事故の防止。±10000を跨がない範囲) */
+const midResist = (st, side) => Math.min(300, st.field[side].reduce((s, f) => s + 10 + midRank(f.code), 0));
 function midTurnLeaf(st, me, depth, attacks, blocks, alpha, beta, tail) {
   const st2 = midClone(st);
   const S = st2.turn;
   const loser = midResolveBattle(st2, S, attacks, blocks);
-  if (loser !== false) return loser === me ? -10000 - depth : 10000 + depth;
+  if (loser !== false) return loser === me ? -10000 - depth + midResist(st2, me) : 10000 + depth - midResist(st2, 1 - me);
   if (tail) midGreedyTail(st2, S);
   if (depth <= 1) {   // ここで打ち切り
     // 準詰みジャッジ: 次の手番Nは自ターン開始で全軍が起きる。Sが受けに回せるのは
@@ -3461,8 +3505,15 @@ function midTurnLeaf(st, me, depth, attacks, blocks, alpha, beta, tail) {
       const x = st2.field[N].length - blkS;
       if (x > 0) {
         const asc = st2.field[N].map(f => midRank(f.code)).sort((a, b) => a - b);
-        if (asc.slice(0, x).reduce((s2, r2) => s2 + r2, 0) >= st2.deck[S].length) {
-          return S === me ? -8000 - depth : 8000 + depth;   // 真の終端(±10000)より弱い準終端値
+        const lethal = asc.slice(0, x).reduce((s2, r2) => s2 + r2, 0);
+        if (lethal >= st2.deck[S].length) {
+          // 準敗勢でも「死に方」に格差をつける: ブロッカーが多い・山札が残る・通る攻撃が
+          // 少ないラインほどマシな点にして最大抵抗させる(全手同点→先頭の「何もしない」が
+          // 勝ち残って投了モード化する事故の防止)。真の終端(±10000)よりは常に弱い
+          const resist = Math.max(-390, Math.min(390,
+            blkS * 25 + st2.deck[S].length * 5 - x * 10 - (lethal - st2.deck[S].length) * 5));
+          const mag = 8000 - resist;
+          return S === me ? -mag - depth : mag + depth;
         }
       }
     }
@@ -3471,7 +3522,7 @@ function midTurnLeaf(st, me, depth, attacks, blocks, alpha, beta, tail) {
     return midEvalW(st2, me);
   }
   const loser2 = midCleanup(st2);
-  if (loser2 !== false) return loser2 === me ? -10000 - depth : 10000 + depth;
+  if (loser2 !== false) return loser2 === me ? -10000 - depth + midResist(st2, me) : 10000 + depth - midResist(st2, 1 - me);
   midGreedyTail(st2, st2.turn);   // ルート以外の半ターン: メインは貪欲近似(攻撃/ブロックだけ探索)
   return midSearchAttacks(st2, me, depth - 1, alpha, beta);
 }
@@ -7319,6 +7370,15 @@ try {
   const d = parseInt(localStorage.getItem("duema-middepth"), 10);
   if (d >= 1 && d <= 4) midDepth = d;
 } catch (e) {}
+document.getElementById("btn-export-rec").addEventListener("click", async () => {
+  let arr = [];
+  try { arr = JSON.parse(localStorage.getItem("duema-records") || "[]"); } catch (e) {}
+  if (!arr.length) { alert("棋譜がまだありません(マジックのCPU対戦を遊ぶと記録されます)"); return; }
+  try {
+    await navigator.clipboard.writeText(JSON.stringify(arr));
+    alert(`棋譜 ${arr.length} 局ぶんをクリップボードにコピーしました`);
+  } catch (e) { alert("クリップボードにコピーできませんでした: " + e); }
+});
 document.getElementById("cpu-weak").addEventListener("click", () => {
   cpuLevel = "weak";
   try { localStorage.setItem("duema-cpulevel", "weak"); } catch (e) {}
