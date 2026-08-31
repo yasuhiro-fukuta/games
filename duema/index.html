@@ -5834,13 +5834,14 @@ function drawArrows() {
     if (owner === null) continue;
     const toEl = at.tt === "cre" ? cardOf(at.tv) : sideHead(1 - owner);
     draw(cardOf(at.cre), toEl, owner === myIdx, false);
-    if (at.prov) draw(cardOf(at.cre), cardOf(at.prov), owner === myIdx, true);
+    // 挑戦の強制ブロックは通常ブロックと同じ見た目: 防御側クリーチャー→攻撃側への点線(防御側の色)
+    if (at.prov) draw(cardOf(at.prov), cardOf(at.cre), owner !== myIdx, true);
   }
   // 自分のアタックフェイズの割り当て中(点線)
   for (const at of pendingAttacks) {
     const toEl = at.tt === "cre" ? cardOf(at.tv) : sideHead(1 - myIdx);
     draw(cardOf(at.cre), toEl, true, true);
-    if (at.prov) draw(cardOf(at.cre), cardOf(at.prov), true, true);
+    if (at.prov) draw(cardOf(at.prov), cardOf(at.cre), false, true);   // 挑戦=防御側からの点線
   }
   // 自分のブロック割り当て中(点線)
   for (const bl of pendingBlocks) draw(cardOf(bl.blocker), cardOf(bl.attacker), true, true);
