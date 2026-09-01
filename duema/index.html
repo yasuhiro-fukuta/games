@@ -3169,11 +3169,12 @@ function midClone(st) {
 }
 
 /* ---- 評価関数: 特徴量×重み(重みは自己対戦で学習) ---- */
-const MID2_FEATS = 51;   // 基礎16特徴×フェーズ3 + 手札ジョーカー枚数×フェーズ3
+const MID2_FEATS = 54;   // 基礎16特徴×フェーズ3 + 死にジョーカー枚数×3 + 手札♥枚数×3
 let MID2_W = [0.3884, 0.7868, 1.1748, 0.4382, 0.0233, 0.1146, 0.0718, 0.4587, 0.1105, 0.8457, 0.4181, 0.4382, -0.1114, 0.9662, 0.6592, 0.3457,
                0.3884, 0.7868, 1.1748, 0.4382, 0.0233, 0.1146, 0.0718, 0.4587, 0.1105, 0.8457, 0.4181, 0.4382, -0.1114, 0.9662, 0.6592, 0.3457,
                0.3884, 0.7868, 1.1748, 0.4382, 0.0233, 0.1146, 0.0718, 0.4587, 0.1105, 0.8457, 0.4181, 0.4382, -0.1114, 0.9662, 0.6592, 0.3457,
-               -0.4239, -0.0558, -0.0047];   // 16重み×3フェーズ(同値)+死にジョーカー係数×3(凍結学習・手番パリティ正規化)
+               -0.4239, -0.0558, -0.0047,
+               -0.0394, 0.4845, 0.5639];   // +死にジョーカー係数×3+手札♥係数×3(凍結学習: 中盤以降の♥は瞬速待ち伏せ価値+0.24/枚)
 /* フェーズ所属度(序盤/中盤/終盤、合計1の滑らかな混合)。境界の段差を作らないtapered評価 */
 function midPhase(st) {
   const maxLands = Math.max(st.lands[0].filter(l => l.code < 52).length, st.lands[1].filter(l => l.code < 52).length);
@@ -3203,6 +3204,11 @@ function midFeat(st, me) {
   };
   const jd = (jk(me) - jk(1 - me)) / 2;
   for (let p = 0; p < 3; p++) out[f.length * 3 + p] = jd * ph[p];
+  // 追加特徴52-54: 手札の♥(A以外)枚数差×フェーズ。瞬速の待ち伏せ(奇襲)価値は
+  // サンプル世界内が完全情報のシミュには原理的に見えないため、データから学習させて外付けする
+  const hh = pi => st.hand[pi].filter(c => c < 52 && midSuit(c) === 1 && midRank(c) !== 1).length;
+  const hd = (hh(me) - hh(1 - me)) / 2;
+  for (let p = 0; p < 3; p++) out[f.length * 3 + 3 + p] = hd * ph[p];
   return out;
 }
 function midFeatBase(st, me) {
@@ -3573,6 +3579,20 @@ function midSearchBlocks(st, me, depth, attacks, alpha, beta, tail) {
   let best = midTurnLeaf(st, me, depth, attacks, greedy, alpha, beta, tail);
   if (defMax) alpha = Math.max(alpha, best); else beta = Math.min(beta, best);
   if (alpha >= beta || midNodes > midBudget()) return best;
+  // ♥瞬速: 防御側が払える最大の♥を出してからブロックし直す分岐(実対局と同じ選択肢をシミュにも)。
+  // これが無いと「♥を握って待ち伏せる」利益が探索に見えず、自分のターンに出してしまう
+  {
+    const fl = st.hand[D].filter(c => c < 52 && midSuit(c) === 1 && midRank(c) !== 1 &&
+      midCanPay(st, D, 1, midRank(c) + 1)).sort((a, b) => midRank(b) - midRank(a))[0];
+    if (fl !== undefined) {
+      const st2 = midClone(st);
+      midApplyMain(st2, D, { t: "summon", code: fl });
+      const v3 = midSearchBlocks(st2, me, depth, attacks, alpha, beta, tail);
+      if (defMax) { best = Math.max(best, v3); alpha = Math.max(alpha, best); }
+      else { best = Math.min(best, v3); beta = Math.min(beta, best); }
+      if (alpha >= beta || midNodes > midBudget()) return best;
+    }
+  }
   const assign = [];
   const rec = (i, a2, b2) => {
     if (midNodes > midBudget() || i === blockers.length) {
