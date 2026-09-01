@@ -3571,10 +3571,10 @@ function midTurnLeaf(st, me, depth, attacks, blocks, alpha, beta, tail) {
   }
   const loser2 = midCleanup(st2);
   if (loser2 !== false) return loser2 === me ? -10000 - depth + midResist(st2, me) : 10000 + depth - midResist(st2, 1 - me);
-  midGreedyTail(st2, st2.turn);   // ルート以外の半ターン: メインは貪欲近似(攻撃/ブロックだけ探索)
-  return midSearchAttacks(st2, me, depth - 1, alpha, beta);
+  midGreedyTail(st2, st2.turn);   // ルート以外の半ターン: メインは貪欲近似・戦闘も絞った候補のみ
+  return midSearchAttacks(st2, me, depth - 1, alpha, beta, true);
 }
-function midSearchBlocks(st, me, depth, attacks, alpha, beta, tail) {
+function midSearchBlocks(st, me, depth, attacks, alpha, beta, tail, narrow) {
   const S = st.turn, D = 1 - S;
   const defMax = D === me;
   const live = attacks.filter(at => at.tt !== "cre" || st.field[D].some(f => f.code === at.tv));
@@ -3609,11 +3609,15 @@ function midSearchBlocks(st, me, depth, attacks, alpha, beta, tail) {
     if (fl !== undefined) {
       const st2 = midClone(st);
       midApplyMain(st2, D, { t: "summon", code: fl });
-      const v3 = midSearchBlocks(st2, me, depth, attacks, alpha, beta, tail);
+      const v3 = midSearchBlocks(st2, me, depth, attacks, alpha, beta, tail, narrow);
       if (defMax) { best = Math.max(best, v3); alpha = Math.max(alpha, best); }
       else { best = Math.min(best, v3); beta = Math.min(beta, best); }
       if (alpha >= beta || midNodes > midBudget()) return best;
     }
+  }
+  if (narrow) {   // 内側の半ターン: {強制のみ, 貪欲防御, 瞬速}で打ち切り(全割り当てDFSはルート近傍のみ)
+    const v0 = midTurnLeaf(st, me, depth, attacks, forced, alpha, beta, tail);
+    return defMax ? Math.max(best, v0) : Math.min(best, v0);
   }
   const assign = [];
   const rec = (i, a2, b2) => {
@@ -3635,16 +3639,36 @@ function midSearchBlocks(st, me, depth, attacks, alpha, beta, tail) {
   const v2 = rec(0, alpha, beta);
   return defMax ? Math.max(best, v2) : Math.min(best, v2);
 }
-function midSearchAttacks(st, me, depth, alpha, beta) {
+function midSearchAttacks(st, me, depth, alpha, beta, narrow) {
   const S = st.turn;
   const maxing = S === me;
   const ready = st.field[S].filter(f => !f.tapped && !f.sick).map(f => f.code);
   const targets = st.field[1 - S].filter(f => f.tapped).map(f => f.code);
-  if (!ready.length) return midSearchBlocks(st, me, depth, [], alpha, beta, true);
+  if (!ready.length) return midSearchBlocks(st, me, depth, [], alpha, beta, true, narrow);
   // 貪欲候補(全員で本体攻撃)を先に評価 → 予算切れでも「攻めてくる相手」が下限に入る
-  let best = midSearchBlocks(st, me, depth, ready.map(c => ({ cre: c, tt: "player" })), alpha, beta, true);
+  let best = midSearchBlocks(st, me, depth, ready.map(c => ({ cre: c, tt: "player" })), alpha, beta, true, narrow);
   if (maxing) alpha = Math.max(alpha, best); else beta = Math.min(beta, best);
   if (alpha >= beta || midNodes > midBudget()) return best;
+  if (narrow) {   // 内側の半ターン: {全軍本体, 攻撃なし, 貪欲パニッシュ}の3択に絞る(深い読みを予算内に収める)
+    const v0 = midSearchBlocks(st, me, depth, [], alpha, beta, true, narrow);
+    if (maxing) { best = Math.max(best, v0); alpha = Math.max(alpha, best); }
+    else { best = Math.min(best, v0); beta = Math.min(beta, best); }
+    if (alpha >= beta || midNodes > midBudget()) return best;
+    if (targets.length) {   // タップ中の敵を最小の駒で仕留め、残りは本体へ
+      const freeA = ready.slice().sort((a, b) => midRank(a) - midRank(b));
+      const punish = [];
+      for (const t of [...targets].sort((a, b) => midRank(b) - midRank(a))) {
+        const i = freeA.findIndex(c => midRank(c) >= midRank(t));
+        if (i >= 0) { punish.push({ cre: freeA[i], tt: "cre", tv: t }); freeA.splice(i, 1); }
+      }
+      if (punish.length) {
+        for (const c of freeA) punish.push({ cre: c, tt: "player" });
+        const v1 = midSearchBlocks(st, me, depth, punish, alpha, beta, true, narrow);
+        best = maxing ? Math.max(best, v1) : Math.min(best, v1);
+      }
+    }
+    return best;
+  }
   const attacks = [];
   const rec = (i, a2, b2) => {
     if (midNodes > midBudget() || i === ready.length) {
