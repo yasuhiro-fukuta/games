@@ -3069,7 +3069,7 @@ async function breakShieldAt(defPi, slot) {
 let cpuLevel = "weak";
 let midDepth = 2;                 // 読み深さ(半ターン数 1..4)
 let MID2_BUDGET = 30000;          // 深さ2基準のノード予算(実効予算は読み深さでスケール)
-let MID2_SAMPLES = 2;             // 決定化サンプル数
+let MID2_SAMPLES = 1;             // 決定化: 読み開始前に相手手札と両山札の並びをランダムで決めつけて表向きにし、そこから完全情報として読む
 // 深い読みは木が爆発して予算が枯れ、評価がノイズ化して逆に弱くなる(実測 読み4×3万=0勝14敗)。
 // 読み深さに応じて実効予算を増やして探索品質を保つ(読み4は思考が遅くなる)
 const midBudget = () => MID2_BUDGET * [0.5, 1, 5, 10][Math.max(0, Math.min(3, midDepth - 1))];
@@ -3082,7 +3082,8 @@ let trainCollect = null;          // 訓練用: 特徴量ログの配列(nullで
 
 const midCode = c => c.joker ? 52 + Math.max(0, JT_ORDER.indexOf(c.jt)) : c.suit * 13 + (c.rank - 1);
 const midSuit = code => code >= 52 ? -1 : Math.floor(code / 13);
-const midRank = code => code >= 52 ? 0 : (code % 13) + 1;
+const BLANK = 99;                 // 裏向きカードの抽象化「X+1マナ: X/X スートなし・1ターン1枚」(手札・山札では99、盤上では100+X)
+const midRank = code => code >= 100 ? code - 100 : code >= 52 ? 0 : (code % 13) + 1;
 
 function midActive(pi) {
   if (ruleMode !== "original" || aliceVariant || aliceSide[0] || aliceSide[1]) return false;
@@ -3118,6 +3119,7 @@ function midBaseWorld() {
   return {
     turn: turnP,
     landSetUsed: 0,
+    blankUsed: 0,
     hand: [null, null],
     deck: [null, null],
     lands: [players[0].lands.map(midLandView), players[1].lands.map(midLandView)],
@@ -3125,26 +3127,15 @@ function midBaseWorld() {
     grave: [players[0].grave.map(midCode), players[1].grave.map(midCode)],
   };
 }
-/* 決定化: me の実手札は本物、相手手札+両山札順は未見カードからサンプル */
+/* 決定化: me の実手札は本物、裏向き(相手手札+両山札)は全てブランクとして表向き扱い(完全決定論・乱数なし) */
 function midWorld(me) {
   const op = 1 - me;
-  const seen = pi => [
-    ...players[pi].lands.map(l => midCode(l.card)),
-    ...players[pi].field.map(f => midCode(f.card)),
-    ...players[pi].grave.map(midCode),
-  ];
-  const minus = (pool, used) => {
-    const p2 = pool.slice();
-    for (const c of used) { const i = p2.indexOf(c); if (i >= 0) p2.splice(i, 1); }
-    return p2;
-  };
   const st = midBaseWorld();
   st.landSetUsed = turnP === me ? landSetUsed : 1;   // 相手ターン中はセット済みとみなす
   st.hand[me] = players[me].hand.map(midCode);
-  st.deck[me] = midShuffle(minus(midDeckListCodes(me), [...seen(me), ...st.hand[me]]));
-  const opUnseen = midShuffle(minus(midDeckListCodes(op), seen(op)));
-  st.hand[op] = opUnseen.slice(0, players[op].hand.length);
-  st.deck[op] = opUnseen.slice(players[op].hand.length);
+  st.deck[me] = new Array(players[me].deck.length).fill(BLANK);
+  st.hand[op] = new Array(players[op].hand.length).fill(BLANK);
+  st.deck[op] = new Array(players[op].deck.length).fill(BLANK);
   return st;
 }
 /* 全公開の世界(訓練の特徴量記録用) */
@@ -3159,7 +3150,7 @@ function midWorldReal() {
 }
 function midClone(st) {
   return {
-    turn: st.turn, landSetUsed: st.landSetUsed,
+    turn: st.turn, landSetUsed: st.landSetUsed, blankUsed: st.blankUsed || 0,
     hand: [st.hand[0].slice(), st.hand[1].slice()],
     deck: [st.deck[0].slice(), st.deck[1].slice()],
     lands: [st.lands[0].map(l => ({ ...l })), st.lands[1].map(l => ({ ...l }))],
@@ -3295,6 +3286,18 @@ function midApplyMain(st, pi, a) {
       st.lands[pi].push({ code: a.code, tapped: false, lotus: false, mox: false, steel: false, router: false });
       st.landSetUsed++;
       return;
+    case "bsummon": {   // ブランク召喚: X+1マナ(色指定なし)でX/X
+      let need = a.x + 1;
+      for (const src of midSrcs(st, pi)) {
+        if (need <= 0) break;
+        src.l.tapped = true;
+        need -= src.val;
+      }
+      midRemoveHand(st, pi, BLANK);
+      st.field[pi].push({ code: 100 + a.x, tapped: false, sick: true, pz: false, dmg: 0, indest: false });
+      st.blankUsed = 1;
+      return;
+    }
     case "summon": {
       for (const sc of (a.sacs || [])) {
         const i = st.field[pi].findIndex(f => f.code === sc);
@@ -3436,6 +3439,12 @@ function midGenMain(st, pi, minCode, full) {
       out.push({ t: "land", code: cs[cs.length - 1], ord: minCode });
       if (cs.length > 1) out.push({ t: "land", code: cs[0], ord: minCode });
     }
+    if (st.hand[pi].includes(BLANK)) out.push({ t: "land", code: BLANK, ord: minCode });   // ブランクは4色土地
+  }
+  // ブランク召喚: 払える最大X(X+1マナ)で1体のみ。1ターン1枚制限により小出し・複数展開の枝は定義から存在しない
+  if (!st.blankUsed && st.hand[pi].includes(BLANK)) {
+    const cap2 = midSrcs(st, pi).reduce((s2, x) => s2 + x.val, 0);
+    if (cap2 >= 2) out.push({ t: "bsummon", x: cap2 - 1, ord: minCode });
   }
   // 召喚: full=全スート / アタックフェイズ前は♣(速攻)のみ(他は貪欲仕上げに任せる)
   for (const c of [...new Set(st.hand[pi].filter(c2 => c2 < 52))].sort((a, b) => a - b)) {
@@ -3462,7 +3471,7 @@ function midGenMain(st, pi, minCode, full) {
     }
   }
   // ジョーカー
-  for (const c of st.hand[pi].filter(c2 => c2 >= 52)) {
+  for (const c of st.hand[pi].filter(c2 => c2 >= 52 && c2 <= 55)) {
     if (c < minCode) continue;
     const behind = midRealLands(st, pi) < midRealLands(st, 1 - pi);
     if ((c === 52 || c === 53) && behind) out.push({ t: "jplay", code: c, ord: c });
@@ -3492,12 +3501,17 @@ function midGreedyTail(st, pi) {
   if (st.landSetUsed < 1) {
     const c = st.hand[pi].filter(c2 => c2 < 52).sort((a, b) => a - b)[0];
     if (c !== undefined) midApplyMain(st, pi, { t: "land", code: c });
+    else if (st.hand[pi].includes(BLANK)) midApplyMain(st, pi, { t: "land", code: BLANK });
   }
   for (;;) {
     const cand = st.hand[pi].filter(c => c < 52 && midRank(c) !== 1 && midCanPay(st, pi, midSuit(c), midRank(c) + 1))
       .sort((a, b) => midRank(b) - midRank(a))[0];
     if (cand === undefined) break;
     midApplyMain(st, pi, { t: "summon", code: cand });
+  }
+  if (!st.blankUsed && st.hand[pi].includes(BLANK)) {   // ブランクは最大Xで1体(1ターン1枚)
+    const cap2 = midSrcs(st, pi).reduce((s2, x) => s2 + x.val, 0);
+    if (cap2 >= 2) midApplyMain(st, pi, { t: "bsummon", x: cap2 - 1 });
   }
   return st;
 }
@@ -3515,6 +3529,7 @@ function midCleanup(st) {
   const N = 1 - S;
   st.turn = N;
   st.landSetUsed = 0;
+  st.blankUsed = 0;
   st.lands[N].forEach(l => { l.tapped = false; });
   st.field[N].forEach(f => { f.tapped = false; f.sick = false; f.pz = false; });
   if (!st.deck[N].length) return N;   // 引けず敗北
@@ -3804,7 +3819,8 @@ function midCardId(pi, code, zone) {
 }
 function midMainToAction(pi, a) {
   switch (a.t) {
-    case "land": return { t: "land", card: midCardId(pi, a.code, "hand") };
+    case "bsummon": return null;   // ブランクはシミュ内のみ(ルートの実手札には存在しない)
+    case "land": return a.code === BLANK ? null : { t: "land", card: midCardId(pi, a.code, "hand") };
     case "summon": {
       const act2 = { t: "summon", card: midCardId(pi, a.code, "hand") };
       if (a.sacs) act2.sacs = a.sacs.map(c => midCardId(pi, c, "field")).filter(x => x != null);
