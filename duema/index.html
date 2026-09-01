@@ -3118,6 +3118,7 @@ const midCreView = f => ({ code: midCode(f.card), tapped: !!f.tapped, sick: !!f.
 function midBaseWorld() {
   return {
     turn: turnP,
+    tn: turnNo,
     landSetUsed: 0,
     blankUsed: 0,
     hand: [null, null],
@@ -3150,7 +3151,7 @@ function midWorldReal() {
 }
 function midClone(st) {
   return {
-    turn: st.turn, landSetUsed: st.landSetUsed, blankUsed: st.blankUsed || 0,
+    turn: st.turn, tn: st.tn, landSetUsed: st.landSetUsed, blankUsed: st.blankUsed || 0,
     hand: [st.hand[0].slice(), st.hand[1].slice()],
     deck: [st.deck[0].slice(), st.deck[1].slice()],
     lands: [st.lands[0].map(l => ({ ...l })), st.lands[1].map(l => ({ ...l }))],
@@ -3433,13 +3434,8 @@ function midGenMain(st, pi, minCode, full) {
   // 土地はスートごとに最小/最大の2候補。順序制約(minCode)の対象外にする —
   // 「土地を置いてから、それより小さいコードのカードを召喚する」筋を枝刈りしないため
   if (st.landSetUsed < 1) {
-    for (let s2 = 0; s2 < 4; s2++) {
-      const cs = st.hand[pi].filter(c2 => c2 < 52 && midSuit(c2) === s2).sort((a, b) => a - b);
-      if (!cs.length) continue;
-      out.push({ t: "land", code: cs[cs.length - 1], ord: minCode });
-      if (cs.length > 1) out.push({ t: "land", code: cs[0], ord: minCode });
-    }
-    if (st.hand[pi].includes(BLANK)) out.push({ t: "land", code: BLANK, ord: minCode });   // ブランクは4色土地
+    const lp = midLandPick(st, pi);   // 土地選択はポリシー1択(人間的なコツ)
+    if (lp != null) out.push({ t: "land", code: lp, ord: minCode });
   }
   // ブランク召喚: 払える最大X(X+1マナ)で1体のみ。1ターン1枚制限により小出し・複数展開の枝は定義から存在しない
   if (!st.blankUsed && st.hand[pi].includes(BLANK)) {
@@ -3450,6 +3446,7 @@ function midGenMain(st, pi, minCode, full) {
   for (const c of [...new Set(st.hand[pi].filter(c2 => c2 < 52))].sort((a, b) => a - b)) {
     if (c < minCode) continue;
     const suit = midSuit(c), rank = midRank(c);
+    if (suit === 1) continue;   // ♥は自分のターンに出さない(枝刈り。瞬速で相手のブロックフェイズに出す)
     if (!full && suit !== 3) continue;
     if (rank === 1) {   // A(Xは1以上)
       const pack = midAcePack(st, pi, c);
@@ -3499,12 +3496,11 @@ function midGenMain(st, pi, minCode, full) {
 /* ---- ターン後半の貪欲仕上げ(第2メインの近似) ---- */
 function midGreedyTail(st, pi) {
   if (st.landSetUsed < 1) {
-    const c = st.hand[pi].filter(c2 => c2 < 52).sort((a, b) => a - b)[0];
-    if (c !== undefined) midApplyMain(st, pi, { t: "land", code: c });
-    else if (st.hand[pi].includes(BLANK)) midApplyMain(st, pi, { t: "land", code: BLANK });
+    const lp = midLandPick(st, pi);
+    if (lp != null) midApplyMain(st, pi, { t: "land", code: lp });
   }
   for (;;) {
-    const cand = st.hand[pi].filter(c => c < 52 && midRank(c) !== 1 && midCanPay(st, pi, midSuit(c), midRank(c) + 1))
+    const cand = st.hand[pi].filter(c => c < 52 && midSuit(c) !== 1 && midRank(c) !== 1 && midCanPay(st, pi, midSuit(c), midRank(c) + 1))
       .sort((a, b) => midRank(b) - midRank(a))[0];
     if (cand === undefined) break;
     midApplyMain(st, pi, { t: "summon", code: cand });
@@ -3528,6 +3524,7 @@ function midCleanup(st) {
   // 次の半ターンへ: 相手のアンタップ&ドロー
   const N = 1 - S;
   st.turn = N;
+  st.tn = (st.tn || 0) + 0.5;
   st.landSetUsed = 0;
   st.blankUsed = 0;
   st.lands[N].forEach(l => { l.tapped = false; });
@@ -3709,11 +3706,45 @@ function midPlanValue(world, me, mains, attacks) {
   return midSearchBlocks(st, me, midDepth, live, -Infinity, Infinity, true);
 }
 
+/* 土地セットポリシー(人間的なコツをルール実装):
+   序盤(〜T4): 毎ターン置く。第1優先=無いスートを揃える、第2優先=10,9,8,K,Q,7,J,Aの順
+   中盤(T5〜7): 毎ターン置く。スート不問で10,9,8,K,Q,2,3の順
+   終盤(T8〜): 手札3枚以上かつ召喚できるクリーチャーが無い時のみ。10,9,K,Q,2,3の順 */
+function midLandPick(st, pi) {
+  const hand = st.hand[pi].filter(c => c < 52);
+  const hasBlank = st.hand[pi].includes(BLANK);
+  const tn = Math.floor(st.tn || turnNo || 1);
+  const prio = tn <= 4 ? [10, 9, 8, 13, 12, 7, 11, 1] : tn <= 7 ? [10, 9, 8, 13, 12, 2, 3] : [10, 9, 13, 12, 2, 3];
+  if (tn >= 8) {
+    if (st.hand[pi].length < 3) return null;
+    const summonable = hand.some(c => {
+      const r = midRank(c);
+      return r === 1 ? midCanPay(st, pi, midSuit(c), 2) : midCanPay(st, pi, midSuit(c), r + 1);
+    }) || (!st.blankUsed && hasBlank && midSrcs(st, pi).reduce((s2, x) => s2 + x.val, 0) >= 2);
+    if (summonable) return null;
+  }
+  if (!hand.length) return hasBlank ? BLANK : null;
+  const key = c => { const i = prio.indexOf(midRank(c)); return i < 0 ? prio.length : i; };
+  if (tn <= 4) {
+    const have = new Set(st.lands[pi].filter(l => l.code < 52).map(l => midSuit(l.code)));
+    const missing = hand.filter(c => !have.has(midSuit(c)));
+    if (missing.length) return [...missing].sort((a, b) => key(a) - key(b))[0];
+  }
+  return [...hand].sort((a, b) => key(a) - key(b))[0];
+}
+
 /* 攻撃セットの全列挙(上限付き)。ブロックと同じ「系統的列挙+公平評価」で攻撃を決める */
 function midEnumAttackSets(st, me, cap) {
   const ready = st.field[me].filter(f => !f.tapped && !f.sick).map(f => f.code);
   const targets = st.field[1 - me].filter(f => f.tapped).map(f => f.code);
-  const provTgts = st.field[1 - me].filter(f => !f.tapped).map(f => f.code);
+  const oppUnt = st.field[1 - me].filter(f => !f.tapped).map(f => f.code);
+  const untY = oppUnt.reduce((s2, c) => s2 + midRank(c), 0);
+  const readyPow = ready.reduce((s2, c) => s2 + midRank(c), 0);
+  const lethalish = readyPow >= st.deck[1 - me].length;   // 全軍が通ればリーサル圏 → 格上挑戦(道空け)も読む
+  const provFor = X => {
+    const base = X > untY ? oppUnt.filter(c => midRank(c) < X) : oppUnt.filter(c => midRank(c) === X);
+    return lethalish ? [...new Set([...base, ...oppUnt.filter(c => midRank(c) > X)])] : base;
+  };
   const sets = [];
   const cur = [];
   const rec = i => {
@@ -3723,8 +3754,8 @@ function midEnumAttackSets(st, me, cap) {
     cur.push({ cre: ready[i], tt: "player" });
     rec(i + 1);
     cur.pop();
-    if (midSuit(ready[i]) === 0) {   // ♠挑戦: アンタップの敵を巻き込む本体攻撃(公平評価に載せる)
-      for (const pv of provTgts) {
+    if (midSuit(ready[i]) === 0) {   // ♠挑戦: アンタップの敵を巻き込む本体攻撃(対象は人間的なコツで枝刈り)
+      for (const pv of provFor(midRank(ready[i]))) {
         cur.push({ cre: ready[i], tt: "player", prov: pv });
         rec(i + 1);
         cur.pop();
@@ -3868,6 +3899,13 @@ function midMainValid(pi, a) {   // 実盤面での妥当性チェック(ズレ�
 
 /* 中CPU: アタックフェイズ(計画を立てて逐次実行) */
 function midDecideAttacks(pi) {
+  if (landSetUsed < 1) {   // 土地はポリシーで即決(序盤・中盤は毎ターン、終盤は条件付き)
+    const lp = midLandPick(midWorld(pi), pi);
+    if (lp != null && lp !== BLANK) {
+      const card = midCardId(pi, lp, "hand");
+      if (card != null) return { k: "oattacks", t: "land", card };
+    }
+  }
   if (!midPlan || midPlan.turnNo !== turnNo) {
     midPlan = { turnNo, ...midSearchTurn(pi) };
   }
@@ -3920,6 +3958,10 @@ function midDecideMain2(pi) {
   for (const a of (best ? best.line : [])) {
     const act2 = midMainValid(pi, a);
     if (act2) return { k: "omain", ...act2 };
+  }
+  {   // 他にやることがなく、マナが立っているならジョーカーをサイクリング(人間的なコツ)
+    const jk = players[pi].hand.find(c => c.joker);
+    if (jk && canPayC(players[pi], 1) && players[pi].deck.length > 4) return { k: "omain", t: "jcycle", jk: jk.id };
   }
   return { k: "omain", t: "done" };
 }
@@ -4039,6 +4081,9 @@ function aiDecide(pi, kind, ctx) {
     if (kind === "oattacks") return midDecideAttacks(pi);
     if (kind === "omain") return midDecideMain2(pi);
     if (kind === "oblocks") return midDecideBlocks(pi);
+    if (kind === "mull") {   // 4色土地5つが場にあっても何も召喚できない手札なら引き直す
+      return { k: "mull", v: players[pi].hand.every(c => c.joker || c.rank >= 5) };
+    }
   }
   if (kind === "mull") return { k: "mull", v: wantsMulligan(players[pi].hand) };
   if (kind === "trigger") return { k: "trigger", v: "summon" };
