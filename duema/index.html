@@ -3364,7 +3364,8 @@ function midResolveBattle(st, atkPi, attacks, blocks) {
       .filter(f => f && !f.tapped);
     if (bls.length) {
       bls.forEach(f => { f.tapped = true; });
-      const sorted = [...bls].sort((a, b) => midRank(b.code) - midRank(a.code));
+      const pv = at.prov;   // 挑戦対象へ最優先、残りは数字の大きい順
+      const sorted = [...bls].sort((a, b) => ((b.code === pv) - (a.code === pv)) || (midRank(b.code) - midRank(a.code)));
       let pool = midPow(atk);
       sorted.forEach((f, i) => {
         const lethal = Math.max(0, midRank(f.code) - f.dmg);
@@ -3565,10 +3566,19 @@ function midSearchBlocks(st, me, depth, attacks, alpha, beta, tail) {
   const S = st.turn, D = 1 - S;
   const defMax = D === me;
   const live = attacks.filter(at => at.tt !== "cre" || st.field[D].some(f => f.code === at.tv));
-  const blockers = st.field[D].filter(f => !f.tapped).map(f => f.code);
-  if (!live.length || !blockers.length) return midTurnLeaf(st, me, depth, attacks, [], alpha, beta, tail);
+  // 挑戦(prov): 対象は強制的にそのブロックへ参加。残りのブロッカーだけ自由に割り当てる
+  const forced = [];
+  const usedF = new Set();
+  for (const at of live) {
+    if (at.prov != null && !usedF.has(at.prov) && st.field[D].some(f => f.code === at.prov && !f.tapped)) {
+      forced.push({ attacker: at.cre, blocker: at.prov });
+      usedF.add(at.prov);
+    }
+  }
+  const blockers = st.field[D].filter(f => !f.tapped && !usedF.has(f.code)).map(f => f.code);
+  if (!live.length || !blockers.length) return midTurnLeaf(st, me, depth, attacks, forced, alpha, beta, tail);
   // 貪欲防御(各攻撃に「討ち取れる最小ブロッカー」を割り当て)を先に評価 → 予算切れでも相手は最低限抵抗する
-  const greedy = [];
+  const greedy = [...forced];
   {
     const free = blockers.slice();
     for (const at of [...live].sort((a, b) => midRank(b.cre) - midRank(a.cre))) {
@@ -3596,7 +3606,7 @@ function midSearchBlocks(st, me, depth, attacks, alpha, beta, tail) {
   const assign = [];
   const rec = (i, a2, b2) => {
     if (midNodes > midBudget() || i === blockers.length) {
-      return midTurnLeaf(st, me, depth, attacks, assign.slice(), a2, b2, tail);
+      return midTurnLeaf(st, me, depth, attacks, [...forced, ...assign], a2, b2, tail);
     }
     let bv = defMax ? -Infinity : Infinity;
     const opts = [null, ...live];
@@ -3688,6 +3698,7 @@ function midPlanValue(world, me, mains, attacks) {
 function midEnumAttackSets(st, me, cap) {
   const ready = st.field[me].filter(f => !f.tapped && !f.sick).map(f => f.code);
   const targets = st.field[1 - me].filter(f => f.tapped).map(f => f.code);
+  const provTgts = st.field[1 - me].filter(f => !f.tapped).map(f => f.code);
   const sets = [];
   const cur = [];
   const rec = i => {
@@ -3697,6 +3708,13 @@ function midEnumAttackSets(st, me, cap) {
     cur.push({ cre: ready[i], tt: "player" });
     rec(i + 1);
     cur.pop();
+    if (midSuit(ready[i]) === 0) {   // ♠挑戦: アンタップの敵を巻き込む本体攻撃(公平評価に載せる)
+      for (const pv of provTgts) {
+        cur.push({ cre: ready[i], tt: "player", prov: pv });
+        rec(i + 1);
+        cur.pop();
+      }
+    }
     for (const t of targets) {
       cur.push({ cre: ready[i], tt: "cre", tv: t });
       rec(i + 1);
@@ -3709,15 +3727,23 @@ function midEnumAttackSets(st, me, cap) {
 /* 軽量スクリーニング: 相手の応手を「貪欲防御」と「全スルー」の2通りだけ見て悪い方を採る1手読み */
 function midScreenAttacks(st, me, attacks) {
   const D = 1 - me;
-  const blockers = st.field[D].filter(f => !f.tapped).map(f => f.code);
-  const greedy = [];
+  const forced = [];
+  const usedF = new Set();
+  for (const at of attacks) {
+    if (at.prov != null && !usedF.has(at.prov) && st.field[D].some(f => f.code === at.prov && !f.tapped)) {
+      forced.push({ attacker: at.cre, blocker: at.prov });
+      usedF.add(at.prov);
+    }
+  }
+  const blockers = st.field[D].filter(f => !f.tapped && !usedF.has(f.code)).map(f => f.code);
+  const greedy = [...forced];
   const free = blockers.slice();
   for (const at of [...attacks].sort((a, b) => midRank(b.cre) - midRank(a.cre))) {
     const cand = free.filter(bl => midRank(bl) >= midRank(at.cre)).sort((a, b) => midRank(a) - midRank(b))[0];
     if (cand !== undefined) { greedy.push({ attacker: at.cre, blocker: cand }); free.splice(free.indexOf(cand), 1); }
   }
   const v1 = midTurnLeaf(st, me, 1, attacks, greedy, -Infinity, Infinity, false);
-  const v2 = midTurnLeaf(st, me, 1, attacks, [], -Infinity, Infinity, false);
+  const v2 = midTurnLeaf(st, me, 1, attacks, forced, -Infinity, Infinity, false);
   return Math.min(v1, v2);
 }
 
@@ -3834,7 +3860,6 @@ function midDecideAttacks(pi) {
     const act2 = midMainValid(pi, a);
     if (act2) return { k: "oattacks", ...act2 };
   }
-  const provUsed = new Set();
   const list = midPlan.attacks.map(at => {
     const cre = midCardId(pi, at.cre, "field");
     if (cre == null) return null;
@@ -3843,14 +3868,9 @@ function midDecideAttacks(pi) {
       return tv == null ? null : { cre, tt: "cre", tv };
     }
     const a2 = { cre, tt: "player" };
-    const f = fieldById(pi, cre);
-    if (f && f.card.suit === 0) {   // ♠挑戦: 一方的に討てるアンタップの敵を巻き込む(弱CPUと同じ運用)
-      const pv = players[1 - pi].field.find(t => {
-        if (t.tapped || provUsed.has(t.card.id)) return false;
-        const n = battleNumbers(f, t);
-        return n.bDies && !n.aDies;
-      });
-      if (pv) { a2.prov = pv.card.id; provUsed.add(pv.card.id); }
+    if (at.prov != null) {   // 挑戦はプランで評価済みのものだけ実行(実行時の後付けはしない)
+      const pv = midCardId(1 - pi, at.prov, "field");
+      if (pv != null) a2.prov = pv;
     }
     return a2;
   }).filter(Boolean);
