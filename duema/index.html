@@ -3531,6 +3531,7 @@ function midCleanup(st) {
   st.field[N].forEach(f => { f.tapped = false; f.sick = false; f.pz = false; });
   if (!st.deck[N].length) return N;   // 引けず敗北
   st.hand[N].push(st.deck[N].pop());
+  if (!st.deck[N].length) return N;   // 最後の1枚を引いた瞬間に敗北(山札0=即死の実ルール)
   return false;
 }
 /* 敗北時の「抵抗度」: 同じ死でも盤面を残して死ぬラインを僅かに好む(全手同点→
@@ -3547,6 +3548,10 @@ function midTurnLeaf(st, me, depth, attacks, blocks, alpha, beta, tail) {
     // 現在アンタップのクリーチャー(+瞬速♥を1体まで見込む)だけ。ブロッカー数を超える
     // 攻撃は必ず通るので、最小x体の合計がSの山札以上なら受けなし=準敗勢として返す
     const N = 1 - S;
+    // 山札枚数による確定死: 次にドローするNの山札が0なら即死、Sの山札が1枚以下なら
+    // (Nのターンを挟んで)自分のドローで確定死。「ライフ1は返しのドローで死ぬ」
+    if (st2.deck[N].length === 0) return N === me ? -9200 - depth : 9200 + depth;
+    if (st2.deck[S].length <= 1) return S === me ? -9100 - depth : 9100 + depth;
     if (st2.field[N].length) {
       let blkS = st2.field[S].filter(f => !f.tapped).length;
       if (st2.hand[S].some(c => c < 52 && midSuit(c) === 1 && midRank(c) !== 1 && midCanPay(st2, S, 1, midRank(c) + 1))) blkS++;
@@ -3554,7 +3559,7 @@ function midTurnLeaf(st, me, depth, attacks, blocks, alpha, beta, tail) {
       if (x > 0) {
         const asc = st2.field[N].map(f => midRank(f.code)).sort((a, b) => a - b);
         const lethal = asc.slice(0, x).reduce((s2, r2) => s2 + r2, 0);
-        if (lethal >= st2.deck[S].length) {
+        if (lethal >= st2.deck[S].length - 1) {
           // 準敗勢でも「死に方」に格差をつける: ブロッカーが多い・山札が残る・通る攻撃が
           // 少ないラインほどマシな点にして最大抵抗させる(全手同点→先頭の「何もしない」が
           // 勝ち残って投了モード化する事故の防止)。真の終端(±10000)よりは常に弱い
@@ -3764,7 +3769,7 @@ function midEnumAttackSets(st, me, cap) {
   const oppUnt = st.field[1 - me].filter(f => !f.tapped).map(f => f.code);
   const untY = oppUnt.reduce((s2, c) => s2 + midRank(c), 0);
   const readyPow = ready.reduce((s2, c) => s2 + midRank(c), 0);
-  const lethalish = readyPow >= st.deck[1 - me].length;   // 全軍が通ればリーサル圏 → 格上挑戦(道空け)も読む
+  const lethalish = readyPow >= st.deck[1 - me].length - 1;   // 全軍が通れば山札1以下=返しのドローで死 → 格上挑戦(道空け)も読む
   const provFor = X => {
     const base = X > untY ? oppUnt.filter(c => midRank(c) < X) : oppUnt.filter(c => midRank(c) === X);
     return lethalish ? [...new Set([...base, ...oppUnt.filter(c => midRank(c) > X)])] : base;
@@ -4399,7 +4404,7 @@ function aiOAttacks(pi) {
   if (x > 0 && o.deck.length > 0) {
     const asc = [...all].sort((a, b) => a.card.rank - b.card.rank);
     const sum = asc.slice(0, x).reduce((s, f) => s + f.card.rank, 0);
-    if (sum >= o.deck.length) return all.map(f => ({ cre: f.card.id, tt: "player" }));
+    if (sum >= o.deck.length - 1) return all.map(f => ({ cre: f.card.id, tt: "player" }));   // 山札1枚残し=返しのドローで死
   }
   const avail = all.filter(f => !oneSidedByBlocker(pi, f));
   const used = new Set();
