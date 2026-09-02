@@ -53,6 +53,18 @@
     100% { opacity: 0; }
   }
   #lifefx { background: radial-gradient(ellipse at 50% 50%, transparent 42%, rgba(110,10,10,.3) 72%, rgba(150,14,14,.75) 100%); }
+  /* 被ダメージ: ドローの鼓動よりも深く、二度強く明滅する */
+  #lifefx.hit {
+    background: radial-gradient(ellipse at 50% 50%, transparent 28%, rgba(140,10,10,.45) 62%, rgba(200,18,18,.95) 100%);
+    animation: lifeHit .75s ease-out both;
+  }
+  @keyframes lifeHit {
+    0% { opacity: 0; }
+    8% { opacity: 1; }
+    30% { opacity: .35; }
+    46% { opacity: .9; }
+    100% { opacity: 0; }
+  }
 
   header { display: flex; align-items: baseline; gap: 12px; padding: 4px 2px 8px; }
   header h1 {
@@ -1464,9 +1476,19 @@ function drawFx() {
   sfx("draw");
   const el = document.getElementById("lifefx");
   if (!el) return;
-  el.classList.remove("go");
+  el.classList.remove("go", "hit");
   void el.offsetWidth;
   el.classList.add("go");
+}
+
+/* 被ダメージ演出: 画面の縁がより深い血の色で二度明滅する(全ルールのダメージ処理から呼ぶ) */
+function hitFx() {
+  if (TEST_AUTO) return;
+  const el = document.getElementById("lifefx");
+  if (!el) return;
+  el.classList.remove("go", "hit");
+  void el.offsetWidth;
+  el.classList.add("hit");
 }
 
 /* ================= 演出 ================= */
@@ -1952,6 +1974,7 @@ async function runOriginalTurns(token, secondP) {
         const milled = players[def].deck.splice(Math.max(0, players[def].deck.length - n), n);
         players[def].grave.push(...milled);
         sfx("clash");
+        hitFx();
         log(`ダイレクトアタック! ${cardLabel(atkCre.card)} → ${players[def].name}の山札${milled.length}枚が墓地へ`);
         lifelink(cur, atkCre, milled.length);
         render();
@@ -2026,6 +2049,7 @@ function yMill(pi, n) {
   const real = Math.min(n, p.deck.length);
   if (real <= 0) return;
   p.grave.push(...p.deck.splice(p.deck.length - real, real));
+  hitFx();
   log(`${p.name} の山札が${real}枚墓地へ(残り${p.deck.length})`);
 }
 function yHeal(pi, n) {
@@ -2596,6 +2620,7 @@ async function resolvePAttack(pi) {
   sfx("attack");
   log(`${p.name}: ${cardLabel(at)} のワザ! ${cardLabel(dt)} に${dmg}ダメージ${pMatchText(at, dt)}`);
   def.dmg += dmg;
+  hitFx();
   await showBattleFx({ card: at }, { card: dt }, false, def.dmg >= pHP(dt));
   if (def.dmg < pHP(dt)) { render(); return; }
 
@@ -2840,6 +2865,7 @@ async function battleMulti(atkPi, atkCre, defPi, blockers, at) {
     if (at.tt === "player") {
       const milled = players[defPi].deck.splice(Math.max(0, players[defPi].deck.length - pool), pool);
       players[defPi].grave.push(...milled);
+      hitFx();
       log(`貫通! 余剰${pool}点 → ${players[defPi].name}の山札${milled.length}枚が墓地へ`);
       dealt += milled.length;
       render();
@@ -3034,6 +3060,7 @@ async function castHbreak(pi, a) {  // ♥が捲れるまで自分の山札を�
     count++;
     if (!c.joker && c.suit === 1) { heart = c; break; }
   }
+  hitFx();
   log(`自分の山札から${count}枚が墓地へ` + (heart ? `(♥${RANK_LABEL[heart.rank]}が捲れた!)` : "(♥は出なかった…)"));
   if (heart) {
     const n = heart.rank;
@@ -3189,6 +3216,7 @@ async function breakShieldAt(defPi, slot) {
   if (!c) return;
   def.shields[slot] = null;
   sfx("shield");
+  hitFx();
   log(`${def.name} のシールド[位置${slot + 1}]をブレイク! ${cardLabel(c)} が手札へ`);
   def.hand.push(c);
   render();
