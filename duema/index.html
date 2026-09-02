@@ -6605,8 +6605,8 @@ const tutPAHas = (s, r) => pendingAttacks.some(a => a.cre === tutF(myIdx, s, r))
 const tgBtn = hint => ({ hint, glow: () => [tutBtnEnd()] });
 const tgFieldSel = (s, r, hint) => ({ hint, glow: () => [tutMyFieldEl(s, r)],
   done: () => tutSelIs(s, r) || tutPAHas(s, r) });
-const tgAtkPlayer = (s, r) => ({ hint: "【相手プレイヤー(上の名前のあたり)をタップ】",
-  glow: () => [document.querySelector("#enemy-side .side-head")],
+const tgAtkPlayer = (s, r) => ({ hint: "【相手のエリア(上半分)のどこでもタップ】",
+  glow: () => [document.getElementById("enemy-side")],
   done: () => tutPAHas(s, r) });
 const tgAtkCre = (s, r, ts, tr, hint) => ({ hint, glow: () => [tutEnFieldEl(ts, tr)],
   done: () => tutPAHas(s, r) });
@@ -6942,7 +6942,16 @@ document.addEventListener("click", e => {
   if (e.target.closest("#tut-dialog")) return;                       // 台詞送り
   if (tutSaying) { e.stopPropagation(); e.preventDefault(); tutSayAdvance(); return; }   // どこをタップしても送れる
   if (e.target.closest(".gravebtn")) { e.stopPropagation(); e.preventDefault(); return; } // 墓地ビューアは封印
-  if (e.target.closest(".tut-allow")) return;
+  if (e.target.closest(".tut-allow")) {
+    // 相手エリア全体を許可している時でも、場・シールドのカード自体は(そのカードが誘導対象でない限り)
+    // 遮断する — 本体攻撃の誘導中にクリーチャー攻撃へ逸れて台本がずれるのを防ぐ
+    const card = e.target.closest(".card");
+    if (card && !card.classList.contains("tut-allow") &&
+        (card.closest("#e-field") || card.closest("#e-shields"))) {
+      e.stopPropagation(); e.preventDefault();
+    }
+    return;
+  }
   e.stopPropagation(); e.preventDefault();
 }, true);
 
