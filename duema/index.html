@@ -1402,14 +1402,11 @@ function sfx(name) {
         tone(120, .1, { type: "triangle", vol: .1, slide: 60 });
         tone(46, .24, { type: "sine", vol: .42, slide: 30, delay: .14 });
         break;
-      case "land":   // 土から蔦が這い上がる: 湿った軋みと葉擦れ
-        tone(64, .5, { type: "sawtooth", vol: .05, slide: 105 });
-        tone(97, .42, { type: "sawtooth", vol: .04, slide: 150, delay: .06 });
+      case "land":   // 蔦が這い上がる葉擦れ(低いノコギリ波の軋みは音割れに聞こえるため廃止)
         noiseBurst(.45, { type: "bandpass", from: 240, to: 1300, vol: .1 });
         noiseBurst(.2, { type: "highpass", from: 2600, to: 4200, vol: .04, delay: .22 });
         break;
-      case "summon": // 魔法陣の駆動音: 低い唸り+暗い和音の輝き
-        tone(72, .55, { type: "sawtooth", vol: .07, slide: 66 });
+      case "summon": // 魔法陣: 暗い和音の輝き(低い唸りは音割れに聞こえるため廃止)
         tone(196, .4, { vol: .07, delay: .08 });
         tone(233, .4, { vol: .06, delay: .14 });
         tone(294, .45, { vol: .05, delay: .2 });
