@@ -1449,11 +1449,11 @@ function sfx(name) {
         noiseBurst(1.1, { from: 1400, to: 60, vol: .34 });
         tone(58, .9, { type: "sine", vol: .3, slide: 30, delay: .12 });
         break;
-      case "win":      // 弔鐘にも似た三つの鐘 — 勝利もまた厳粛に
-        [[196, 0], [247, .55], [294, 1.1]].forEach(([f, d]) => {
-          tone(f, 1.5, { vol: .12, delay: d });
-          tone(f * 2.02, 1.1, { vol: .05, delay: d });
-          tone(f * 2.98, .7, { type: "triangle", vol: .03, delay: d });
+      case "win":      // ピン・ポン・パン・ポン — 相手が倒れたことを告げる、不気味な館内放送めいた四つの鐘(短調)
+        [[294, 0], [233, .5], [196, 1.0], [233, 1.5]].forEach(([f, d]) => {
+          tone(f, 1.4, { vol: .12, delay: d });
+          tone(f * 2.02, 1.0, { vol: .05, delay: d });
+          tone(f * 2.98, .6, { type: "triangle", vol: .03, delay: d });
         });
         break;
       case "lose":     // 鼓動が間遠になり、止まる
