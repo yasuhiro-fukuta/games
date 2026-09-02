@@ -1541,14 +1541,14 @@ async function runGame(seed) {
     { name: myIdx === 0 ? "あなた" : (mode === "cpu" ? "CPU" : "相手"), deck: shuffle(deckFor(0, 0)),   hand: [], shields: [], lands: [], field: [], grave: [], traps: [], active: null, bench: [], ench: [] },
     { name: myIdx === 1 ? "あなた" : (mode === "cpu" ? "CPU" : "相手"), deck: shuffle(deckFor(1, 200)), hand: [], shields: [], lands: [], field: [], grave: [], traps: [], active: null, bench: [], ench: [] },
   ];
-  if (story.active) { players[myIdx].name = story.name || "あなた"; players[1 - myIdx].name = story.room === 4 ? "アリス" : "ウサギ執事"; }
+  if (story.active) { players[myIdx].name = story.name || "あなた"; players[1 - myIdx].name = "ウサギ執事"; }
   // マジックCPU対戦の隠しマッチ: アリスだけが白黒反転のアリスルールのカードを使う
   const sAlice = secretAlice && mode === "cpu" && !story.active && ruleMode === "original" && !aliceVariant;
   if (sAlice) players[1 - myIdx].name = "アリス";
   aliceSide = aliceVariant ? [true, true]
     : sAlice ? (myIdx === 0 ? [false, true] : [true, false])
     : [false, false];                                         // ストーリーのアリスは通常マジックカードを使う
-  artFullForce = story.active && story.room === 4;            // アリスの札はフル絵柄で表示
+  artFullForce = false;   // (旧にせアリスのフル絵柄演出は廃止)
   // 棋譜記録: 人間対CPUのマジック対戦を学習データとして残す(台本チュートリアル・訓練ハーネスは除外)
   gameRecord = (ruleMode === "original" && mode === "cpu" && !trainSides && !TEST_AUTO && !tutActive)
     ? { v: 2, when: Date.now(), myIdx, cpuLevel, midDepth, alice: aliceSide[0] || aliceSide[1], story: story.active ? story.room : 0, pos: [] }
@@ -1560,9 +1560,9 @@ async function runGame(seed) {
   }
   oPhase = null; declaredAttacks = []; activeBlocks = []; pendingAttacks = []; pendingBlocks = []; selTargetAtt = null; provSel = null;
   firstP = rng() < 0.5 ? 0 : 1;
-  if (tutActive && !(story.active && (story.room === 1 || story.room === 2))) tutTeardown();   // 保険: チュートリアル以外の対戦
+  if (tutActive && !(story.active && story.room === 1)) tutTeardown();   // 保険: チュートリアル以外の対戦
   if (tutActive) { tutSetup(); firstP = tutScn.first(); }        // 積み込みデッキ+先攻後攻固定
-  if (story.active && story.room === 4) aliceStack();            // アリス: ぶん回り積み込み
+  if (story.active && story.room === 3) aliceStack();            // 最終戦: ぶん回り積み込み
   turnP = firstP; turnNo = 1;
   landSetUsed = 0; landSetMax = 1;
   winner = null; uiMain = false; selAttacker = null; midPlan = null;
@@ -3088,7 +3088,8 @@ const midRank = code => code >= 100 ? code - 100 : code >= 52 ? 0 : (code % 13) 
 function midActive(pi) {
   if (ruleMode !== "original" || aliceVariant || aliceSide[0] || aliceSide[1]) return false;
   if (trainSides) return trainSides[pi] === "mid";
-  return cpuLevel === "mid" && mode === "cpu" && !story.active && pi === 1 - myIdx;
+  if (story.active) return story.room === 3 && mode === "cpu" && pi === 1 - myIdx;   // 最終戦は全幅探索CPU
+  return cpuLevel === "mid" && mode === "cpu" && pi === 1 - myIdx;
 }
 
 /* ---- 専用乱数(決定的・ゲームのrngとは独立) ---- */
@@ -6021,14 +6022,6 @@ const STORY_LINES_1 = [
   "先に進んでくださいね。",
 ];
 const STORY_LINES_2 = [
-  "…あなたが、選ばれましたか。",
-  "はじめまして、この館に勤めるウサギ執事でございます。",
-  "この奥におります、アリス様とお遊び頂くため、",
-  "私が指南つかまつります。",
-  "まずは、私を殺して、",
-  "先に進んでください。",
-];
-const STORY_LINES_3 = [
   "…あなたが、残りましたか。",
   "よいお顔になられましたね。",
   "これからは、お教えしたことを用いて、私との真剣勝負です。",
@@ -6094,31 +6087,9 @@ function storyDraw() {
   ctx.fillStyle = "#39281f"; ctx.fillRect(DX * T, 1, T, T - 2);
   ctx.fillStyle = "#241812"; ctx.fillRect(DX * T + 2, 3, T - 4, T - 5);
   ctx.fillStyle = "#5d4a34"; ctx.fillRect(DX * T + T - 5, T / 2, 2, 2);   // ノブ
-  // 部屋2: 背後(下壁)にたくさんの扉。自分の後ろだけ開いている
-  if (story.room === 2) {
-    for (let x = 1; x <= W - 2; x += 2) {
-      ctx.fillStyle = "#2c2018"; ctx.fillRect(x * T + 1, (H - 1) * T + 1, T - 2, T - 2);
-      ctx.fillStyle = "#1b1310"; ctx.fillRect(x * T + 3, (H - 1) * T + 3, T - 6, T - 6);
-    }
-    ctx.fillStyle = "#000"; ctx.fillRect(DX * T + 1, (H - 1) * T + 1, T - 2, T - 2);   // 開いた扉
-  }
   // ウサギ執事 or アリス or 死体
   const rx = RX * T, ry = RY * T;
-  if (story.room === 4 && !story.rabbitDead) {
-    ctx.fillStyle = "#cdbd7e"; ctx.fillRect(rx + 4, ry - 3, 8, 6);       // 金色の髪
-    ctx.fillStyle = "#e3d3c3"; ctx.fillRect(rx + 5, ry + 3, 6, 4);       // 白い顔
-    ctx.fillStyle = "#1a1a20"; ctx.fillRect(rx + 6, ry + 4, 1, 2); ctx.fillRect(rx + 9, ry + 4, 1, 2);   // 虚ろな目
-    ctx.fillStyle = "#3d5570"; ctx.fillRect(rx + 3, ry + 7, 10, 8);      // 青いドレス
-    ctx.fillStyle = "#d9d2c6"; ctx.fillRect(rx + 5, ry + 8, 6, 6);       // エプロン
-  } else if (story.room === 4) {
-    // 床に倒れるにせアリス
-    ctx.fillStyle = "#3d0a0c";
-    ctx.beginPath(); ctx.ellipse(rx + 8, ry + 12, 13, 6, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = "#3d5570"; ctx.fillRect(rx - 2, ry + 9, 11, 6);      // 倒れた青いドレス
-    ctx.fillStyle = "#d9d2c6"; ctx.fillRect(rx + 1, ry + 10, 5, 4);      // エプロン
-    ctx.fillStyle = "#e3d3c3"; ctx.fillRect(rx + 9, ry + 9, 5, 5);       // 顔
-    ctx.fillStyle = "#cdbd7e"; ctx.fillRect(rx + 13, ry + 8, 7, 6);      // 広がった金色の髪
-  } else if (!story.rabbitDead) {
+  if (!story.rabbitDead) {
     ctx.fillStyle = "#e8e2d8"; ctx.fillRect(rx + 5, ry - 7, 2, 7); ctx.fillRect(rx + 9, ry - 7, 2, 7);   // 耳
     ctx.fillStyle = "#efe9df"; ctx.fillRect(rx + 4, ry, 8, 7);   // 顔
     ctx.fillStyle = "#3a3540"; ctx.fillRect(rx + 6, ry + 3, 1, 2); ctx.fillRect(rx + 9, ry + 3, 1, 2);   // 悲しげな目
@@ -6159,7 +6130,7 @@ function storyMove(dx, dy) {
   const t = storyTileAt(nx, ny);
   if (t === "wall") return;
   if (t === "rabbit") {
-    if (story.room === 4) { storyStartBattle(); return; }   // アリスは何も言わない
+    if (story.room === 3) { storyStartBattle(); return; }   // 最終戦のウサギは何も言わない
     storyDialog(["それでは、私を殺してください。", "よろしくお願いいたします。"], storyStartBattle);
     return;
   }
@@ -6181,9 +6152,9 @@ async function storyEnterRoom(n) {
   storySetFade(1);
   storyDraw();
   await storyFade(false, 1800);
-  if (n === 4) { story.state = "field"; return; }   // アリスの部屋: 台詞はない。近づけば、始まる
-  const lines = n === 1 ? STORY_LINES_1 : n === 2 ? STORY_LINES_2 : STORY_LINES_3;
-  storyDialog(lines, n === 3 ? storyOpenDeckEdit : storyStartBattle);
+  if (n === 3) { story.state = "field"; return; }   // 最終部屋: 台詞はない。近づけば、始まる
+  const lines = n === 1 ? STORY_LINES_1 : STORY_LINES_2;
+  storyDialog(lines, n === 2 ? storyOpenDeckEdit : storyStartBattle);
 }
 
 /* 部屋3: 戦闘前のデッキ調整(ストーリー用エディタ。除外のみ・保存はストーリー内) */
@@ -6216,14 +6187,15 @@ function storyStartBattle() {
   story.state = "battle";
   document.getElementById("story-overlay").classList.remove("show");
   ruleMode = "original";
+  if (story.room === 3) { story.prevDepth = midDepth; midDepth = 4; }   // 最終戦: 全幅・読み4
   // 部屋1-2はフルデッキ固定、部屋3-4はデッキ調整の結果を使う
-  deckLists = story.room >= 3 && story.deckList ? [story.deckList, null] : null;
+  deckLists = story.room >= 2 && story.deckList ? [story.deckList, null] : null;
   mode = "cpu"; myIdx = 0;
   // 部屋1-2のウサギ = 台本チュートリアル(TEST_AUTO中は従来どおり素のCPU戦)
   tutTeardown();
-  if (!TEST_AUTO && (story.room === 1 || story.room === 2)) {
+  if (!TEST_AUTO && story.room === 1) {
     tutActive = true;
-    tutScn = story.room === 1 ? TUT1 : TUT2;
+    tutScn = TUT1;
     tutReset();
   }
   ac();
@@ -6235,6 +6207,7 @@ function storyStartBattle() {
 
 function storyBattleEnd(winnerPi) {
   tutTeardown();
+  if (story.prevDepth != null) { midDepth = story.prevDepth; story.prevDepth = null; }
   if (winnerPi === myIdx) {
     story.rabbitDead = true;
     story.state = "field";
@@ -6243,14 +6216,11 @@ function storyBattleEnd(winnerPi) {
     storyDraw();
     storyFade(false, 1400).then(() => {
       const dying = {
-        1: ["…………", "……アリス……", "アリス様を……たのみます"],
-        2: ["──小を捨て、大を通す。完璧です。", "私の…", "役目は…これで…"],
+        1: ["私の…", "役目は…これで…"],
+        2: ["……アリス様……", "どうか…これで…ご満足を…"],
         3: ["アリス様…", "…ようやく", "よい…お相手が…"],
-        4: ["…私では", "アリス様に…", "なれない…か…"],
       }[story.room] || ["……。"];
-      const tail = story.room === 4
-        ? ["にせもののアリスは、静かに動かなくなった。", "部屋の奥で、ドアの錠が外れる音がした。"]
-        : ["ウサギ執事は、静かに動かなくなった。", "部屋の奥で、ドアの錠が外れる音がした。"];
+      const tail = ["ウサギ執事は、静かに動かなくなった。", "部屋の奥で、ドアの錠が外れる音がした。"];
       storyDialog([...dying, ...tail]);
     });
   } else {
@@ -6275,7 +6245,7 @@ function storyBattleEnd(winnerPi) {
 }
 
 async function storyNextRoom() {
-  if (story.room >= 4) { storyEnding(); return; }   // アリスの部屋の先 = 儀式の終わり
+  if (story.room >= 3) { storyEnding(); return; }   // 最終部屋の先 = 儀式の終わり
   story.state = "fade";
   await storyFade(true, 1200);
   storySetFade(1);
@@ -6334,6 +6304,7 @@ async function storyEnding() {
 
 function storyQuit() {
   tutTeardown();
+  if (story.prevDepth != null) { midDepth = story.prevDepth; story.prevDepth = null; }
   story.active = false;
   story.state = "idle";
   story.deckList = null;
@@ -6356,7 +6327,7 @@ function storyQuit() {
    - プレイヤーは TUT_P の誘導ステップ(青発光+他入力ロック+【】アドバイス)で進む
    - 検算: ウサギ山札 47−ドロー9−被ミル22(T4:2+T5:3+T6:8+T7:9)=16 → T10の♥J+♣J=22点で討ち取り */
 let tutActive = false;
-let tutScn = null;            // 進行中のシナリオ(TUT1=部屋1 / TUT2=部屋2)
+let tutScn = null;            // 進行中のシナリオ(TUT1=部屋1)
 let tutCi = 0, tutPi = 0;     // ウサギ/プレイヤーの台本ポインタ
 let tutCur = null;            // 進行中のプレイヤー誘導ステップ
 let tutSaying = false;        // ウサギ台詞ポップアップ表示中
@@ -6747,262 +6718,11 @@ const TUT_C = [
   { k: "oblocks", a: () => ({ k: "oblocks", t: "blocks", list: [] }) },
 ];
 
-/* ================= チュートリアル2『ウサギ執事の教練 case xxxx2』 =================
-   部屋2のウサギ。プレイヤー後攻。コンバットトリック教習:
-   我慢一方殺し/瞬速の空出し/寝た大物への複数攻撃/多重ブロックで1体残す/
-   同サイズは持続能力(♦♠)から討つ/スティール+同数字挑戦(ウサギ側)/
-   土地を置かない択+ロータスで大型♣/♠小型の挑戦で盾を釣って大駒を通す。
-   検算: ウサギ山札 47−ドロー10−被ミル(9+6+9+5)=8 → T11の♣9(9点)で討ち取り */
-const TUT2_C_LIST = [...Array(52).keys(), "steel", "mox"];   // ウサギのデッキはスティール入り
-const TUT2_P_HAND = [[0,10],[1,9],[2,8],[3,7],[1,2],[2,3],[3,9]];   // ♠10♥9♦8♣7♥2♦3♣9
-const TUT2_C_HAND = [[2,10],[3,9],[1,8],[0,9],[3,2],[3,3],[0,5]];   // ♦10♣9♥8♠9♣2♣3♠5
-const TUT2_P_TAIL = [
-  [2,4], [0,4], [2,5],                                       // T1♦4 T2♠4 T3♦5
-  null, null,                                                // T4R ♣2被弾(2)
-  [0,6],                                                     // T4♠6
-  null, null, null,                                          // T5R ♣3被弾(3)
-  [3,5], [3,6], [2,2],                                       // T5♣5 T6♣6 T7♦2
-  null, null, null, null, null,                              // T8R ♠5被弾(5)
-  [1,5],                                                     // T8♥5
-  null, null, null, null, null, null,                        // T9R ♥6被弾(6)
-  "lotus",                                                   // T9ロータス
-  [0,2],                                                     // T10♠2
-  null,                                                      // T11任意
-];
-const TUT2_C_TAIL = [
-  [2,9], [1,7], [0,8], [3,8], "steel",                       // T2♦9 T3♥7 T4♠8 T5♣8 T6スティール
-  null, null, null, null, null, null, null, null, null,      // T6P 3体で9点
-  [2,6],                                                     // T7♦6
-  null, null, null, null, null, null,                        // T7P ♣6の6点
-  [1,6], [2,7],                                              // T8♥6 T9♦7
-  null, null, null, null, null, null, null, null, null,      // T9P ♣9の9点
-  null,                                                      // T10任意
-  null, null, null, null, null,                              // T10P ♦3+♥2の5点
-  null,                                                      // T11任意
-];
-
-/* ---- プレイヤー誘導台本(部屋2) ---- */
-const TUT2_P = [
-  // ── マリガン ──
-  { k: "mull", say: ["後攻のあなたには、一度だけ手札を引き直す権利があります。", "……今回は、その必要はなさそうですね。"],
-    stages: [{ hint: "【「このままでいく」を選んでください】", glow: () => [tutModalBtn("false")] }] },
-  // ── ターン1(ウサギ)のブロックフェイズ ──
-  tpBtn("oblocks", "【フェイズを終了してください】"),
-  // ── ターン1(あなた) ──
-  tpSet(0, 10, "【♠10をセットしてください】"),
-  tpBtn("oattacks", "【フェイズを終了してください】"),
-  tpBtn("omain", "【ターンを終了してください】"),
-  // ── ターン2 ──
-  tpBtn("oblocks", "【フェイズを終了してください】"),
-  tpSet(1, 9, "【♥9をセットしてください】"),
-  tpBtn("oattacks", "【フェイズを終了してください】"),
-  tpBtn("omain", "【ターンを終了してください】"),
-  // ── ターン3 ──
-  tpBtn("oblocks", "【フェイズを終了してください】"),
-  tpSet(2, 8, "【♦8をセットしてください】"),
-  tpBtn("oattacks", "【フェイズを終了してください】"),
-  tpBtn("omain", "【ターンを終了してください】"),
-  // ── ターン4(ウサギ): ♣2の速攻攻撃 → 瞬速の空出し+我慢 ──
-  { k: "oblocks", say: ["迎え撃ちますか? — いえ。今日はまず、駒の増やし方から。",
-      "瞬速は、ブロックのためだけの力ではありません。"], stages: [
-    { hint: "【♥2を瞬速召喚してください】", glow: () => [tutHandEl(1, 2)], done: tutModalOpen },
-    { hint: "【「瞬速で召喚する」を選んでください】", glow: () => [tutModalBtn("summon")] },
-  ]},
-  tpBtn("oblocks", "【フェイズを終了してください(ブロックしない)】",
-    ["出すだけ出して、ブロックはしない。相打ちを焦らず — 明日、寝込みを狩るのです。"]),
-  // ── ターン4(あなた): 我慢の刈り取り(その1) ──
-  tpSet(3, 7, "【♣7をセットしてください】"),
-  tpSummon(2, 3, "【♦3を召喚してください】"),
-  { k: "oattacks", say: ["攻め終えて寝た駒は、パワー0。無傷で狩れます。"], stages: [
-    tgFieldSel(1, 2, "【♥2をタップ(攻撃側に選択)】"),
-    tgAtkCre(1, 2, 3, 2, "【タップ中の♣2をタップして攻撃対象に】"),
-    tgBtn("【攻撃を確定してください】"),
-  ]},
-  tpBtn("omain", "【ターンを終了してください】", ["これが、我慢の教えです。"]),
-  // ── ターン5(ウサギ): ♣3の攻撃 → もう一度我慢 ──
-  tpBtn("oblocks", "【フェイズを終了してください(受ける)】",
-    ["相打ちで止めることも、できます。……ですが、もうお分かりのはず。"]),
-  // ── ターン5(あなた): 我慢の刈り取り(その2) ──
-  tpSet(2, 4, "【♦4をセットしてください】"),
-  tpSummon(0, 4, "【♠4を召喚してください】"),
-  { k: "oattacks", stages: [
-    tgFieldSel(2, 3, "【♦3をタップ(攻撃側に選択)】"),
-    tgAtkCre(2, 3, 3, 3, "【タップ中の♣3をタップして攻撃対象に】"),
-    tgBtn("【攻撃を確定してください】"),
-  ]},
-  tpBtn("omain", "【ターンを終了してください】", ["寝込みを狩り、駒得を重ねる。よろしい。"]),
-  // ── ターン6(あなた) ──
-  tpSet(0, 6, "【♠6をセットしてください】"),
-  tpSummon(2, 5, "【♦5を召喚してください】"),
-  { k: "oattacks", stages: [
-    tgFieldSel(0, 4, "【♠4で相手プレイヤーを攻撃してください】"),
-    tgAtkPlayer(0, 4),
-    tgFieldSel(1, 2, "【♥2でも攻撃してください】"),
-    tgAtkPlayer(1, 2),
-    tgFieldSel(2, 3, "【♦3でも攻撃してください】"),
-    tgAtkPlayer(2, 3),
-    tgBtn("【攻撃を確定してください】"),
-  ]},
-  tpBtn("omain", "【ターンを終了してください】"),
-  // ── ターン7(ウサギ): スティール+挑戦の同数字討ち ──
-  tpBtn("oblocks", "【フェイズを終了してください(♦5は挑戦で強制ブロック)】"),
-  tpSet(3, 5, "【♣5をセットしてください】"),
-  tpSummon(3, 6, "【♣6を召喚してください】"),
-  { k: "oattacks", say: ["♣の速攻で、そのまま殴り込みなさい。ただし全軍では攻めない — 攻めた駒は、守りに使えませんので。"], stages: [
-    tgFieldSel(3, 6, "【♣6で相手プレイヤーを攻撃してください】"),
-    tgAtkPlayer(3, 6),
-    tgBtn("【攻撃を確定してください】"),
-  ]},
-  tpBtn("omain", "【ターンを終了してください】", ["……いい一撃です。"]),
-  // ── ターン8(ウサギ): ♠5の攻撃を受ける ──
-  tpBtn("oblocks", "【フェイズを終了してください(受ける)】",
-    ["止められない攻撃は、受ける。……ですが、覚えておきなさい — 攻めた駒は、寝るのです。"]),
-  // ── ターン8(あなた): 寝た大物を束で沈める+土地を置かない ──
-  { k: "oattacks", say: ["寝た大物は、数を束ねて沈めなさい。数字の合計が届けば、こちらは無傷。"], stages: [
-    tgFieldSel(0, 4, "【♠4をタップ(攻撃側に選択)】"),
-    tgAtkCre(0, 4, 0, 5, "【タップ中の♠5をタップして攻撃対象に】"),
-    tgFieldSel(1, 2, "【♥2をタップ(攻撃側に選択)】"),
-    tgAtkCre(1, 2, 0, 5, "【♥2も♠5に — タップして攻撃対象に】"),
-    tgBtn("【攻撃を確定してください】"),
-  ]},
-  tpSummon(1, 5, "【♥5を召喚してください】",
-    ["私の騎士も、これまで。……よく学びましたね。",
-     "そして — 今夜は土地を置かない。",
-     "ジョーカーの札は、土地の数で相手に負けている者にしか、微笑みません。"], "omain"),
-  tpBtn("omain", "【土地は置かずに、ターンを終了してください】"),
-  // ── ターン9(ウサギ): 同サイズ2体 — 討つ相手を選ぶ ──
-  { k: "oblocks", say: [
-      "♦の警戒、♠の挑戦は、場にいる限り働き続ける力。♥の瞬速、♣の速攻は、出た時に役目を終えた力。",
-      "討つなら、残り続ける方から。",
-    ], stages: [
-    tgBlockSel(3, 6, "【♣6でブロックしてください】"),
-    tgBlockTgt(3, 6, 2, 6, "【攻撃中の♦6をタップしてブロック】"),
-    tgBtn("【ブロックを確定してください】"),
-  ]},
-  // ── ターン9(あなた): ロータス → ♣9 ──
-  { k: "oattacks", say: ["来ましたね。土地を我慢した、その褒美です。"], stages: [
-    { hint: "【手札のロータスジョーカーをタップしてください】", glow: () => [tutHandElJ("lotus")], done: tutModalOpen },
-    { hint: "【「プレイ」を選んでください】", glow: () => [tutModalBtn("play")] },
-  ]},
-  tpSet(2, 2, "【♦2をセットしてください】"),
-  tpSummon(3, 9, "【♣9を召喚してください!(土地8+ロータス3)】"),
-  { k: "oattacks", say: ["大きな札は、腐らせるのではなく、辿り着くもの。"], stages: [
-    tgFieldSel(3, 9, "【そのまま♣9で攻撃!】"),
-    tgAtkPlayer(3, 9),
-    tgBtn("【攻撃を確定してください】"),
-  ]},
-  tpBtn("omain", "【ターンを終了してください】"),
-  // ── ターン10(ウサギ): ♦7を多重ブロックで沈める ──
-  { k: "oblocks", say: ["複数で受け、1体は生き残るように束ねなさい。"], stages: [
-    tgBlockSel(1, 5, "【♥5でブロックしてください】"),
-    tgBlockTgt(1, 5, 2, 7, "【攻撃中の♦7をタップしてブロック】"),
-    tgBlockSel(2, 3, "【♦3でもブロックしてください】"),
-    tgBlockTgt(2, 3, 2, 7, "【♦3も♦7に — タップしてブロック】"),
-    tgBtn("【ブロックを確定してください】"),
-  ]},
-  // ── ターン10(あなた): 小駒で削り、囮を用意 ──
-  { k: "oattacks", say: ["♣9はまだです。私の♥6が睨んでいる限り、大駒は安売りしない。"], stages: [
-    tgFieldSel(2, 3, "【♦3で相手プレイヤーを攻撃してください】"),
-    tgAtkPlayer(2, 3),
-    tgFieldSel(1, 2, "【♥2でも攻撃してください】"),
-    tgAtkPlayer(1, 2),
-    tgBtn("【攻撃を確定してください】"),
-  ]},
-  tpSummon(0, 2, "【♠2を召喚してください】", ["……囮の用意、ですね。"], "omain"),
-  tpBtn("omain", "【ターンを終了してください】"),
-  // ── ターン11(あなた): 小を捨て、大を通す ──
-  { k: "oattacks", say: ["仕上げです。♠の挑戦で、最後の盾を釣り出しなさい。"], stages: [
-    tgFieldSel(0, 2, "【♠2をタップ(攻撃側に選択)】"),
-    { hint: "【相手の♥6をタップ — 挑戦で指名!】", glow: () => [tutEnFieldEl(1, 6)],
-      done: () => provSel === tutF(1 - myIdx, 1, 6) || tutPAHas(0, 2) },
-    { hint: "【相手プレイヤー(上の名前のあたり)をタップ】", glow: () => [document.querySelector("#enemy-side .side-head")],
-      done: () => tutPAHas(0, 2) },
-    tgFieldSel(3, 9, "【♣9で、相手プレイヤーを攻撃!】"),
-    tgAtkPlayer(3, 9),
-    tgBtn("【攻撃を確定してください】"),
-  ]},
-];
-
-/* ---- ウサギ(CPU)台本(部屋2) ---- */
-const TUT2_C = [
-  // ── ターン1(ウサギ・先攻) ──
-  { k: "oattacks", say: ["基本は、一匹目がすべてお教えしたはず。ここからは — 使い方の教練です。"],
-    a: () => ({ k: "oattacks", t: "land", card: tutH(1 - myIdx, 2, 10) }) },
-  { k: "oattacks", a: () => ({ k: "oattacks", t: "attacks", list: [] }) },
-  { k: "omain", a: () => ({ k: "omain", t: "done" }) },
-  { k: "oblocks", a: () => ({ k: "oblocks", t: "blocks", list: [] }) },   // T1(あなた)
-  // ── ターン2(ウサギ) ──
-  { k: "oattacks", a: () => ({ k: "oattacks", t: "land", card: tutH(1 - myIdx, 3, 9) }) },
-  { k: "oattacks", a: () => ({ k: "oattacks", t: "attacks", list: [] }) },
-  { k: "omain", a: () => ({ k: "omain", t: "done" }) },
-  { k: "oblocks", a: () => ({ k: "oblocks", t: "blocks", list: [] }) },   // T2(あなた)
-  // ── ターン3(ウサギ) ──
-  { k: "oattacks", say: ["……そろそろ、動きます。"], a: () => ({ k: "oattacks", t: "land", card: tutH(1 - myIdx, 1, 8) }) },
-  { k: "oattacks", a: () => ({ k: "oattacks", t: "attacks", list: [] }) },
-  { k: "omain", a: () => ({ k: "omain", t: "done" }) },
-  { k: "oblocks", a: () => ({ k: "oblocks", t: "blocks", list: [] }) },   // T3(あなた)
-  // ── ターン4(ウサギ): ♣2召喚→速攻攻撃 ──
-  { k: "oattacks", a: () => ({ k: "oattacks", t: "land", card: tutH(1 - myIdx, 0, 9) }) },
-  { k: "oattacks", a: () => ({ k: "oattacks", t: "summon", card: tutH(1 - myIdx, 3, 2) }) },
-  { k: "oattacks", a: () => ({ k: "oattacks", t: "attacks", list: [{ cre: tutF(1 - myIdx, 3, 2), tt: "player" }] }) },
-  { k: "omain", a: () => ({ k: "omain", t: "done" }) },
-  { k: "oblocks", a: () => ({ k: "oblocks", t: "blocks", list: [] }) },   // T4(あなた)
-  // ── ターン5(ウサギ): ♣3召喚→単騎で攻撃 ──
-  { k: "oattacks", a: () => ({ k: "oattacks", t: "land", card: tutH(1 - myIdx, 2, 9) }) },
-  { k: "oattacks", a: () => ({ k: "oattacks", t: "summon", card: tutH(1 - myIdx, 3, 3) }) },
-  { k: "oattacks", a: () => ({ k: "oattacks", t: "attacks", list: [{ cre: tutF(1 - myIdx, 3, 3), tt: "player" }] }) },
-  { k: "omain", a: () => ({ k: "omain", t: "done" }) },
-  { k: "oblocks", a: () => ({ k: "oblocks", t: "blocks", list: [] }) },   // T5(あなた): 刈り取りを受ける
-  // ── ターン6(ウサギ): ♠5召喚 ──
-  { k: "oattacks", a: () => ({ k: "oattacks", t: "land", card: tutH(1 - myIdx, 1, 7) }) },
-  { k: "oattacks", a: () => ({ k: "oattacks", t: "summon", card: tutH(1 - myIdx, 0, 5) }) },
-  { k: "oattacks", say: ["……この騎士には、明日、働いてもらいます。"], a: () => ({ k: "oattacks", t: "attacks", list: [] }) },
-  { k: "omain", a: () => ({ k: "omain", t: "done" }) },
-  { k: "oblocks", say: ["受けましょう。駒には、明日の役目がありますので。"],
-    a: () => ({ k: "oblocks", t: "blocks", list: [] }) },   // T6(あなた): 3体の攻撃を素通し
-  // ── ターン7(ウサギ): スティール→♦6召喚→♠5が挑戦で♦5指名 ──
-  { k: "oattacks", a: () => ({ k: "oattacks", t: "land", card: tutH(1 - myIdx, 0, 8) }) },
-  { k: "oattacks", say: ["スティールジョーカー。対象は今日一日、破壊されません。"],
-    a: () => ({ k: "oattacks", t: "jplay", jk: tutHJ(1 - myIdx, "steel"), tgt: tutF(1 - myIdx, 0, 5) }) },
-  { k: "oattacks", a: () => ({ k: "oattacks", t: "summon", card: tutH(1 - myIdx, 2, 6) }) },
-  { k: "oattacks", say: ["同じ数字は、相打ち — のはずでした。"],
-    a: () => ({ k: "oattacks", t: "attacks", list: [{ cre: tutF(1 - myIdx, 0, 5), tt: "player", prov: tutF(myIdx, 2, 5) }] }) },
-  { k: "omain", say: ["ジョーカー1枚で、相打ちが一方殺しに変わる。覚えておきなさい。"], a: () => ({ k: "omain", t: "done" }) },
-  { k: "oblocks", a: () => ({ k: "oblocks", t: "blocks", list: [] }) },   // T7(あなた): ♣6の一撃を受ける
-  // ── ターン8(ウサギ): ♥6召喚+♠5で攻撃 ──
-  { k: "oattacks", a: () => ({ k: "oattacks", t: "land", card: tutH(1 - myIdx, 3, 8) }) },
-  { k: "oattacks", a: () => ({ k: "oattacks", t: "summon", card: tutH(1 - myIdx, 1, 6) }) },
-  { k: "oattacks", a: () => ({ k: "oattacks", t: "attacks", list: [{ cre: tutF(1 - myIdx, 0, 5), tt: "player" }] }) },
-  { k: "omain", a: () => ({ k: "omain", t: "done" }) },
-  { k: "oblocks", a: () => ({ k: "oblocks", t: "blocks", list: [] }) },   // T8(あなた): 騎士の最期
-  // ── ターン9(ウサギ): ♦7召喚+♦6・♥6で攻撃 ──
-  { k: "oattacks", a: () => ({ k: "oattacks", t: "summon", card: tutH(1 - myIdx, 2, 7) }) },
-  { k: "oattacks", say: ["同じ大きさが、二匹。どちらを討つか — それが今日最後の選択です。"],
-    a: () => ({ k: "oattacks", t: "attacks", list: [
-      { cre: tutF(1 - myIdx, 2, 6), tt: "player" }, { cre: tutF(1 - myIdx, 1, 6), tt: "player" }] }) },
-  { k: "omain", a: () => ({ k: "omain", t: "done" }) },
-  { k: "oblocks", say: ["……受けます。まだ、倒れる訳には。"],
-    a: () => ({ k: "oblocks", t: "blocks", list: [] }) },   // T9(あなた): ♣9を受ける
-  // ── ターン10(ウサギ): ♦7単騎(♥6は温存) ──
-  { k: "oattacks", say: ["大物を1体で受ければ、盾が丸ごと砕ける。", "♥6は — 最後の盾として、残します。"],
-    a: () => ({ k: "oattacks", t: "attacks", list: [{ cre: tutF(1 - myIdx, 2, 7), tt: "player" }] }) },
-  { k: "omain", say: ["見事。盾を全滅させないのが、束ね方の妙です。"], a: () => ({ k: "omain", t: "done" }) },
-  { k: "oblocks", a: () => ({ k: "oblocks", t: "blocks", list: [] }) },   // T10(あなた): 小駒の攻撃は受ける
-  // ── ターン11(ウサギ): 何もしない ──
-  { k: "oattacks", say: ["……お教えできることは、もう、ほとんどありません。", "次の一手で、終わりにしましょう。"],
-    a: () => ({ k: "oattacks", t: "attacks", list: [] }) },
-  { k: "omain", a: () => ({ k: "omain", t: "done" }) },
-  // ── ターン11(あなた): とどめを受ける ──
-  { k: "oblocks", a: () => ({ k: "oblocks", t: "blocks", list: [] }) },
-];
-
 /* ---- シナリオ定義(部屋→台本) ---- */
 const TUT1 = { first: () => myIdx, pList: FULL_DECK_LIST, cList: FULL_DECK_LIST,
   pHand: TUT_P_HAND, pTail: TUT_P_TAIL, cHand: TUT_C_HAND, cTail: TUT_C_TAIL, P: TUT_P, C: TUT_C };
-const TUT2 = { first: () => 1 - myIdx, pList: FULL_DECK_LIST, cList: TUT2_C_LIST,
-  pHand: TUT2_P_HAND, pTail: TUT2_P_TAIL, cHand: TUT2_C_HAND, cTail: TUT2_C_TAIL, P: TUT2_P, C: TUT2_C };
 
-/* ---- 部屋4のアリス: 山札を「ぶん回り」に積み込む(序盤から立ち上がり、絵札・エースへ続く) ---- */
+/* ---- 部屋3のウサギ執事: 山札を「ぶん回り」に積み込む(序盤から立ち上がり、絵札・エースへ続く) ---- */
 function aliceStack() {
   const p = players[1 - myIdx];
   const all = [...p.hand, ...p.deck];
