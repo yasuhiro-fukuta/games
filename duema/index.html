@@ -1449,13 +1449,18 @@ function sfx(name) {
         noiseBurst(1.1, { from: 1400, to: 60, vol: .34 });
         tone(58, .9, { type: "sine", vol: .3, slide: 30, delay: .12 });
         break;
-      case "win":      // ピン・ポン・パン・ポン — 相手が倒れたことを告げる、不気味な館内放送めいた四つの鐘(短調)
-        [[294, 0], [233, .5], [196, 1.0], [233, 1.5]].forEach(([f, d]) => {
-          tone(f, 1.4, { vol: .12, delay: d });
-          tone(f * 2.02, 1.0, { vol: .05, delay: d });
-          tone(f * 2.98, .6, { type: "triangle", vol: .03, delay: d });
+      case "win": {    // ピンポンパンポン — よくある館内放送チャイム(ド・ミ・ソ・ド)を伸びきったテープ再生風に
+        const notes = [262, 330, 392, 523];
+        const dly = [0, .6, 1.24, 1.94];   // テープが遅れていくような不均等な間隔
+        notes.forEach((f0, i) => {
+          const f = f0 * .93;              // 全体に垂れた回転数
+          const d = dly[i];
+          tone(f, 1.15, { vol: .11, delay: d, slide: f * .94 });                        // 各音が下にしなだれる
+          tone(f * 1.013, 1.15, { vol: .07, delay: d + .02, slide: f * .95 });          // うなり(ワウフラッター)
+          tone(f * 2.02, .5, { type: "triangle", vol: .02, delay: d, slide: f * 1.9 }); // こもった倍音
         });
         break;
+      }
       case "lose":     // 鼓動が間遠になり、止まる
         [[0, .45], [.62, .34], [1.42, .22], [2.5, .13]].forEach(([d, v]) => {
           tone(58, .16, { type: "sine", vol: v, slide: 38, delay: d });
