@@ -787,7 +787,7 @@
 <div class="overlay" id="deck-overlay">
   <div class="panel" style="max-width:560px">
     <h2>デッキ編集</h2>
-    <div class="deck-note">54枚以下・同じカードは1枚まで・ジョーカーは4種から2枚まで。カードをタップで抜き差し。</div>
+    <div class="deck-note">54枚以下・同じカードは1枚まで・ジョーカーは5種から合計2枚まで(同じ能力を2枚入れてもよい)。カードをタップで抜き差し。</div>
     <div id="deck-grid"></div>
     <div id="deck-count"></div>
     <div class="deck-btns">
@@ -839,7 +839,7 @@
       <b>♠スペード</b>: 2〜6=<b>接死</b>(1点以上の戦闘ダメージを与えた相手を破壊)/ 7〜10=<b>トランプル</b> / J〜K=<b>ETB: 対象に+X/+0</b>(X=このパワー)<br>
       <b>♣クローバー</b>: 2〜6=<b>「T: ♣マナ1点」</b>(マナクリーチャー・召喚酔い中は不可)/ 7〜10=<b>威迫</b>(2体以上にしかブロックされない)/ J〜K=<b>ETB: 数字X以下の土地をそのオーナーのクリーチャー化</b>(X=このパワー)<br>
       <b>♦ダイヤ</b>: 2〜6=<b>絆魂</b>(与えた戦闘ダメージぶん墓地を山札の下へ・墓地枚数まで)/ 7〜10=<b>反撃</b>(タップ状態でもパワー0にならない)/ J〜K=<b>ETB: 全クリーチャーに-X/-X</b>(X=このパワー・ターン終了時まで)<br><br>
-      アリスカードも<b>基本スート能力(♠挑戦/♥瞬速/♦警戒/♣速攻)を持つ</b>(通常の絵札能力だけが帯能力に置き換わる)。A(1/1・ETB蘇生)とJOKERは共通。アリスカードは黒地(黒スート=白字・赤スート=赤字)で表示される。カードは<b>右クリックでテキスト参照</b>できる(マジック・アリス共通)。
+      アリスカードも<b>基本スート能力(♠挑戦/♥瞬速/♦警戒/♣速攻)を持つ</b>(通常の絵札能力だけが帯能力に置き換わる)。A(蘇生ソーサリー)とJOKERは共通。アリスカードは黒地(黒スート=白字・赤スート=赤字)で表示される。カードは<b>右クリックでテキスト参照</b>できる(マジック・アリス共通)。
     </div>
     <div class="body" id="rules-poke" style="display:none">
       54枚フルデッキ(4色×13+JOKER2枚)同士の1対1。<b>初手5枚・マナなし・サイド6枚</b>。手札にたねが無ければ強制引き直し(そのたび相手が1枚ドロー)。先攻後攻はランダム、<b>先攻の1ターン目はワザを使えない</b>。敗者の手札は公開される。<br><br>
@@ -874,17 +874,18 @@
       <b>攻撃</b>: タップ中の敵クリーチャーか、プレイヤー本体。どちらも複数のクリーチャーで攻撃できる。本体に通ると数字ぶん相手の山札が墓地へ<br>
       <b>多重ブロック可</b>: 1体の攻撃を複数のクリーチャーでブロックできる。攻撃側のダメージは<b>数字の大きいブロッカーへ優先して致死分ずつ割り振られ</b>、余りは次へ(例: ♥Qを♠3と♦8でブロック→♦8に8点、♠3に4点)。ブロッカー全員のパワーが攻撃側に返る<br>
       <b>ダメージはそのターンのクリンナップ(ターン終了時)まで蓄積</b>(数字以上で破壊)。<b>召喚酔いあり</b>(出したターンは攻撃不可)。<b>タップ状態で戦闘フェイズを終えたクリーチャーはパワー0</b>(アンタップで回復)<br><br>
-      <b>A(エース)は1/1のETB蘇生クリーチャー</b>(コスト=自スート1マナ+無色Xマナ。Xは召喚時に選ぶ — <b>ただし、Xは1以上とする</b>。土地にもできる):<br>
-      ・スートのキーワード(♠挑戦/♥瞬速/♦警戒/♣速攻)を持つ。♥Aは瞬速で相手のブロックフェイズにも唱えられる<br>
-      ・<b>場に出たとき: 自分の墓地にある同スートのクリーチャーを、数字の合計がX以下になるように望む数だけ場に出す</b>(例: X=5なら♠2と♠3をまとめて。蘇生された側の「場に出たとき」は誘発しない)<br><br>
+      <b>A(エース)は蘇生のソーサリー呪文</b>(コスト=自スート1マナ+無色Xマナ。Xは唱えるときに選ぶ。土地にもできる):<br>
+      ・<b>自分の墓地にある同スートのクリーチャーを、数字の合計がX以下になるように望む数だけ場に出す</b>(例: X=5なら♠2と♠3をまとめて。蘇生された側の「場に出たとき」は誘発しない)<br>
+      ・A自身はクリーチャーではないので<b>場には残らず、墓地へ置かれる</b>(蘇生対象にもならない)。♥Aは瞬速で相手のブロックフェイズにも唱えられる<br><br>
       <b>スート能力</b>: ♠<b>挑戦</b>(攻撃時、アンタップの敵1体を強制的にブロックへ参加させる。複数ブロック時は挑戦対象へ最優先でダメージ)/ ♥<b>瞬速</b>(相手のブロックフェイズに召喚できる)/ ♦<b>警戒</b>(各戦闘フェイズ後にアンタップ)/ ♣<b>速攻</b>(召喚酔いしない)<br>
       <b>挑戦の操作</b>: ♠アタッカーを選ぶ → アンタップの敵をクリックで挑戦対象を指定 → 本体かタップ中の敵をクリックで攻撃先を確定(挑戦を使わないなら直接攻撃先をクリック)<br>
-      <b>デッキ構築</b>: 開始時にデッキ編集画面が開く。52枚+4種のジョーカーのプールから、<b>54枚以下・同じカード1枚まで・ジョーカー2枚まで</b>で自由に構築(保存・ロード3枠)。フルデッキのまま戦ってもよい<br><br>
-      <b>JOKER</b>(4種・すべて0マナのアーティファクト、<b>サイクリング(無色1)</b>=捨てて1枚引く、を共通で持つ・アリスルール共通):<br>
+      <b>デッキ構築</b>: 開始時にデッキ編集画面が開く。52枚+5種のジョーカーのプールから、<b>54枚以下・同じカード1枚まで・ジョーカーは合計2枚まで(同じ能力を2枚入れてもよい)</b>で自由に構築(保存・ロード3枠)。初期デッキは52枚+モックス×2<br><br>
+      <b>JOKER</b>(5種・すべて0マナのアーティファクト、<b>サイクリング(無色1)</b>=捨てて1枚引く、を共通で持つ・アリスルール共通):<br>
       ・<b>モックス</b>: 相手より土地が少ないときのみプレイ(土地ではない)。T: 無色マナ1点<br>
       ・<b>ロータス</b>: 相手より土地が少ないときのみプレイ(土地ではない)。T: 望む単色マナ3点。ターン終了時に生贄<br>
       ・<b>スティール</b>: 対象のクリーチャーはターン終了時まで<b>破壊不能</b>。ターン終了時に生贄<br>
-      ・<b>ルーター</b>: 追加コストで♥♠♦♣を1枚ずつ捨て、カードを7枚引く。ターン終了時に生贄
+      ・<b>ルーター</b>: 追加コストで♥♠♦♣を1枚ずつ捨て、カードを7枚引く。ターン終了時に生贄<br>
+      ・<b>ガッシュ</b>: 追加コストで自分の土地1枚を手札に戻してセット。T: 好きなスートのマナ1点
     </div>
     <div class="body" id="rules-duema">
       54枚フルデッキ(4色×13+JOKER2枚)同士、シールド6枚の1対1。先攻後攻はランダム。<br><br>
@@ -1089,10 +1090,11 @@ let transport = null;
 let gameToken = 0;          // ゲーム世代(古い非同期処理の無効化)
 
 function mkCard(id, suit, rank, joker) { return { id, suit, rank, joker: !!joker }; }
-const JT_ORDER = ["mox", "lotus", "steel", "router"];
-const JT_NAME = { mox: "モックスジョーカー", lotus: "ロータスジョーカー", steel: "スティールジョーカー", router: "ルータージョーカー" };
-const JT_SHORT = { mox: "モックス", lotus: "ロータス", steel: "スティール", router: "ルーター" };
-const FULL_DECK_LIST = [...Array(52).keys(), "mox", "lotus"];   // マジックのフルデッキ(ジョーカー2枚は既定でモックス+ロータス)
+const JT_ORDER = ["mox", "lotus", "steel", "router", "gash"];
+const JT_NAME = { mox: "モックスジョーカー", lotus: "ロータスジョーカー", steel: "スティールジョーカー", router: "ルータージョーカー", gash: "ガッシュジョーカー" };
+const JT_SHORT = { mox: "モックス", lotus: "ロータス", steel: "スティール", router: "ルーター", gash: "ガッシュ" };
+const FULL_DECK_LIST = [...Array(52).keys(), "mox", "mox+"];   // マジックの初期デッキ(ジョーカー2枚は既定でモックス×2)
+const jtBase = x => typeof x === "string" ? x.replace("+", "") : x;   // "mox+" = 同種2枚目のデッキリスト表記
 let deckLists = null;    // 対戦ごとの [p0構築, p1構築](マジックのみ・null要素はフルデッキ)
 let myDeckList = null;   // 自分の構築(デッキエディタで確定したもの)
 /* コード: 0-51 = suit*13+(rank-1)、ジョーカーは種類名の文字列 */
@@ -1100,7 +1102,10 @@ function buildDeckFromList(list, idBase) {
   const nums = [...new Set(list.filter(x => typeof x === "number" && x >= 0 && x < 52))].sort((a, b) => a - b);
   const d = []; let id = idBase;
   for (const n of nums) d.push(mkCard(id++, Math.floor(n / 13), (n % 13) + 1, false));
-  for (const j of JT_ORDER) if (list.includes(j)) { const c = mkCard(id++, -1, 0, true); c.jt = j; d.push(c); }
+  for (const j of JT_ORDER) {   // 同じ能力のジョーカーは2枚まで入れられる("mox"+"mox+" 表記)
+    const cnt = Math.min(2, list.filter(x => typeof x === "string" && jtBase(x) === j).length);
+    for (let k = 0; k < cnt; k++) { const c = mkCard(id++, -1, 0, true); c.jt = j; d.push(c); }
+  }
   return d;
 }
 function realLandCount(p) { return p.lands.filter(l => !l.card.joker).length; }   // アーティファクトジョーカーは土地に数えない
@@ -2912,6 +2917,19 @@ async function applyMainO(pi, a) {
       if (!jk || !jk.joker || !jk.jt) return;
       const t2 = jk.jt;
       if ((t2 === "mox" || t2 === "lotus") && !(realLandCount(p) < realLandCount(o))) return;
+      if (t2 === "gash") {   // 追加コスト: 自分の土地1枚を手札に戻す → アーティファクトとしてセット(T: 好きなスートのマナ1点)
+        const li = p.lands.findIndex(l => !l.card.joker && l.card.id === a.land);
+        if (li < 0) return;
+        const bounced = p.lands.splice(li, 1)[0];
+        p.hand.push(bounced.card);
+        removeFromHand(p, jk);
+        p.lands.push({ card: jk, tapped: false, gash: true });
+        fxGrowIds.add(jk.id);
+        sfx("land");
+        log(`${p.name}: ガッシュジョーカー — ${cardLabel(bounced.card)} を手札に戻してセット(T: 好きなスートのマナ1点)`);
+        render();
+        return;
+      }
       if (t2 === "steel") {
         const tgt = fieldById(0, a.tgt) || fieldById(1, a.tgt);
         if (!tgt) return;
@@ -2972,11 +2990,11 @@ async function applyMainO(pi, a) {
       return;
     }
     case "summon": await applySummonO(pi, a); return;
-    // A(エース): スート1+Xマナの1/1クリーチャー(Xは1以上)。ETB: 墓地の同スートを数字の合計X以下になるよう何体でも場に出す
+    // A(エース): スート1+Xマナのソーサリー呪文。墓地の同スートのクリーチャーを数字の合計X以下になるよう何体でも場に出し、A自身は墓地へ
     case "acecast": {
       const c = handById(pi, a.card);
       if (!c || c.joker || c.rank !== 1) return;
-      const X = Math.max(1, a.x | 0);
+      const X = Math.max(0, a.x | 0);
       const total = 1 + X;
       if (!payWith(p, c.suit, total, a.pays)) {
         if (!canPay(p, c.suit, total)) return;
@@ -2984,16 +3002,14 @@ async function applyMainO(pi, a) {
       }
       removeFromHand(p, c);
       await summonFx(c, total);
-      p.field.push({ card: c, tapped: false, sick: c.suit !== 3, dmg: 0 });
-      fxDropIds.add(c.id);
       sfx("summon");
-      log(`${p.name}: ${cardLabel(c)} を召喚(X=${X}) — 1/1`);
-      // ETB(唱えて出たときのみ): 蘇生されたクリーチャーのETBは誘発しない
+      log(`${p.name}: ${cardLabel(c)} を唱えた(X=${X})`);
+      // 蘇生対象は墓地の同スートのクリーチャー(A自身はクリーチャーではないので対象外)。蘇生された側のETBは誘発しない
       const ids = Array.isArray(a.revive) ? a.revive : (a.revive != null ? [a.revive] : []);
       const picked = [];
       let rsum = 0;
       for (const id of ids) {
-        const g = p.grave.find(g => g.id === id && !g.joker && g.suit === c.suit && !picked.includes(g));
+        const g = p.grave.find(g => g.id === id && !g.joker && g.suit === c.suit && g.rank !== 1 && !picked.includes(g));
         if (!g || rsum + g.rank > X) continue;
         picked.push(g); rsum += g.rank;
       }
@@ -3005,8 +3021,9 @@ async function applyMainO(pi, a) {
         }
         sfx("trigger");
         await showBanner("エースの救済!", 1000, picked[0]);
-        log(`${cardLabel(c)}のETB: 墓地から ${picked.map(g => cardLabel(g)).join("、")} が場に出た!(数字合計${rsum}≦X)`);
+        log(`${cardLabel(c)}: 墓地から ${picked.map(g => cardLabel(g)).join("、")} が場に出た!(数字合計${rsum}≦X)`);
       }
+      p.grave.push(c);   // ソーサリーとして墓地へ(場には残らない)
       render();
       return;
     }
@@ -3291,7 +3308,7 @@ function midShuffle(a) {
 /* ---- 世界の構築 ---- */
 function midDeckListCodes(pi) {
   const list = (deckLists && deckLists[pi]) || FULL_DECK_LIST;
-  return list.map(x => typeof x === "string" ? 52 + Math.max(0, JT_ORDER.indexOf(x)) : x);
+  return list.map(x => typeof x === "string" ? 52 + Math.max(0, JT_ORDER.indexOf(jtBase(x))) : x);
 }
 const midLandView = l => ({ code: midCode(l.card), tapped: !!l.tapped, lotus: !!l.lotus, mox: !!l.mox, steel: !!l.steel, router: !!l.router });
 const midCreView = f => ({ code: midCode(f.card), tapped: !!f.tapped, sick: !!f.sick, pz: !!f.pz, dmg: f.dmg || 0, indest: !!f.indest });
@@ -3372,7 +3389,8 @@ function midFeat(st, me) {
     return st.hand[pi].filter(c =>
       (c === 52 || c === 53) ? !behind :
       c === 54 ? !st.field[pi].length :
-      c === 55 ? suits < 4 : false).length;
+      c === 55 ? suits < 4 :
+      c === 56 ? !st.lands[pi].some(l => l.code < 52) : false).length;
   };
   const jd = (jk(me) - jk(1 - me)) / 2;
   for (let p = 0; p < 3; p++) out[f.length * 3 + p] = jd * ph[p];
@@ -3490,10 +3508,9 @@ function midApplyMain(st, pi, a) {
       st.field[pi].push({ code: a.code, tapped: false, sick: midSuit(a.code) !== 3, pz: false, dmg: 0, indest: false });   // ♣は速攻
       return;
     }
-    case "acecast": {
+    case "acecast": {   // A=ソーサリー: 蘇生だけ場に出て、A自身は墓地へ
       midPay(st, pi, midSuit(a.code), 1 + a.x);
       midRemoveHand(st, pi, a.code);
-      st.field[pi].push({ code: a.code, tapped: false, sick: midSuit(a.code) !== 3, pz: false, dmg: 0, indest: false });
       for (const rc of (a.revive || [])) {
         const i = st.grave[pi].indexOf(rc);
         if (i >= 0) {
@@ -3501,6 +3518,7 @@ function midApplyMain(st, pi, a) {
           st.field[pi].push({ code: rc, tapped: false, sick: midSuit(rc) !== 3, pz: false, dmg: 0, indest: false });
         }
       }
+      st.grave[pi].push(a.code);
       return;
     }
     case "jcycle": {
@@ -3522,6 +3540,10 @@ function midApplyMain(st, pi, a) {
         st.grave[pi].push(...a.discards);
         st.lands[pi].push({ code: 55, tapped: false, lotus: false, mox: false, steel: false, router: true });
         for (let i = 0; i < 7 && st.deck[pi].length; i++) st.hand[pi].push(st.deck[pi].pop());
+      } else if (a.code === 56) {   // ガッシュ: 土地1枚を手札に戻してセット(T: 好きなスートのマナ1)
+        const i = st.lands[pi].findIndex(l => l.code === a.land);
+        if (i >= 0) { st.hand[pi].push(st.lands[pi][i].code); st.lands[pi].splice(i, 1); }
+        st.lands[pi].push({ code: 56, tapped: false, lotus: false, mox: false, steel: false, router: false });
       } else {
         st.lands[pi].push({ code: a.code, tapped: false, lotus: a.code === 53, mox: a.code === 52, steel: false, router: false });
       }
@@ -3604,7 +3626,7 @@ function midAcePack(st, pi, aceCode) {
   if (maxX < 1) return null;
   const picks = [];
   let sum = 0;
-  for (const g of st.grave[pi].filter(c => c < 52 && midSuit(c) === suit).sort((a, b) => midRank(b) - midRank(a))) {
+  for (const g of st.grave[pi].filter(c => c < 52 && midSuit(c) === suit && midRank(c) !== 1).sort((a, b) => midRank(b) - midRank(a))) {
     if (sum + midRank(g) <= maxX) { picks.push(g); sum += midRank(g); }
   }
   return { x: sum, revive: picks };
@@ -3628,10 +3650,9 @@ function midGenMain(st, pi, minCode, full) {
     const suit = midSuit(c), rank = midRank(c);
     if (suit === 1) continue;   // ♥は自分のターンに出さない(枝刈り。瞬速で相手のブロックフェイズに出す)
     if (!full && suit !== 3) continue;
-    if (rank === 1) {   // A(Xは1以上)
+    if (rank === 1) {   // A=ソーサリー: 蘇生できるときだけ唱える(空撃ちは枝から除外)
       const pack = midAcePack(st, pi, c);
-      if (pack && pack.x > 0) out.push({ t: "acecast", code: c, x: pack.x, revive: pack.revive, ord: c });
-      if (midCanPay(st, pi, suit, 2)) out.push({ t: "acecast", code: c, x: 1, revive: [], ord: c });
+      if (pack && pack.x > 0 && pack.revive.length) out.push({ t: "acecast", code: c, x: pack.x, revive: pack.revive, ord: c });
       continue;
     }
     if (midCanPay(st, pi, suit, rank + 1)) { out.push({ t: "summon", code: c, ord: c }); continue; }
@@ -3648,12 +3669,16 @@ function midGenMain(st, pi, minCode, full) {
     }
   }
   // ジョーカー
-  for (const c of st.hand[pi].filter(c2 => c2 >= 52 && c2 <= 55)) {
+  for (const c of st.hand[pi].filter(c2 => c2 >= 52 && c2 <= 56)) {
     if (c < minCode) continue;
     const behind = midRealLands(st, pi) < midRealLands(st, 1 - pi);
     if ((c === 52 || c === 53) && behind) out.push({ t: "jplay", code: c, ord: c });
     if (c === 54) {
       for (const f of st.field[pi]) out.push({ t: "jplay", code: c, tgt: f.code, ord: c });
+    }
+    if (c === 56) {   // ガッシュ: タップ済みの実土地(最小ランク)を手札に戻してセット
+      const t = st.lands[pi].filter(l => l.code < 52 && l.tapped).sort((a, b) => midRank(a.code) - midRank(b.code))[0];
+      if (t) out.push({ t: "jplay", code: c, land: t.code, ord: c });
     }
     if (c === 55) {
       const dis = [];
@@ -4074,6 +4099,11 @@ function midMainToAction(pi, a) {
       const act2 = { t: "jplay", jk: midCardId(pi, a.code, "hand") };
       if (a.tgt != null) act2.tgt = midCardId(pi, a.tgt, "field");
       if (a.discards) act2.discards = a.discards.map(c => midCardId(pi, c, "hand")).filter(x => x != null);
+      if (a.land != null) {
+        const l = players[pi].lands.find(l2 => !l2.card.joker &&
+          l2.card.suit === midSuit(a.land) && l2.card.rank === midRank(a.land));
+        act2.land = l ? l.card.id : null;
+      }
       return act2;
     }
   }
@@ -4101,6 +4131,7 @@ function midMainValid(pi, a) {   // 実盤面での妥当性チェック(ズレ�
     if ((a.code === 52 || a.code === 53) && !(realLandCount(p) < realLandCount(o))) return null;
     if (a.code === 54 && act2.tgt == null) return null;
     if (a.code === 55 && (act2.discards || []).length !== 4) return null;
+    if (a.code === 56 && act2.land == null) return null;
     return act2;
   }
   return null;
@@ -4244,7 +4275,8 @@ function midDecideBlocks(pi) {
   // 盤面が並ぶと割り当て数が爆発する(最大4000×瞬速3×世界2)ため、全候補フル読みは禁止
   const screen = [];
   for (const fo of flashOpts) {
-    const extra = fo ? [fo.code, ...(fo.revive || [])] : [];
+    // 瞬速召喚は本体がブロッカーになる。♥A(ソーサリー)は蘇生された側だけがブロッカー
+    const extra = fo ? (fo.t === "acecast" ? [...(fo.revive || [])] : [fo.code]) : [];
     const assigns = buildAssigns([...blockers, ...extra]);
     for (const asg of assigns) {
       const st = midClone(worlds[0]);
@@ -4323,7 +4355,7 @@ function aiDecide(pi, kind, ctx) {
       for (let x = 13; x >= 0; x--) if (canPay(p, 1, 1 + x)) { maxX = x; break; }
       const picks = [];
       let sum = 0;
-      for (const g of p.grave.filter(g => !g.joker && g.suit === 1).sort((a, b) => b.rank - a.rank)) {
+      for (const g of p.grave.filter(g => !g.joker && g.suit === 1 && g.rank !== 1).sort((a, b) => b.rank - a.rank)) {
         if (sum + g.rank <= maxX) { picks.push(g); sum += g.rank; }
       }
       if (sum >= 3) return { k: "oblocks", t: "acecast", card: aceH.id, x: sum, revive: picks.map(g => g.id) };
@@ -4531,7 +4563,7 @@ function aiOMain(pi) {   // 相手ターン中のメイン: 土地→呪文→�
     if (maxX < 1) continue;
     const picks = [];
     let sum = 0;
-    for (const g of p.grave.filter(g => !g.joker && g.suit === aceC.suit).sort((a, b) => b.rank - a.rank)) {
+    for (const g of p.grave.filter(g => !g.joker && g.suit === aceC.suit && g.rank !== 1).sort((a, b) => b.rank - a.rank)) {
       if (sum + g.rank <= maxX) { picks.push(g); sum += g.rank; }
     }
     if (sum >= 5) return { t: "acecast", card: aceC.id, x: sum, revive: picks.map(g => g.id) };
@@ -4852,28 +4884,28 @@ async function actSpell(kind, c, body, cost) {
   act(a);
 }
 
-/* A(1/1・ETB蘇生)のUIフロー: X選択→蘇生対象選択 */
+/* A(ソーサリー・蘇生)のUIフロー: X選択→蘇生対象選択 */
 async function aceCastUI(c, kind) {
   const p = players[myIdx];
   let maxX = -1;
-  for (let x = 13; x >= 1; x--) if (canPay(p, c.suit, 1 + x)) { maxX = x; break; }
-  if (maxX < 1) { setHint("マナが足りない(エースはX≧1・最低2マナ)"); return; }
+  for (let x = 13; x >= 0; x--) if (canPay(p, c.suit, 1 + x)) { maxX = x; break; }
+  if (maxX < 0) { setHint("マナが足りない(最低1マナ)"); return; }
   const opts = [];
-  for (let x = 1; x <= maxX; x++) {
-    const cands = p.grave.filter(g => !g.joker && g.suit === c.suit && g.rank <= x).length;
+  for (let x = 0; x <= maxX; x++) {
+    const cands = p.grave.filter(g => !g.joker && g.suit === c.suit && g.rank !== 1 && g.rank <= x).length;
     opts.push({ label: `X = ${x}(コスト${1 + x}${cands ? `・蘇生候補${cands}枚` : ""})`, value: String(x) });
   }
   opts.push({ label: "キャンセル", value: null });
-  const xv = await choose(`${cardLabel(c)}: Xを選ぶ(1以上)`, opts, c, "1/1で召喚し、ETBで墓地の同スートのクリーチャーを数字の合計X以下になるように望む数だけ場に出す");
+  const xv = await choose(`${cardLabel(c)}: Xを選ぶ`, opts, c, "ソーサリー: 墓地の同スートのクリーチャーを数字の合計X以下になるように望む数だけ場に出し、A自身は墓地へ置く");
   if (xv === null) return;
   const X = parseInt(xv, 10);
   const revive = [];
   let rest = X;
   for (;;) {
-    const cands = p.grave.filter(g => !g.joker && g.suit === c.suit && g.rank <= rest && !revive.includes(g.id));
+    const cands = p.grave.filter(g => !g.joker && g.suit === c.suit && g.rank !== 1 && g.rank <= rest && !revive.includes(g.id));
     if (!cands.length) break;
     const t = await chooseCard(
-      `${cardLabel(c)}のETB: 場に出すクリーチャーを選ぶ(残りX=${rest}・合計X以下まで複数可)`,
+      `${cardLabel(c)}: 場に出すクリーチャーを選ぶ(残りX=${rest}・合計X以下まで複数可)`,
       cands, "", revive.length ? "これで決定" : "蘇生しない");
     if (!t) break;
     revive.push(t.id); rest -= t.rank;
@@ -4979,14 +5011,14 @@ async function onHandClickO(c) {
   if (oPhase && (oPhase.phase === "attack" || oPhase.phase === "main2") && oPhase.actor === myIdx) {
     const mk = oPhase.phase === "attack" ? "oattacks" : "omain";
     if (!c.joker && c.rank === 1) {
-      // A: クリーチャーではなくスート別の呪文
-      const graveN = p.grave.filter(g => !g.joker && g.suit === c.suit).length;
-      const v = await choose(`${cardLabel(c)}(1/1・ETB蘇生)`, [
+      // A: クリーチャーではなくソーサリー呪文(蘇生してA自身は墓地へ)
+      const graveN = p.grave.filter(g => !g.joker && g.suit === c.suit && g.rank !== 1).length;
+      const v = await choose(`${cardLabel(c)}(ソーサリー・蘇生)`, [
         { label: `土地に置く(${SUITS[c.suit]}マナ)`, value: "land", disabled: landSetUsed >= landSetMax },
-        { label: `召喚する(${SUITS[c.suit]}1+Xマナ) — 1/1。ETB: 墓地の同スートを数字の合計X以下まで望む数だけ場に出す(同スート墓地${graveN}枚)`,
-          value: "cast", primary: true, disabled: !canPay(p, c.suit, 2) },
+        { label: `唱える(${SUITS[c.suit]}1+Xマナ) — 墓地の同スートのクリーチャーを数字の合計X以下まで望む数だけ場に出す(同スート墓地${graveN}枚)`,
+          value: "cast", primary: true, disabled: !canPay(p, c.suit, 1) },
         { label: "キャンセル", value: null },
-      ], c, "Xは召喚時に選ぶ(ただし、Xは1以上とする)。蘇生されたクリーチャーのETBは誘発しない");
+      ], c, "ソーサリー: 唱えたAは場に残らず墓地へ。Xは唱えるときに選ぶ。蘇生されたクリーチャーのETBは誘発しない");
       if (!uiMain) return;
       if (v === "land") act({ k: mk, t: "land", card: c.id });
       if (v === "cast") await aceCastUI(c, mk);
@@ -5049,6 +5081,9 @@ async function onHandClickO(c) {
       label: "プレイ(0マナ): 追加コストで♥♠♦♣を1枚ずつ捨て、カードを7枚引く。ターン終了時に生贄",
       value: "play", primary: true,
       disabled: ![1, 0, 2, 3].every(s2 => p.hand.some(h => !h.joker && h.suit === s2)) });
+    if (jt === "gash") opts.push({
+      label: "プレイ(0マナ): 自分の土地1枚を手札に戻す — アーティファクトとしてセット。T: 好きなスートのマナ1点",
+      value: "play", primary: true, disabled: !p.lands.some(l => !l.card.joker) });
     opts.push({ label: "サイクリング(無色1): このカードを捨てて1枚引く", value: "cycle", disabled: !canPayC(p, 1) });
     opts.push({ label: "キャンセル", value: null });
     const v = await choose(JT_NAME[jt] || "JOKER", opts, c, "0マナのアーティファクト。使わないときはサイクリングで引きに変えられる");
@@ -5080,6 +5115,13 @@ async function onHandClickO(c) {
         discards.push(pick.id);
       }
       act({ k: mk, t: "jplay", jk: c.id, discards });
+      return;
+    }
+    if (jt === "gash") {
+      const cands = p.lands.filter(l => !l.card.joker).map(l => l.card);
+      const t3 = await chooseCard("ガッシュジョーカー: 手札に戻す土地を選ぶ", cands, "", "キャンセル");
+      if (!t3) return;
+      act({ k: mk, t: "jplay", jk: c.id, land: t3.id });
       return;
     }
     act({ k: mk, t: "jplay", jk: c.id });
@@ -5445,7 +5487,7 @@ const ART_BASE = "img/cards/";
 function artName(c) {
   if (!c) return null;
   if (c.joker) {
-    const jtIdx = { mox: 0, lotus: 1, steel: 0, router: 1 }[c.jt];
+    const jtIdx = { mox: 0, lotus: 1, steel: 0, router: 1, gash: 0 }[c.jt];
     return "joker" + (jtIdx !== undefined ? jtIdx : (Math.abs(c.id) % 2));
   }
   if (c.suit < 0 || c.suit > 3 || c.rank < 1 || c.rank > 13) return null;
@@ -5595,12 +5637,13 @@ function cardRulesText(c, alice) {
       lotus: "<b>ロータスジョーカー</b> — 0マナ アーティファクト<br><br>相手の場より土地の枚数が少ないときのみプレイできる(土地ではない)<br><br><b>T</b>: 望む単色マナ3点を加える<br><br>ターン終了時、生贄に捧げる" + cyc,
       steel: "<b>スティールジョーカー</b> — 0マナ アーティファクト<br><br>プレイしたとき、対象のクリーチャーはターン終了時まで<b>破壊不能</b>を得る<br><br>ターン終了時、生贄に捧げる" + cyc,
       router: "<b>ルータージョーカー</b> — 0マナ アーティファクト<br><br>追加コスト: 手札から♥・♠・♦・♣のカードを1枚ずつ捨てる<br><br>カードを7枚引く<br><br>ターン終了時、生贄に捧げる" + cyc,
+      gash: "<b>ガッシュジョーカー</b> — 0マナ アーティファクト<br><br>追加コスト: 自分の土地を1枚手札に戻す<br><br><b>T</b>: 好きなスートのマナ1点を加える" + cyc,
     };
     return JT_TEXT[c.jt] || ("<b>JOKER</b>" + cyc);
   }
   if (c.rank === 1) {
-    const kw1 = { 0: "挑戦", 1: "瞬速", 2: "警戒", 3: "速攻" }[c.suit];
-    return `<b>${cardLabel(c)} — クリーチャー 1/1</b><br>コスト: ${SUITS[c.suit]}1+無色X(ただし、Xは1以上とする)<br><br><b>${kw1}</b><br><br><b>場に出たとき</b>: 自分の墓地にある${SUITS[c.suit]}のクリーチャーを、数字の合計がX以下になるように望む数だけ場に出す(蘇生されたクリーチャーの「場に出たとき」は誘発しない)<br><br>土地として置くこともできる(${SUITS[c.suit]}マナ1点)`;
+    const flash1 = c.suit === 1 ? "<br><br><b>瞬速</b>: 相手のブロックフェイズにも唱えられる" : "";
+    return `<b>${cardLabel(c)} — ソーサリー</b><br>コスト: ${SUITS[c.suit]}1+無色X(Xは唱えるときに選ぶ)${flash1}<br><br>自分の墓地にある${SUITS[c.suit]}のクリーチャーを、数字の合計がX以下になるように望む数だけ場に出す(蘇生されたクリーチャーの「場に出たとき」は誘発しない)。このカードは場に残らず、墓地に置かれる<br><br>土地として置くこともできる(${SUITS[c.suit]}マナ1点)`;
   }
   const kw = {
     0: "<b>挑戦</b>: 攻撃時、アンタップの相手クリーチャー最大1体を対象に取り、強制的にそのブロックへ参加させる(複数ブロック時は挑戦対象へ最優先でダメージ)",
@@ -6504,7 +6547,7 @@ function storyQuit() {
    - 両者プレーン54枚フルデッキを積み込み(初期手札・ドロー順・被ミル位置まで固定)
    - ウサギ(CPU)は TUT_C の台本どおりに行動し、台詞ポップアップで解説する
    - プレイヤーは TUT_P の誘導ステップ(青発光+他入力ロック+【】アドバイス)で進む
-   - 検算: ウサギ山札 47−ドロー9−被ミル22(T4:2+T5:3+T6:8+T7:9)=16 → T10の♥J+♣J=22点で討ち取り */
+   - 検算: ウサギ山札 47−ドロー9−被ミル37(T4:2+T5:3+T6:8+T7:9+T8:4+T9:11)=1 → T10の♥J+♣J=22点で討ち取り */
 let tutActive = false;
 let tutScn = null;            // 進行中のシナリオ(TUT1=部屋1)
 let tutCi = 0, tutPi = 0;     // ウサギ/プレイヤーの台本ポインタ
@@ -6517,12 +6560,12 @@ let tutPaySaved = null;       // 支払いモードの退避(チュートリア�
    手札は山札の先頭7枚、ドローと被ミルはどちらも山札の末尾から消費される。
    TAIL は「消費される順」の並び(null = 任意のカードで良い位置 = 被ミルなど) */
 const TUT_P_HAND = [[0,10],[2,9],[1,8],[0,2],[2,3],[1,4],[3,5]];   // ♠10♦9♥8♠2♦3♥4♣5
-const TUT_C_HAND = [[0,10],[2,9],[1,8],[0,1],[2,2],[1,3],[3,4]];   // ♠10♦9♥8♠A♦2♥3♣4
+const TUT_C_HAND = [[0,10],[2,9],[1,8],[0,13],[2,2],[1,3],[3,4]];  // ♠10♦9♥8♠K(死に札)♦2♥3♣4
 const TUT_P_TAIL = [                       // あなた: T2♣7→T3♠9→T4♣10→T5♥2→(被4)→T6♦4→T7♥J→T8♦5→(被4)→T9♣6→T10♣J
   [3,7], [0,9], [3,10], [1,2], null, null, null, null,
   [2,4], [1,11], [2,5], null, null, null, null, [3,6], [3,11],
 ];
-const TUT_C_TAIL = [                       // ウサギ: T1♣7→T2♦10→T3♥7→(被2)→T4♣6→(被3)→T5♠4→(被8)→T6モックス→(被9)→T7♠J→T8♣A→T9♥J
+const TUT_C_TAIL = [                       // ウサギ: T1♣7→T2♦10→T3♥7→(被2)→T4♣6→(被3)→T5♠4→(被8)→T6モックス→(被9)→T7♠J→T8♣A(末尾の♥JはT9の被ミルに流れる)
   [3,7], [2,10], [1,7], null, null, [3,6], null, null, null, [0,4],
   null, null, null, null, null, null, null, null, "mox",
   null, null, null, null, null, null, null, null, null,
@@ -6681,22 +6724,18 @@ const TUT_P = [
     ["あなたの♠2の召喚には、♠のマナ1つと、いずれかのマナ2つ — 合計3マナが要ります。",
      "まだ足りませんね。あなたにできることはありません。"]),
   tpBtn("omain", "【ターンを終了してください】"),
-  // ── ターン2(ウサギ): エース召喚を見届ける ──
+  // ── ターン2(ウサギ): 土地を置くだけ ──
   tpBtn("oblocks", "【フェイズを終了してください】", ["フェイズを終了してください。"]),
   // ── ターン3(あなた) ──
   tpSet(1, 8, "【カードをセットしてください】"),
   tpSummon(0, 2, "【♠2をタップして召喚してください】", ["♠2の召喚の準備が整いましたね。"]),
   tpBtn("oattacks", "【フェイズを終了してください】", ["召喚したターンは、動けません。"]),
   tpBtn("omain", "【ターンを終了してください】"),
-  // ── ターン3(ウサギ): ♠Aを♠2でブロック ──
-  { k: "oblocks", say: ["アンタップ状態のクリーチャーは、相手の攻撃をブロックできる。"], stages: [
-    tgBlockSel(0, 2, "【♠2でブロックしてください】"),
-    tgBlockTgt(0, 2, 0, 1, "【攻撃中の♠Aをタップしてブロック】"),
-    tgBtn("【ブロックを確定してください】"),
-  ]},
+  // ── ターン3(ウサギ): 攻撃なし ──
+  tpBtn("oblocks", "【フェイズを終了してください】"),
   // ── ターン4(あなた) ──
   tpSet(3, 10, "【♣10をセットしてください】",
-    ["あなたの♠2の傷は癒えました。クリンナップは敵味方すべてを回復します。"]),
+    ["私の♦2は召喚酔いが解け、次の私のターンから動けるようになります。"]),
   tpSummon(2, 3, "【♦3を召喚してください】"),
   { k: "oattacks", say: ["♦のクリーチャーは警戒を持ちます。攻撃してもタップしない。"], stages: [
     tgFieldSel(0, 2, "【♠2で相手プレイヤーを攻撃してください】"),
@@ -6818,22 +6857,20 @@ const TUT_C = [
     ], a: () => ({ k: "omain", t: "done" }) },
   // T2(あなた)のブロックフェイズ
   { k: "oblocks", a: () => ({ k: "oblocks", t: "blocks", list: [] }) },
-  // ── ターン2(ウサギ): 2つ目の土地→♠AをX=1で召喚 ──
+  // ── ターン2(ウサギ): 2つ目の土地を置くだけ ──
   { k: "oattacks", a: () => ({ k: "oattacks", t: "land", card: tutH(1 - myIdx, 2, 10) }) },
-  { k: "oattacks", say: ["クリーチャーを召喚します。"],
-    a: () => ({ k: "oattacks", t: "acecast", card: tutH(1 - myIdx, 0, 1), x: 1, revive: [] }) },
-  { k: "oattacks", say: ["このターンに出たクリーチャーは、動けません。"],
+  { k: "oattacks", say: ["まだ、私に出せる駒はありません。"],
     a: () => ({ k: "oattacks", t: "attacks", list: [] }) },
   { k: "omain", say: ["ターンを終了します。"], a: () => ({ k: "omain", t: "done" }) },
   // T3(あなた)のブロックフェイズ
   { k: "oblocks", a: () => ({ k: "oblocks", t: "blocks", list: [] }) },
-  // ── ターン3(ウサギ): ♠Aで攻撃(♠2にブロックされて散る)→ ♦2を召喚 ──
-  { k: "oattacks", say: ["召喚酔いが解けたクリーチャーは、アタックに参加できます。"],
-    a: () => ({ k: "oattacks", t: "attacks", list: [{ cre: tutF(1 - myIdx, 0, 1), tt: "player" }] }) },
-  { k: "omain", say: ["ブロックした者同士は戦闘を行います。私のエースは力尽きました。"],
-    a: () => ({ k: "omain", t: "land", card: tutH(1 - myIdx, 1, 7) }) },
-  { k: "omain", a: () => ({ k: "omain", t: "summon", card: tutH(1 - myIdx, 2, 2) }) },
-  { k: "omain", a: () => ({ k: "omain", t: "done" }) },
+  // ── ターン3(ウサギ): ♥7セット→♦2を召喚 ──
+  { k: "oattacks", a: () => ({ k: "oattacks", t: "land", card: tutH(1 - myIdx, 1, 7) }) },
+  { k: "oattacks", a: () => ({ k: "oattacks", t: "attacks", list: [] }) },
+  { k: "omain", say: ["クリーチャーを召喚します。"],
+    a: () => ({ k: "omain", t: "summon", card: tutH(1 - myIdx, 2, 2) }) },
+  { k: "omain", say: ["このターンに出たクリーチャーは、動けません。"],
+    a: () => ({ k: "omain", t: "done" }) },
   // T4(あなた)のブロックフェイズ(♠2の攻撃は素通し)
   { k: "oblocks", say: ["受けましょう。"], a: () => ({ k: "oblocks", t: "blocks", list: [] }) },
   // ── ターン4(ウサギ): ♦2でタップ中の♠2を攻撃(♦3にブロックされる) ──
@@ -6877,24 +6914,24 @@ const TUT_C = [
   // ── ターン8(ウサギ): ♣A(X=4)で♣4を蘇生→♠Jの挑戦+♣4で総攻撃 ──(T8あなたにウサギの判断なし)
   { k: "oattacks", a: () => ({ k: "oattacks", t: "acecast", card: tutH(1 - myIdx, 3, 1), x: 4,
       revive: [tutG(1 - myIdx, 3, 4)] }) },
-  { k: "oattacks", say: ["エースは、追加でXマナ支払うことで、墓地から同じスートのカードを戻すことができます。"],
+  { k: "oattacks", say: [
+      "エースはソーサリー呪文。追加でXマナ支払うことで、墓地から同じスートのクリーチャーを戻すことができます。",
+      "エース自身は場には残らず、墓地へ。",
+    ],
     a: () => ({ k: "oattacks", t: "attacks", list: [
       { cre: tutF(1 - myIdx, 0, 11), tt: "player", prov: tutF(myIdx, 3, 5) },
       { cre: tutF(1 - myIdx, 3, 4), tt: "player" },
     ] }) },
   { k: "omain", a: () => ({ k: "omain", t: "done" }) },
-  // T9(あなた): ♥Jの攻撃を♣Aでチャンプブロック
-  { k: "oblocks", a: () => ({ k: "oblocks", t: "blocks",
-      list: [{ attacker: tutF(myIdx, 1, 11), blocker: tutF(1 - myIdx, 3, 1) }] }) },
+  // T9(あなた): ウサギはブロッカーを持たないため、ブロックの意思決定は発生しない
   // ── ターン9(ウサギ): 打つ手なし ──
   { k: "oattacks", say: [
-      "私が召喚できるカードはありません。",
+      "……ここまで、のようですね。",
       "以上で、チュートリアルを終わります。",
       "私を殺して、先に進んでください。",
     ], a: () => ({ k: "oattacks", t: "attacks", list: [] }) },
   { k: "omain", a: () => ({ k: "omain", t: "done" }) },
-  // T10(あなた): とどめを受ける
-  { k: "oblocks", a: () => ({ k: "oblocks", t: "blocks", list: [] }) },
+  // T10(あなた): とどめ — ウサギは場も瞬速も持たず、ブロックの意思決定は発生しない
 ];
 
 /* ---- シナリオ定義(部屋→台本) ---- */
@@ -7370,15 +7407,27 @@ function renderDeckEditor() {
   }
   const jrow = document.createElement("div");
   jrow.className = "deck-row";
-  const nj = JT_ORDER.filter(x => deckSel.has(x)).length;
+  // ジョーカーは合計2枚まで。同じ能力のジョーカーを2枚入れてもよい(2枚目は "mox+" 等の表記で保存)
+  const jCnt = j => (deckSel.has(j) ? 1 : 0) + (deckSel.has(j + "+") ? 1 : 0);
+  const nj = JT_ORDER.reduce((s, x) => s + jCnt(x), 0);
   JT_ORDER.forEach((j, i) => {
     const c = mkCard(90100 + i, -1, 0, true);
     c.jt = j;
     const el = cardEl(c, { sm: true });
-    if (!deckSel.has(j)) el.classList.add("deckoff");
-    el.addEventListener("click", () => {
-      if (deckSel.has(j)) deckSel.delete(j);
-      else if (JT_ORDER.filter(x => deckSel.has(x)).length < 2) deckSel.add(j);
+    const cnt = jCnt(j);
+    if (!cnt) el.classList.add("deckoff");
+    if (cnt === 2) {
+      const b = document.createElement("div");
+      b.textContent = "×2";
+      b.style.cssText = "position:absolute;right:2px;top:2px;z-index:3;font-size:10px;font-weight:700;" +
+        "background:var(--gold);color:var(--ink);border-radius:4px;padding:1px 3px";
+      el.appendChild(b);
+    }
+    el.addEventListener("click", () => {   // タップで 0→1→2→0 と巡回(合計2枚の枠内で)
+      const cur = jCnt(j);
+      if (cur === 2) { deckSel.delete(j); deckSel.delete(j + "+"); }
+      else if (cur === 1) { if (nj < 2) deckSel.add(j + "+"); else { deckSel.delete(j); deckSel.delete(j + "+"); } }
+      else if (nj < 2) deckSel.add(j);
       renderDeckEditor();
     });
     jrow.appendChild(el);
