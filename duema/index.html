@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>トランプデュエル — Trump Duel (duema)</title>
+<title>デュエルトランプ — Duel Trump (duema)</title>
 <style>
   :root {
     --felt: #171320;
@@ -112,7 +112,7 @@
   .card.sm .rk { font-size: 11px; padding: 3px 0 0 4px; }
   .card.sm .st-s { font-size: 9px; padding: 0 0 0 4px; }
   .card.sm .st-b { font-size: 19px; margin-top: 0; }
-  /* 土地: スートが主役なので大きく1つだけ表示 */
+  /* シード: スートが主役なので大きく1つだけ表示 */
   .card.sm.land .st-s { display: none; }
   .card.sm.land .st-b { font-size: 30px; margin-top: -2px; }
   .card.ench { outline: 2px solid var(--gold); box-shadow: 0 0 8px rgba(176,139,62,.45); }
@@ -120,7 +120,7 @@
   .card.alice { background: #141318; border-color: #3c3946; color: #ece6dc; }
   .card.alice.red { color: #e04a50; }
   .card.alice.tapped { filter: brightness(1); }
-  /* 入場エフェクト: 土地は蔦に絡まれて地面から生え、クリーチャーは魔法陣から現れる */
+  /* 入場エフェクト: シードは蔦に絡まれて地面から生え、クリーチャーは魔法陣から現れる */
   @keyframes fxGrow {
     0% { transform: translateY(20px) scale(.12) rotate(-7deg); opacity: 0; filter: brightness(.4) sepia(.6) hue-rotate(50deg); }
     45% { transform: translateY(-4px) scale(1.07) rotate(3deg); opacity: 1; }
@@ -232,7 +232,7 @@
   }
   .acct-row button { font-size: 11px; padding: 5px 10px; background: rgba(221,210,182,.12); color: var(--paper); }
   .home-rule { font-size: 15px; }
-  /* ホーム: マジックルールが本編、他ルールはおまけの小さな並び */
+  /* ホーム: Mルールが本編、他ルールはおまけの小さな並び */
   .opts button.home-main {
     font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
     font-size: 19px; letter-spacing: .3em; text-align: center; padding: 18px 20px;
@@ -664,8 +664,8 @@
 <div id="lifefx"></div>
 <div id="app">
   <header>
-    <h1>トランプデュエル</h1>
-    <span class="sub">TRUMP DUEL — duema</span>
+    <h1>デュエルトランプ</h1>
+    <span class="sub">DUEL TRUMP — duema</span>
     <span id="turn-ind"></span>
     <button id="btn-mute" title="効果音の切り替え">🔊</button>
   </header>
@@ -681,7 +681,7 @@
     </div>
     <div class="zone-label" id="e-sh-label">シールド</div>
     <div class="zone" id="e-shields"></div>
-    <div class="zone-label" id="e-ld-label">マナゾーン(土地)</div>
+    <div class="zone-label" id="e-ld-label">マナゾーン(シード)</div>
     <div class="zone" id="e-lands"></div>
     <div class="zone-label" id="e-f-label">バトルゾーン</div>
     <div class="zone" id="e-field"></div>
@@ -691,9 +691,9 @@
   <div id="phasebar" style="display:none">
     <div class="pb-ticks">
       <span class="pb-tick" id="pb-untap" title="アンタップ&ドロー">☀</span>
-      <span class="pb-tick" id="pb-attack" title="第1メイン&アタック(土地・呪文・召喚+攻撃宣言)">⚔</span>
+      <span class="pb-tick" id="pb-attack" title="第1メイン&アタック(シード・呪文・召喚+攻撃宣言)">⚔</span>
       <span class="pb-tick" id="pb-block" title="ブロック(相手が対応・♥瞬速可。終了時に戦闘解決)">⛨</span>
-      <span class="pb-tick" id="pb-main2" title="第2メイン(土地・呪文・召喚)">⚚</span>
+      <span class="pb-tick" id="pb-main2" title="第2メイン(シード・呪文・召喚)">⚚</span>
       <span class="pb-tick" id="pb-battle" title="クリンナップ(ターン終了時: 全ダメージ・修整回復)">✦</span>
     </div>
   </div>
@@ -710,7 +710,7 @@
     </div>
     <div class="zone-label" id="m-f-label">バトルゾーン</div>
     <div class="zone" id="m-field"></div>
-    <div class="zone-label" id="m-ld-label">マナゾーン(土地)</div>
+    <div class="zone-label" id="m-ld-label">マナゾーン(シード)</div>
     <div class="zone" id="m-lands"></div>
     <div class="zone-label" id="m-sh-label">シールド</div>
     <div class="zone" id="m-shields"></div>
@@ -747,10 +747,10 @@
     <div class="story-title">アリス・イン・アンダーランド</div>
     <div class="story-sub">— ルールを選択 —</div>
     <div class="story-btns">
-      <button id="story-rule-magic">マジックルール</button>
-      <button class="dim" disabled>Dモード(準備中)</button>
-      <button class="dim" disabled>Yモード(準備中)</button>
-      <button class="dim" disabled>Pモード(準備中)</button>
+      <button id="story-rule-magic">Mルール</button>
+      <button class="dim" disabled>Dルール(準備中)</button>
+      <button class="dim" disabled>Yルール(準備中)</button>
+      <button class="dim" disabled>Pルール(準備中)</button>
       <button id="story-back">タイトルへ戻る</button>
     </div>
   </div>
@@ -783,7 +783,7 @@
 </div>
 
 <!-- カードテキスト(右クリック) -->
-<!-- デッキエディタ(マジックルール) -->
+<!-- デッキエディタ(Mルール) -->
 <div class="overlay" id="deck-overlay">
   <div class="panel" style="max-width:560px">
     <h2>デッキ編集</h2>
@@ -824,22 +824,22 @@
 <!-- タイトル -->
 <div class="overlay" id="title-overlay">
   <div class="panel">
-    <h2>トランプデュエル</h2>
+    <h2>デュエルトランプ</h2>
     <div class="rulesel">
-      <button id="rule-duema" class="on">Dモード</button>
-      <button id="rule-original">マジックルール</button>
-      <button id="rule-yugi">Yモード</button>
-      <button id="rule-poke">Pモード</button>
-      <button id="rule-alice">マジック(アリス)</button>
+      <button id="rule-duema" class="on">Dルール</button>
+      <button id="rule-original">Mルール</button>
+      <button id="rule-yugi">Yルール</button>
+      <button id="rule-poke">Pルール</button>
+      <button id="rule-alice">Mルール(アリス)</button>
     </div>
     <div class="body" id="rules-alice" style="display:none">
-      マジックルールの変種。ルール進行は同じだが、<b>両者ともアリスの特殊カード</b>でデュエルする(ストーリーモードのアリス戦では相手だけがこのカードを使う)。<br><br>
+      Mルールの変種。ルール進行は同じだが、<b>両者ともアリスの特殊カード</b>でデュエルする(ストーリーモードのアリス戦では相手だけがこのカードを使う)。<br><br>
       アリスカードは通常のスート能力・絵札能力の代わりに、<b>数字の帯ごとの能力</b>を持つ:<br>
       <b>♥ハート</b>: 2〜6=<b>飛行</b>(飛行を持たないクリーチャーにブロックされない)/ 7〜10=<b>「T: カードを1枚引く」</b>(召喚酔い中は不可)/ J〜K=<b>ETB: クリーチャー1体をオーナーの手札に戻す</b><br>
       <b>♠スペード</b>: 2〜6=<b>接死</b>(1点以上の戦闘ダメージを与えた相手を破壊)/ 7〜10=<b>トランプル</b> / J〜K=<b>ETB: 対象に+X/+0</b>(X=このパワー)<br>
-      <b>♣クローバー</b>: 2〜6=<b>「T: ♣マナ1点」</b>(マナクリーチャー・召喚酔い中は不可)/ 7〜10=<b>威迫</b>(2体以上にしかブロックされない)/ J〜K=<b>ETB: 数字X以下の土地をそのオーナーのクリーチャー化</b>(X=このパワー)<br>
+      <b>♣クローバー</b>: 2〜6=<b>「T: ♣マナ1点」</b>(マナクリーチャー・召喚酔い中は不可)/ 7〜10=<b>威迫</b>(2体以上にしかブロックされない)/ J〜K=<b>ETB: 数字X以下のシードをそのオーナーのクリーチャー化</b>(X=このパワー)<br>
       <b>♦ダイヤ</b>: 2〜6=<b>絆魂</b>(与えた戦闘ダメージぶん墓地を山札の下へ・墓地枚数まで)/ 7〜10=<b>反撃</b>(タップ状態でもパワー0にならない)/ J〜K=<b>ETB: 全クリーチャーに-X/-X</b>(X=このパワー・ターン終了時まで)<br><br>
-      アリスカードも<b>基本スート能力(♠挑戦/♥瞬速/♦警戒/♣速攻)を持つ</b>(通常の絵札能力だけが帯能力に置き換わる)。A(蘇生ソーサリー)とJOKERは共通。アリスカードは黒地(黒スート=白字・赤スート=赤字)で表示される。カードは<b>右クリックでテキスト参照</b>できる(マジック・アリス共通)。
+      アリスカードも<b>基本スート能力(♠挑戦/♥瞬速/♦警戒/♣速攻)を持つ</b>(通常の絵札能力だけが帯能力に置き換わる)。A(蘇生スペル)とJOKERは共通。アリスカードは黒地(黒スート=白字・赤スート=赤字)で表示される。カードは<b>右クリックでテキスト参照</b>できる(Mルール・アリス共通)。
     </div>
     <div class="body" id="rules-poke" style="display:none">
       54枚フルデッキ(4色×13+JOKER2枚)同士の1対1。<b>初手5枚・マナなし・サイド6枚</b>。手札にたねが無ければ強制引き直し(そのたび相手が1枚ドロー)。先攻後攻はランダム、<b>先攻の1ターン目はワザを使えない</b>。敗者の手札は公開される。<br><br>
@@ -870,27 +870,27 @@
     <div class="body" id="rules-original" style="display:none">
       54枚フルデッキ(4色×13+JOKER2枚)同士の1対1。<b>初手7枚・シールドなし・勝利条件はデッキアウトのみ</b>(山札0枚で即敗北・両者同時なら引き分け)。先攻後攻はランダム、後攻は1回フリーマリガン可。<b>先攻の1ターン目はアンタップ&ドローを飛ばす</b>。敗者の手札は公開される。<br><br>
       <b>フェイズ進行</b>(毎ターン): ☀→⚔→⛨→⚚→✦<br>
-      ☀<b>アンタップ&amp;ドロー</b> → ⚔<b>第1メイン&amp;アタック</b>(<b>土地・呪文・召喚も可能</b>+攻撃を全て宣言)→ ⛨<b>ブロック</b>(<b>相手が</b>ブロック指定+♥の瞬速召喚(♥A含む)も使える。<b>終了時に戦闘解決</b>)→ ⚚<b>第2メイン</b>(土地・呪文・召喚)→ ✦<b>クリンナップ</b>(ターン終了時: 敵味方全ての戦闘ダメージ・修整が回復)<br><br>
+      ☀<b>アンタップ&amp;ドロー</b> → ⚔<b>第1メイン&amp;アタック</b>(<b>シード・呪文・召喚も可能</b>+攻撃を全て宣言)→ ⛨<b>ブロック</b>(<b>相手が</b>ブロック指定+♥の瞬速召喚(♥A含む)も使える。<b>終了時に戦闘解決</b>)→ ⚚<b>第2メイン</b>(シード・呪文・召喚)→ ✦<b>クリンナップ</b>(ターン終了時: 敵味方全ての戦闘ダメージ・修整が回復)<br><br>
       <b>攻撃</b>: タップ中の敵クリーチャーか、プレイヤー本体。どちらも複数のクリーチャーで攻撃できる。本体に通ると数字ぶん相手の山札が墓地へ<br>
       <b>多重ブロック可</b>: 1体の攻撃を複数のクリーチャーでブロックできる。攻撃側のダメージは<b>数字の大きいブロッカーへ優先して致死分ずつ割り振られ</b>、余りは次へ(例: ♥Qを♠3と♦8でブロック→♦8に8点、♠3に4点)。ブロッカー全員のパワーが攻撃側に返る<br>
       <b>ダメージはそのターンのクリンナップ(ターン終了時)まで蓄積</b>(数字以上で破壊)。<b>召喚酔いあり</b>(出したターンは攻撃不可)。<b>タップ状態で戦闘フェイズを終えたクリーチャーはパワー0</b>(アンタップで回復)<br><br>
-      <b>A(エース)は蘇生のソーサリー呪文</b>(コスト=自スート1マナ+無色Xマナ。Xは唱えるときに選ぶ。土地にもできる):<br>
+      <b>A(エース)は蘇生のスペル呪文</b>(コスト=自スート1マナ+無色Xマナ。Xは唱えるときに選ぶ。シードにもできる):<br>
       ・<b>自分の墓地にある同スートのクリーチャーを、数字の合計がX以下になるように望む数だけ場に出す</b>(例: X=5なら♠2と♠3をまとめて。蘇生された側の「場に出たとき」は誘発しない)<br>
       ・A自身はクリーチャーではないので<b>場には残らず、墓地へ置かれる</b>(蘇生対象にもならない)。♥Aは瞬速で相手のブロックフェイズにも唱えられる<br><br>
       <b>スート能力</b>: ♠<b>挑戦</b>(攻撃時、アンタップの敵1体を強制的にブロックへ参加させる。複数ブロック時は挑戦対象へ最優先でダメージ)/ ♥<b>瞬速</b>(相手のブロックフェイズに召喚できる)/ ♦<b>警戒</b>(各戦闘フェイズ後にアンタップ)/ ♣<b>速攻</b>(召喚酔いしない)<br>
       <b>挑戦の操作</b>: ♠アタッカーを選ぶ → アンタップの敵をクリックで挑戦対象を指定 → 本体かタップ中の敵をクリックで攻撃先を確定(挑戦を使わないなら直接攻撃先をクリック)<br>
       <b>デッキ構築</b>: 開始時にデッキ編集画面が開く。52枚+5種のジョーカーのプールから、<b>54枚以下・同じカード1枚まで・ジョーカーは合計2枚まで(同じ能力を2枚入れてもよい)</b>で自由に構築(保存・ロード3枠)。初期デッキは52枚+モックス×2<br><br>
-      <b>JOKER</b>(5種・すべて0マナのアーティファクト、<b>サイクリング(無色1)</b>=捨てて1枚引く、を共通で持つ・アリスルール共通):<br>
-      ・<b>モックス</b>: 相手より土地が少ないときのみプレイ(土地ではない)。T: 無色マナ1点<br>
-      ・<b>ロータス</b>: 相手より土地が少ないときのみプレイ(土地ではない)。T: 望む単色マナ3点。ターン終了時に生贄<br>
+      <b>JOKER</b>(5種・すべて0マナのオブジェクト、<b>サイクリング(無色1)</b>=捨てて1枚引く、を共通で持つ・アリスルール共通):<br>
+      ・<b>モックス</b>: 相手よりシードが少ないときのみプレイ(シードではない)。T: 無色マナ1点<br>
+      ・<b>ロータス</b>: 相手よりシードが少ないときのみプレイ(シードではない)。T: 望む単色マナ3点。ターン終了時に生贄<br>
       ・<b>スティール</b>: 対象のクリーチャーはターン終了時まで<b>破壊不能</b>。ターン終了時に生贄<br>
       ・<b>ルーター</b>: 追加コストで♥♠♦♣を1枚ずつ捨て、カードを7枚引く。ターン終了時に生贄<br>
-      ・<b>ガッシュ</b>: 追加コストで自分の土地1枚を手札に戻してセット。T: 好きなスートのマナ1点
+      ・<b>ガッシュ</b>: 追加コストで自分のシード1枚を手札に戻してセット。T: 好きなスートのマナ1点
     </div>
     <div class="body" id="rules-duema">
       54枚フルデッキ(4色×13+JOKER2枚)同士、シールド6枚の1対1。先攻後攻はランダム。<br><br>
-      <b>手札は土地にもクリーチャーにもなる</b><br>
-      ・土地は1ターンに1枚。タップでそのスートのマナ1を出す<br>
+      <b>手札はシードにもクリーチャーにもなる</b><br>
+      ・シードは1ターンに1枚。タップでそのスートのマナ1を出す<br>
       ・クリーチャー召喚コスト = <b>自スート1マナ + 数字ぶんの無指定マナ</b>(例: ♠3 は合計4マナ)。パワー/タフネス = 数字<br>
       ・出したターンは攻撃できない(召喚酔い)<br><br>
       <b>攻撃と戦闘</b>: 相手プレイヤー(シールド)か、タップ中の敵クリーチャーを攻撃。<b>同じクリーチャーを複数のクリーチャーで攻撃してもよい</b>(ダメージが蓄積して討ち取れる)。相手はアンタップのクリーチャーでブロック可能。<b>アンタップ状態のクリーチャーは、攻撃またはブロックするとタップ状態になる</b>(次の自分のターン開始時にアンタップ)<br>
@@ -899,12 +899,12 @@
       ・戦闘ダメージは<b>ターン終了時まで蓄積</b>する(累計がタフネス以上で破壊。例: 6/6 が3点→4点と受けると2回目で破壊)<br><br>
       <b>シールドブレイク</b>: シールドは6つの固定位置に置かれ、攻撃時は<b>相手のシールドを直接クリック</b>して割る位置を選ぶ(割れた位置は歯抜けのまま)。割られたカードは手札へ。A〜10ならそのままコストなしで召喚してもよい(Sトリガー)。<b>Sトリガーで出たクリーチャーは、次の相手のターン終了時に墓地に送られる</b><br>
       <b>JOKER</b>(すべて0マナ+追加コスト、2枚入り):<br>
-      ・モックスジョーカー: 相手より土地が少ないときのみ、4色マナが出る0マナアーティファクトとして置ける(セット権不要)<br>
+      ・モックスジョーカー: 相手よりシードが少ないときのみ、4色マナが出る0マナオブジェクトとして置ける(セット権不要)<br>
       ・♠スペードスピア: 自クリーチャー1体生贄 → クリーチャー1体破壊<br>
       ・♥ハートブレイク: 自分の山札を♥が捲れるまで墓地へ落とし、捲れた♥の数字ぶん相手の山札を墓地へ(♥が出なければ自滅!)<br>
       ・♦ダイヤリコール: 手札の♦カード1枚捨てる → 3枚ドロー<br>
-      ・♣クローバーウィル: 自分の♣土地1枚を手札に戻す → 手札のカード1枚をアンタップ状態で土地にセット(セット権不要)<br>
-      <b>タイミング</b>: 召喚・JOKER呪文・土地セットは、自分のターン中ならいつでも(攻撃後でも)可能<br>
+      ・♣クローバーウィル: 自分の♣シード1枚を手札に戻す → 手札のカード1枚をアンタップ状態でシードにセット(セット権不要)<br>
+      <b>タイミング</b>: 召喚・JOKER呪文・シードセットは、自分のターン中ならいつでも(攻撃後でも)可能<br>
       <b>勝利条件</b>: シールド0の相手に攻撃を通す(ダイレクトアタック)。山札切れは敗北<br>
       <b>後攻補正</b>: 後攻は1回だけフリーマリガン(手札5枚を山札に戻して引き直し)できる
     </div>
@@ -917,7 +917,7 @@
 <!-- ログイン -->
 <div class="overlay show" id="login-overlay">
   <div class="panel">
-    <h2>トランプデュエル</h2>
+    <h2>デュエルトランプ</h2>
     <div class="body" style="text-align:center">アカウントでデッキとコレクションを<br>どの端末からでも引き継げます</div>
     <div class="opts" style="margin-top:18px">
       <button id="btn-google" class="primary">Googleでログイン</button>
@@ -930,16 +930,16 @@
 <!-- ホーム(ルール選択) -->
 <div class="overlay" id="home-overlay">
   <div class="panel">
-    <h2>トランプデュエル</h2>
+    <h2>デュエルトランプ</h2>
     <div class="acct-row"><span id="acct-name"></span><button id="btn-auth-toggle">ログアウト</button></div>
     <div class="opts">
-      <button class="home-rule home-main" data-rule="original">マジックルール</button>
+      <button class="home-rule home-main" data-rule="original">Mルール</button>
       <div id="home-extras-wrap" hidden>
         <div class="home-extra-head">─ 隠しモード ─</div>
         <div class="home-extras">
-          <button class="home-rule" data-rule="duema">Dモード</button>
-          <button class="home-rule" data-rule="yugi">Yモード</button>
-          <button class="home-rule" data-rule="poke">Pモード</button>
+          <button class="home-rule" data-rule="duema">Dルール</button>
+          <button class="home-rule" data-rule="yugi">Yルール</button>
+          <button class="home-rule" data-rule="poke">Pルール</button>
         </div>
       </div>
     </div>
@@ -1030,7 +1030,7 @@
 "use strict";
 
 /* ============================================================
-   トランプデュエル — 決定論エンジン + アクションログ同期版
+   デュエルトランプ — 決定論エンジン + アクションログ同期版
    同じシードと同じアクション列から、両クライアントが同一の
    盤面を再現する(ロックステップ)。オンラインはFirebaseに
    アクションだけを流す。CPU対戦も同じ仕組みで動く。
@@ -1067,12 +1067,12 @@ let rng = Math.random;
 
 /* ================= 状態 ================= */
 let players, turnP, turnNo, winner, firstP;
-let landSetUsed = 0, landSetMax = 1;   // 土地セット権(モックスジョーカーで+1される)
-let aliceVariant = false;              // マジックルール(アリス): 特殊カードを両者が使う
+let landSetUsed = 0, landSetMax = 1;   // シードセット権(モックスジョーカーで+1される)
+let aliceVariant = false;              // Mルール(アリス): 特殊カードを両者が使う
 let aliceSide = [false, false];        // 各プレイヤーがアリスの特殊カードを使うか
 let ruleMode = "duema";          // 'duema' | 'original' | 'yugi' | 'poke'
 let ySummoned = false;           // 遊戯王: このターン通常召喚/セットを使ったか
-let manualPay = false;           // マナ支払い: 手動モード(ローカル設定。選んだ土地はアクションに載る)
+let manualPay = false;           // マナ支払い: 手動モード(ローカル設定。選んだシードはアクションに載る)
 try { manualPay = localStorage.getItem("duema-manualpay") === "1"; } catch (e) {}
 let paySel = null;               // 手動支払い中: {need, suit, sel:Set, done(ids), cancel()}
 let oPhase = null;               // オリジナル: {phase:'main'|'attack'|'summon'|'block'|'battle', actor}
@@ -1110,7 +1110,7 @@ function buildDeckFromList(list, idBase) {
   }
   return d;
 }
-function realLandCount(p) { return p.lands.filter(l => !l.card.joker).length; }   // アーティファクトジョーカーは土地に数えない
+function realLandCount(p) { return p.lands.filter(l => !l.card.joker).length; }   // オブジェクトジョーカーはシードに数えない
 
 function buildDeck(idBase) {
   const d = [];
@@ -1155,7 +1155,7 @@ function handById(pi, id) { return players[pi].hand.find(c => c.id === id); }
 function fieldById(pi, id) { return players[pi].field.find(f => f.card.id === id); }
 function landById(pi, id) { return players[pi].lands.find(l => l.card.id === id); }
 
-/* マナ源: 土地(+アリスの♣2-6クリーチャー=T:♣マナ1) */
+/* マナ源: シード(+アリスの♣2-6クリーチャー=T:♣マナ1) */
 function manaSources(p) {
   const pi = players ? players.indexOf(p) : -1;
   const out = untappedLands(p).filter(l => !l.steel && !l.router).map(l => ({
@@ -1196,7 +1196,7 @@ function canPay(p, suit, total) {
   if (srcs.reduce((s2, x) => s2 + x.val, 0) < total) return false;
   return srcs.some(x => x.colored === "*" || x.colored === suit);
 }
-/* 手動支払い: 指定idの土地をタップ。無効(枚数不足・色なし・タップ済み等)なら false → 自動にフォールバック */
+/* 手動支払い: 指定idのシードをタップ。無効(枚数不足・色なし・タップ済み等)なら false → 自動にフォールバック */
 function payWith(p, suit, total, ids) {
   if (!ids || !ids.length || new Set(ids).size !== ids.length) return false;
   const srcs = manaSources(p);
@@ -1208,7 +1208,7 @@ function payWith(p, suit, total, ids) {
   return true;
 }
 
-/* 手動モード時の土地選択UI。決定→ids配列 / キャンセル→null */
+/* 手動モード時のシード選択UI。決定→ids配列 / キャンセル→null */
 function requestPays(suit, need) {
   return new Promise(res => {
     paySel = {
@@ -1217,8 +1217,8 @@ function requestPays(suit, need) {
       cancel: () => { paySel = null; res(null); render(); },
     };
     setHint(suit == null
-      ? `マナ支払い: タップする土地を${need}点ぶんクリック → 決定`
-      : `マナ支払い: タップする土地を${need}枚クリック(${SUITS[suit]}かJOKERを1枚以上含む)→ 決定`);
+      ? `マナ支払い: タップするシードを${need}点ぶんクリック → 決定`
+      : `マナ支払い: タップするシードを${need}枚クリック(${SUITS[suit]}かJOKERを1枚以上含む)→ 決定`);
     render();
   });
 }
@@ -1249,7 +1249,7 @@ function pay(p, suit, total) {
   tapS(colored);
   let need = total - 1;
   const rest = srcs.filter(x => x !== colored);
-  // 通常の土地 → ♣クリーチャー → ロータス/JOKER土地 の順で崩す
+  // 通常のシード → ♣クリーチャー → ロータス/JOKERシード の順で崩す
   const order = [...rest.filter(x => x.land && !x.land.lotus && !x.land.card.joker),
                  ...rest.filter(x => x.cre),
                  ...rest.filter(x => x.land && (x.land.lotus || x.land.card.joker))];
@@ -1268,7 +1268,7 @@ function playLand(pi, c) {
   if (!c.joker) landSetUsed++;   // デュエマのモックスジョーカーは1ターン1枚制限の別枠
   sfx("land");
   log(c.joker ? `${p.name}: モックスジョーカーを置いた(4色マナ・セット権消費なし)`
-              : `${p.name}: ${cardLabel(c)} を土地に置いた`);
+              : `${p.name}: ${cardLabel(c)} をシードに置いた`);
 }
 function summon(pi, c, free, reduction = 0, pays) {
   const p = players[pi];
@@ -1871,7 +1871,7 @@ async function runOriginalTurns(token, secondP) {
     await showBanner(cur === myIdx ? "あなたのターン" : "相手のターン", 900);
     if (token !== gameToken) return;
 
-    // ⚔アタックフェイズ(第1メインを兼ねる: 土地・呪文・召喚も可能+攻撃の一括宣言)
+    // ⚔アタックフェイズ(第1メインを兼ねる: シード・呪文・召喚も可能+攻撃の一括宣言)
     let ad = { list: [] };
     for (;;) {
       if (winner !== null || token !== gameToken) return;
@@ -2014,7 +2014,7 @@ async function runOriginalTurns(token, secondP) {
     await wait(600);
     if (winner !== null || token !== gameToken) return;
 
-    // ⚚第2メインフェイズ(土地・JOKER呪文・召喚)
+    // ⚚第2メインフェイズ(シード・JOKER呪文・召喚)
     for (;;) {
       if (winner !== null || token !== gameToken) return;
       oPhase = { phase: "main2", actor: cur }; render();
@@ -2026,7 +2026,7 @@ async function runOriginalTurns(token, secondP) {
       render();
     }
 
-    // ✦クリンナップフェイズ(自ターン終了時): アーティファクト生贄→全ダメージ・修整の回復
+    // ✦クリンナップフェイズ(自ターン終了時): オブジェクト生贄→全ダメージ・修整の回復
     oPhase = { phase: "cleanup", actor: cur }; render();
     for (const pp of players) {
       for (const l of [...pp.lands]) {
@@ -2048,7 +2048,7 @@ async function runOriginalTurns(token, secondP) {
   }
 }
 
-/* ================= 遊戯王ルール =================
+/* ================= Yルール =================
    マナなし・召喚酔いなし。ダメージ=山札を墓地へ、回復=墓地の下から山札の下へ。
    勝利条件はデッキアウトのみ。 */
 const YR = c => c.rank === 1 ? 14 : c.rank;                          // Aは最上級(攻守14)
@@ -2414,7 +2414,7 @@ async function onHandClickY(c) {
   act({ k: "ymain", t: "summon", card: c.id, pos: v === "set" ? "set" : "atk", sacs });
 }
 
-/* ================= ポケカルール =================
+/* ================= Pルール =================
    マナなし。たね(2〜6)→1進化(7〜10)→2進化(J/Q/K)、Aは伝説のたね(攻守14・サイド2枚)。
    HP=数字×2、ワザのダメージ=数字、弱点(♠→♥→♦→♣→♠)で2倍。ダメージは回復しない。
    エネルギーは1ターン1枚。サイド6枚を取り切るか、相手の場が空になるか、相手の山札切れで勝ち。 */
@@ -2913,22 +2913,22 @@ async function battleO(aPi, aCre, bPi, bCre) {
   if (!n.aDies && !n.bDies) log("両者生き残った");
 }
 
-/* オリジナルのメインフェイズ行動(土地・JOKER呪文・召喚・A・起動能力) */
+/* オリジナルのメインフェイズ行動(シード・JOKER呪文・召喚・A・起動能力) */
 async function applyMainO(pi, a) {
   const p = players[pi], o = players[1 - pi];
   switch (a.t) {
     case "land": {
       const c = handById(pi, a.card);
-      if (!c || c.joker || landSetUsed >= landSetMax) return;   // マジックのJOKERは土地にならない
+      if (!c || c.joker || landSetUsed >= landSetMax) return;   // マジックのJOKERはシードにならない
       playLand(pi, c);
       return;
     }
-    case "jplay": {   // 新ジョーカー: 0マナのアーティファクトとしてプレイ
+    case "jplay": {   // 新ジョーカー: 0マナのオブジェクトとしてプレイ
       const jk = handById(pi, a.jk);
       if (!jk || !jk.joker || !jk.jt) return;
       const t2 = jk.jt;
       if ((t2 === "mox" || t2 === "lotus") && !(realLandCount(p) < realLandCount(o))) return;
-      if (t2 === "gash") {   // 追加コスト: 自分の土地1枚を手札に戻す → アーティファクトとしてセット(T: 好きなスートのマナ1点)
+      if (t2 === "gash") {   // 追加コスト: 自分のシード1枚を手札に戻す → オブジェクトとしてセット(T: 好きなスートのマナ1点)
         const li = p.lands.findIndex(l => !l.card.joker && l.card.id === a.land);
         if (li < 0) return;
         const bounced = p.lands.splice(li, 1)[0];
@@ -3001,7 +3001,7 @@ async function applyMainO(pi, a) {
       return;
     }
     case "summon": await applySummonO(pi, a); return;
-    // A(エース): スート1+Xマナのソーサリー呪文。墓地の同スートのクリーチャーを数字の合計X以下になるよう何体でも場に出し、A自身は墓地へ
+    // A(エース): スート1+Xマナのスペル呪文。墓地の同スートのクリーチャーを数字の合計X以下になるよう何体でも場に出し、A自身は墓地へ
     case "acecast": {
       const c = handById(pi, a.card);
       if (!c || c.joker || c.rank !== 1) return;
@@ -3034,7 +3034,7 @@ async function applyMainO(pi, a) {
         await showBanner("エースの救済!", 1000, picked[0]);
         log(`${cardLabel(c)}: 墓地から ${picked.map(g => cardLabel(g)).join("、")} が場に出た!(数字合計${rsum}≦X)`);
       }
-      p.grave.push(c);   // ソーサリーとして墓地へ(場には残らない)
+      p.grave.push(c);   // スペルとして墓地へ(場には残らない)
       render();
       return;
     }
@@ -3052,7 +3052,7 @@ async function applyMainO(pi, a) {
 }
 
 /* ===== JOKER呪文の実体(デュエマ・マジック共通) ===== */
-async function castCwill(pi, a) {   // ♣土地1枚を手札に戻す → 手札のカード1枚を土地としてアンタップでセット(セット権消費なし)
+async function castCwill(pi, a) {   // ♣シード1枚を手札に戻す → 手札のカード1枚をシードとしてアンタップでセット(セット権消費なし)
   const p = players[pi];
   spendJoker(pi, handById(pi, a.jk), "クローバーウィル");
   const bl = landById(pi, a.land);
@@ -3063,9 +3063,9 @@ async function castCwill(pi, a) {   // ♣土地1枚を手札に戻す → 手�
   if (sc && !sc.joker) {
     removeFromHand(p, sc);
     p.lands.push({ card: sc, tapped: false });
-    log(`${p.name}: ♣土地 ${cardLabel(bl.card)} を手札に戻し、${cardLabel(sc)} をアンタップで土地にセットした`);
+    log(`${p.name}: ♣シード ${cardLabel(bl.card)} を手札に戻し、${cardLabel(sc)} をアンタップでシードにセットした`);
   } else {
-    log(`${p.name}: ♣土地 ${cardLabel(bl.card)} を手札に戻した`);
+    log(`${p.name}: ♣シード ${cardLabel(bl.card)} を手札に戻した`);
   }
 }
 async function castDrecall(pi, a) { // ♦カード1枚捨てる → 3枚ドロー
@@ -3141,14 +3141,14 @@ async function aliceETB(pi, cre, etb) {
     if (!t) return;
     t.pbuff = (t.pbuff || 0) + X;
     log(`${cardLabel(c)}: ${cardLabel(t.card)} は+${X}/+0の修整を受けた`);
-  } else if (c.suit === 3) { // ♣J-K: 数字X以下の土地をそのオーナーのクリーチャー化
+  } else if (c.suit === 3) { // ♣J-K: 数字X以下のシードをそのオーナーのクリーチャー化
     const owner = landById(pi, etb.tgt) ? pi : landById(1 - pi, etb.tgt) ? 1 - pi : null;
     const l = owner === null ? null : landById(owner, etb.tgt);
     if (!l || l.card.joker || l.card.rank > X) return;
     players[owner].lands = players[owner].lands.filter(x => x !== l);
     players[owner].field.push({ card: l.card, tapped: false, sick: true, dmg: 0 });
     fxDropIds.add(l.card.id);
-    log(`${cardLabel(c)}: 土地 ${cardLabel(l.card)} は${players[owner].name}のクリーチャーになった`);
+    log(`${cardLabel(c)}: シード ${cardLabel(l.card)} は${players[owner].name}のクリーチャーになった`);
   } else {                   // ♦J-K: 全クリーチャーに-X/-X(ターン終了時まで)
     log(`${cardLabel(c)}: すべてのクリーチャーは-${X}/-${X}の修整を受ける`);
     for (const side of [0, 1]) {
@@ -3265,10 +3265,10 @@ async function breakShieldAt(defPi, slot) {
 }
 
 /* ================= AI(CPU席・テスト自動化) ================= */
-/* ================= 中CPU v2: 決定化αβ探索+学習評価関数(マジックルール) =================
+/* ================= 中CPU v2: 決定化αβ探索+学習評価関数(Mルール) =================
    弱CPU=ルールベース(既存aiO*)、中CPU=本探索。
    - 相手の手札と両者の山札順は「見えていないカード」からサンプリングして決定化(PIMC)。
-     各サンプル世界は完全情報になるため素のαβが使え、「相手も土地を置き召喚してくる」未来まで読む。
+     各サンプル世界は完全情報になるため素のαβが使え、「相手もシードを置き召喚してくる」未来まで読む。
    - 読み深さ midDepth = 半ターン数(1=自分のターンのみ 〜 4=相手の返しの返しまで)。
    - 評価関数は特徴量ベクトル×重み MID2_W。重みは自己対戦(Texel流ロジスティック回帰)で学習した値。
    - 決定性: 打ち切りはノード予算。サンプリングは専用乱数列(ゲーム進行の乱数は消費しない)。
@@ -3379,7 +3379,7 @@ let MID2_W = [0.3884, 0.7868, 1.1748, 0.4382, 0.0233, 0.1146, 0.0718, 0.4587, 0.
 function midPhase(st) {
   const maxLands = Math.max(st.lands[0].filter(l => l.code < 52).length, st.lands[1].filter(l => l.code < 52).length);
   const minDeck = Math.min(st.deck[0].length, st.deck[1].length);
-  let e = Math.max(0, Math.min(1, (7 - maxLands) / 3));        // 土地4以下=1 → 7で0
+  let e = Math.max(0, Math.min(1, (7 - maxLands) / 3));        // シード4以下=1 → 7で0
   const l = Math.max(0, Math.min(1, (18 - minDeck) / 12));     // 山札18から立ち上がり6で1
   e = Math.min(e, 1 - l);                                       // 早死にゲームは終盤扱いを優先
   return [e, 1 - e - l, l];
@@ -3390,9 +3390,9 @@ function midFeat(st, me) {
   const out = new Array(f.length * 3 + 3);
   for (let p = 0; p < 3; p++) for (let i = 0; i < f.length; i++) out[p * f.length + i] = f[i] * ph[p];
   // 追加特徴49-51: 「今プレイ不能なジョーカー」枚数差×フェーズ(死に札割引を学習させる)。
-  // mox/lotus=土地数で負けていない時、router=手札4スート不揃いの時は腐っている。steelは場があれば可
+  // mox/lotus=シード数で負けていない時、router=手札4スート不揃いの時は腐っている。steelは場があれば可
   const jk = pi => {
-    // 手番パリティ正規化: 相手ターン中の評価では自分の未セット土地ぶん+1して比較する
+    // 手番パリティ正規化: 相手ターン中の評価では自分の未セットシードぶん+1して比較する
     // (シミュのリーフは常に「相手が置いた直後」なので、素の比較だと腐り判定が毎回裏返る)
     const myL = st.lands[pi].filter(l => l.code < 52).length + (st.turn !== pi ? 1 : 0);
     const behind = myL < st.lands[1 - pi].filter(l => l.code < 52).length;
@@ -3519,7 +3519,7 @@ function midApplyMain(st, pi, a) {
       st.field[pi].push({ code: a.code, tapped: false, sick: midSuit(a.code) !== 3, pz: false, dmg: 0, indest: false });   // ♣は速攻
       return;
     }
-    case "acecast": {   // A=ソーサリー: 蘇生だけ場に出て、A自身は墓地へ
+    case "acecast": {   // A=スペル: 蘇生だけ場に出て、A自身は墓地へ
       midPay(st, pi, midSuit(a.code), 1 + a.x);
       midRemoveHand(st, pi, a.code);
       for (const rc of (a.revive || [])) {
@@ -3551,7 +3551,7 @@ function midApplyMain(st, pi, a) {
         st.grave[pi].push(...a.discards);
         st.lands[pi].push({ code: 55, tapped: false, lotus: false, mox: false, steel: false, router: true });
         for (let i = 0; i < 7 && st.deck[pi].length; i++) st.hand[pi].push(st.deck[pi].pop());
-      } else if (a.code === 56) {   // ガッシュ: 土地1枚を手札に戻してセット(T: 好きなスートのマナ1)
+      } else if (a.code === 56) {   // ガッシュ: シード1枚を手札に戻してセット(T: 好きなスートのマナ1)
         const i = st.lands[pi].findIndex(l => l.code === a.land);
         if (i >= 0) { st.hand[pi].push(st.lands[pi][i].code); st.lands[pi].splice(i, 1); }
         st.lands[pi].push({ code: 56, tapped: false, lotus: false, mox: false, steel: false, router: false });
@@ -3644,10 +3644,10 @@ function midAcePack(st, pi, aceCode) {
 }
 function midGenMain(st, pi, minCode, full) {
   const out = [];
-  // 土地はスートごとに最小/最大の2候補。順序制約(minCode)の対象外にする —
-  // 「土地を置いてから、それより小さいコードのカードを召喚する」筋を枝刈りしないため
+  // シードはスートごとに最小/最大の2候補。順序制約(minCode)の対象外にする —
+  // 「シードを置いてから、それより小さいコードのカードを召喚する」筋を枝刈りしないため
   if (st.landSetUsed < 1) {
-    const lp = midLandPick(st, pi);   // 土地選択はポリシー1択(人間的なコツ)
+    const lp = midLandPick(st, pi);   // シード選択はポリシー1択(人間的なコツ)
     if (lp != null) out.push({ t: "land", code: lp, ord: minCode });
   }
   // ブランク召喚: 払える最大X(X+1マナ)で1体のみ。1ターン1枚制限により小出し・複数展開の枝は定義から存在しない
@@ -3661,7 +3661,7 @@ function midGenMain(st, pi, minCode, full) {
     const suit = midSuit(c), rank = midRank(c);
     if (suit === 1) continue;   // ♥は自分のターンに出さない(枝刈り。瞬速で相手のブロックフェイズに出す)
     if (!full && suit !== 3) continue;
-    if (rank === 1) {   // A=ソーサリー: 蘇生できるときだけ唱える(空撃ちは枝から除外)
+    if (rank === 1) {   // A=スペル: 蘇生できるときだけ唱える(空撃ちは枝から除外)
       const pack = midAcePack(st, pi, c);
       if (pack && pack.x > 0 && pack.revive.length) out.push({ t: "acecast", code: c, x: pack.x, revive: pack.revive, ord: c });
       continue;
@@ -3687,7 +3687,7 @@ function midGenMain(st, pi, minCode, full) {
     if (c === 54) {
       for (const f of st.field[pi]) out.push({ t: "jplay", code: c, tgt: f.code, ord: c });
     }
-    if (c === 56) {   // ガッシュ: タップ済みの実土地(最小ランク)を手札に戻してセット
+    if (c === 56) {   // ガッシュ: タップ済みの実シード(最小ランク)を手札に戻してセット
       const t = st.lands[pi].filter(l => l.code < 52 && l.tapped).sort((a, b) => midRank(a.code) - midRank(b.code))[0];
       if (t) out.push({ t: "jplay", code: c, land: t.code, ord: c });
     }
@@ -3701,7 +3701,7 @@ function midGenMain(st, pi, minCode, full) {
       if (dis.length === 4) out.push({ t: "jplay", code: c, discards: dis, ord: c });
     }
     // サイクリング(無色1): 使い道のないジョーカーをドローに変える。引いた札で後続の
-    // 手が変わるため、土地と同様に順序制約(minCode)を素通しにして枝刈りさせない
+    // 手が変わるため、シードと同様に順序制約(minCode)を素通しにして枝刈りさせない
     if (st.deck[pi].length > 0 && st.lands[pi].some(l => !l.tapped)) {
       out.push({ t: "jcycle", code: c, ord: minCode });
     }
@@ -3951,7 +3951,7 @@ function midPlanValue(world, me, mains, attacks) {
   return midSearchBlocks(st, me, midDepth, live, -Infinity, Infinity, true);
 }
 
-/* 土地セットポリシー(人間的なコツをルール実装):
+/* シードセットポリシー(人間的なコツをルール実装):
    序盤(〜T4): 毎ターン置く。第1優先=無いスートを揃える、第2優先=10,9,8,K,Q,7,J,Aの順
    中盤(T5〜7): 毎ターン置く。スート不問で10,9,8,K,Q,2,3の順
    終盤(T8〜): 手札3枚以上かつ召喚できるクリーチャーが無い時のみ。10,9,K,Q,2,3の順 */
@@ -4150,7 +4150,7 @@ function midMainValid(pi, a) {   // 実盤面での妥当性チェック(ズレ�
 
 /* 中CPU: アタックフェイズ(計画を立てて逐次実行) */
 function midDecideAttacks(pi) {
-  if (landSetUsed < 1) {   // 土地はポリシーで即決(序盤・中盤は毎ターン、終盤は条件付き)
+  if (landSetUsed < 1) {   // シードはポリシーで即決(序盤・中盤は毎ターン、終盤は条件付き)
     const lp = midLandPick(midWorld(pi), pi);
     if (lp != null && lp !== BLANK) {
       const card = midCardId(pi, lp, "hand");
@@ -4286,7 +4286,7 @@ function midDecideBlocks(pi) {
   // 盤面が並ぶと割り当て数が爆発する(最大4000×瞬速3×世界2)ため、全候補フル読みは禁止
   const screen = [];
   for (const fo of flashOpts) {
-    // 瞬速召喚は本体がブロッカーになる。♥A(ソーサリー)は蘇生された側だけがブロッカー
+    // 瞬速召喚は本体がブロッカーになる。♥A(スペル)は蘇生された側だけがブロッカー
     const extra = fo ? (fo.t === "acecast" ? [...(fo.revive || [])] : [fo.code]) : [];
     const assigns = buildAssigns([...blockers, ...extra]);
     for (const asg of assigns) {
@@ -4333,7 +4333,7 @@ function aiDecide(pi, kind, ctx) {
     if (kind === "oattacks") return midDecideAttacks(pi);
     if (kind === "omain") return midDecideMain2(pi);
     if (kind === "oblocks") return midDecideBlocks(pi);
-    if (kind === "mull") {   // 4色土地5つが場にあっても何も召喚できない手札なら引き直す
+    if (kind === "mull") {   // 4色シード5つが場にあっても何も召喚できない手札なら引き直す
       return { k: "mull", v: players[pi].hand.every(c => c.joker || c.rank >= 5) };
     }
   }
@@ -4352,7 +4352,7 @@ function aiDecide(pi, kind, ctx) {
   if (kind === "yattack") return { k: "yattack", ...aiYAttack(pi) };
   if (kind === "ytrap") return { k: "ytrap", ...aiYTrap(pi, ctx) };
   if (kind === "oattacks") {
-    const m = aiOMain(pi);   // アタックフェイズはメインを兼ねる: 土地・呪文・召喚を先に
+    const m = aiOMain(pi);   // アタックフェイズはメインを兼ねる: シード・呪文・召喚を先に
     if (m.t !== "done") return { k: "oattacks", ...m };
     return { k: "oattacks", t: "attacks", list: aiOAttacks(pi) };
   }
@@ -4412,12 +4412,12 @@ function aiPickLand(pi) {
   if (p.hand.length <= 2) return null;   // 手札が2枚以下ならセットランドしない
   const hand = p.hand.filter(c => !c.joker);
   if (!hand.length) {
-    // モックスジョーカー: 相手より土地が少ないときのみ置ける
+    // モックスジョーカー: 相手よりシードが少ないときのみ置ける
     const jk = p.hand.find(c => c.joker);
     return (p.lands.length < 3 && p.lands.length < players[1 - pi].lands.length) ? jk || null : null;
   }
   const landSuits = new Set(p.lands.map(l => l.card.joker ? "*" : l.card.suit));
-  // A: マナゾーンに無いスートを優先 / B: |土地枚数 - コスト| が最大のカード
+  // A: マナゾーンに無いスートを優先 / B: |シード枚数 - コスト| が最大のカード
   const missing = landSuits.has("*") ? [] : hand.filter(c => !landSuits.has(c.suit));
   const pool = missing.length ? missing : hand;
   const L = p.lands.length;
@@ -4434,7 +4434,7 @@ function aiJokerAction(pi) {
     const tgt = [...o.field].sort((a, b) => b.card.rank - a.card.rank)[0];
     return { t: "spear", jk: jk.id, sac: mine[0].card.id, tgt: tgt.card.id };
   }
-  // クローバーウィル: ♣土地が2枚以上あり、マナゾーンに無いスートを手札から補充できるとき
+  // クローバーウィル: ♣シードが2枚以上あり、マナゾーンに無いスートを手札から補充できるとき
   const clubLands = p.lands.filter(l => !l.card.joker && l.card.suit === 3);
   if (clubLands.length >= 2) {
     const landSuits = new Set(p.lands.map(l => l.card.joker ? "*" : l.card.suit));
@@ -4535,11 +4535,11 @@ function oneSidedByBlocker(pi, atkCre) {   // 相手のアンタップに一方�
   });
 }
 
-function aiOMain(pi) {   // 相手ターン中のメイン: 土地→呪文→召喚→done
+function aiOMain(pi) {   // 相手ターン中のメイン: シード→呪文→召喚→done
   const p = players[pi], o = players[1 - pi];
   if (landSetUsed < landSetMax) {
     const c = aiPickLand(pi);
-    if (c && !c.joker) return { t: "land", card: c.id };   // マジックではJOKERを土地にできない
+    if (c && !c.joker) return { t: "land", card: c.id };   // マジックではJOKERをシードにできない
   }
   // JOKER(新ジョーカー): モックス=マナ加速 / ロータス=召喚ブースト / ルーター=手札交換 / 余りはサイクリング
   for (const jk of p.hand.filter(c => c.joker)) {
@@ -4744,20 +4744,20 @@ function aiOBlocks(pi) {
 function humanPrompt(pi, kind, ctx) {
   if (kind === "main") {
     uiMain = true;
-    setHint("手札クリック=土地/召喚/JOKER、クリーチャークリック=攻撃");
+    setHint("手札クリック=シード/召喚/JOKER、クリーチャークリック=攻撃");
     render();
     return;
   }
   if (kind === "omain") {
     uiMain = true;
-    setHint("メインフェイズ: 手札クリックで土地・JOKER呪文・召喚");
+    setHint("メインフェイズ: 手札クリックでシード・JOKER呪文・召喚");
     render();
     return;
   }
   if (kind === "oattacks") {
     uiMain = true;
     pendingAttacks = pendingAttacks.filter(a => { const f = fieldById(myIdx, a.cre); return f && !f.tapped; });
-    setHint("アタックフェイズ(メイン兼用): 手札クリック=土地・呪文・召喚 / クリーチャー→対象クリックで攻撃を組み、ボタンで確定");
+    setHint("アタックフェイズ(メイン兼用): 手札クリック=シード・呪文・召喚 / クリーチャー→対象クリックで攻撃を組み、ボタンで確定");
     render();
     return;
   }
@@ -4895,7 +4895,7 @@ async function actSpell(kind, c, body, cost) {
   act(a);
 }
 
-/* A(ソーサリー・蘇生)のUIフロー: X選択→蘇生対象選択 */
+/* A(スペル・蘇生)のUIフロー: X選択→蘇生対象選択 */
 async function aceCastUI(c, kind) {
   const p = players[myIdx];
   let maxX = -1;
@@ -4907,7 +4907,7 @@ async function aceCastUI(c, kind) {
     opts.push({ label: `X = ${x}(コスト${1 + x}${cands ? `・蘇生候補${cands}枚` : ""})`, value: String(x) });
   }
   opts.push({ label: "キャンセル", value: null });
-  const xv = await choose(`${cardLabel(c)}: Xを選ぶ`, opts, c, "ソーサリー: 墓地の同スートのクリーチャーを数字の合計X以下になるように望む数だけ場に出し、A自身は墓地へ置く");
+  const xv = await choose(`${cardLabel(c)}: Xを選ぶ`, opts, c, "スペル: 墓地の同スートのクリーチャーを数字の合計X以下になるように望む数だけ場に出し、A自身は墓地へ置く");
   if (xv === null) return;
   const X = parseInt(xv, 10);
   const revive = [];
@@ -4924,7 +4924,7 @@ async function aceCastUI(c, kind) {
   await actSpell(kind, c, { t: "acecast", x: X, revive }, 1 + X);
 }
 
-/* 召喚アクションの送信。手動支払いモードなら先に土地を選ばせ、選択をアクションに載せる *//* 召喚アクションの送信。手動支払いモードなら先に土地を選ばせ、選択をアクションに載せる *//* 召喚アクションの送信。手動支払いモードなら先に土地を選ばせ、選択をアクションに載せる *//* 召喚アクションの送信。手動支払いモードなら先に土地を選ばせ、選択をアクションに載せる */
+/* 召喚アクションの送信。手動支払いモードなら先にシードを選ばせ、選択をアクションに載せる *//* 召喚アクションの送信。手動支払いモードなら先にシードを選ばせ、選択をアクションに載せる *//* 召喚アクションの送信。手動支払いモードなら先にシードを選ばせ、選択をアクションに載せる *//* 召喚アクションの送信。手動支払いモードなら先にシードを選ばせ、選択をアクションに載せる */
 async function actSummon(kind, c, sacs) {
   const red = (sacs || []).reduce((t, x) => t + x.rank, 0);
   const remaining = Math.max(0, costOf(c) - red);
@@ -4962,7 +4962,7 @@ async function aliceEtbUI(c) {
   if (c.suit === 3) {
     const cands = [...o.lands, ...p.lands].filter(l => !l.card.joker && l.card.rank <= X).map(l => l.card);
     if (!cands.length) return {};
-    const t = await chooseCard(`${cardLabel(c)}のETB: クリーチャー化する土地(数字${X}以下)`, cands, "", "キャンセル");
+    const t = await chooseCard(`${cardLabel(c)}のETB: クリーチャー化するシード(数字${X}以下)`, cands, "", "キャンセル");
     return t ? { tgt: t.id } : null;
   }
   return {};   // ♦: 全体-X/-X(対象なし)
@@ -5022,22 +5022,22 @@ async function onHandClickO(c) {
   if (oPhase && (oPhase.phase === "attack" || oPhase.phase === "main2") && oPhase.actor === myIdx) {
     const mk = oPhase.phase === "attack" ? "oattacks" : "omain";
     if (!c.joker && c.rank === 1) {
-      // A: クリーチャーではなくソーサリー呪文(蘇生してA自身は墓地へ)
+      // A: クリーチャーではなくスペル呪文(蘇生してA自身は墓地へ)
       const graveN = p.grave.filter(g => !g.joker && g.suit === c.suit && g.rank !== 1).length;
-      const v = await choose(`${cardLabel(c)}(ソーサリー・蘇生)`, [
-        { label: `土地に置く(${SUITS[c.suit]}マナ)`, value: "land", disabled: landSetUsed >= landSetMax },
+      const v = await choose(`${cardLabel(c)}(スペル・蘇生)`, [
+        { label: `シードに置く(${SUITS[c.suit]}マナ)`, value: "land", disabled: landSetUsed >= landSetMax },
         { label: `唱える(${SUITS[c.suit]}1+Xマナ) — 墓地の同スートのクリーチャーを数字の合計X以下まで望む数だけ場に出す(同スート墓地${graveN}枚)`,
           value: "cast", primary: true, disabled: !canPay(p, c.suit, 1) },
         { label: "キャンセル", value: null },
-      ], c, "ソーサリー: 唱えたAは場に残らず墓地へ。Xは唱えるときに選ぶ。蘇生されたクリーチャーのETBは誘発しない");
+      ], c, "スペル: 唱えたAは場に残らず墓地へ。Xは唱えるときに選ぶ。蘇生されたクリーチャーのETBは誘発しない");
       if (!uiMain) return;
       if (v === "land") act({ k: mk, t: "land", card: c.id });
       if (v === "cast") await aceCastUI(c, mk);
       return;
     }
     if (!c.joker) {
-      // 通常カード: 土地 or 召喚(J/Q/Kは生贄召喚も)
-      const opts = [{ label: `土地に置く(${SUITS[c.suit]}マナ)`, value: "land", disabled: landSetUsed >= landSetMax }];
+      // 通常カード: シード or 召喚(J/Q/Kは生贄召喚も)
+      const opts = [{ label: `シードに置く(${SUITS[c.suit]}マナ)`, value: "land", disabled: landSetUsed >= landSetMax }];
       opts.push({
         label: `召喚する — コスト${costOf(c)}(${SUITS[c.suit]}1+無指定${c.rank}) ${c.rank}/${c.rank}`,
         value: "summon", primary: true, disabled: !canPay(p, c.suit, costOf(c)),
@@ -5080,10 +5080,10 @@ async function onHandClickO(c) {
     const behind = realLandCount(p) < realLandCount(o);
     const opts = [];
     if (jt === "mox") opts.push({
-      label: "プレイ(0マナ): アーティファクト — T: 無色マナ1点(相手より土地が少ないときのみ)",
+      label: "プレイ(0マナ): オブジェクト — T: 無色マナ1点(相手よりシードが少ないときのみ)",
       value: "play", primary: true, disabled: !behind });
     if (jt === "lotus") opts.push({
-      label: "プレイ(0マナ): アーティファクト — T: 望む単色マナ3点。ターン終了時に生贄(相手より土地が少ないときのみ)",
+      label: "プレイ(0マナ): オブジェクト — T: 望む単色マナ3点。ターン終了時に生贄(相手よりシードが少ないときのみ)",
       value: "play", primary: true, disabled: !behind });
     if (jt === "steel") opts.push({
       label: "プレイ(0マナ): 対象のクリーチャーはターン終了時まで破壊不能。ターン終了時に生贄",
@@ -5093,11 +5093,11 @@ async function onHandClickO(c) {
       value: "play", primary: true,
       disabled: ![1, 0, 2, 3].every(s2 => p.hand.some(h => !h.joker && h.suit === s2)) });
     if (jt === "gash") opts.push({
-      label: "プレイ(0マナ): 自分の土地1枚を手札に戻す — アーティファクトとしてセット。T: 好きなスートのマナ1点",
+      label: "プレイ(0マナ): 自分のシード1枚を手札に戻す — オブジェクトとしてセット。T: 好きなスートのマナ1点",
       value: "play", primary: true, disabled: !p.lands.some(l => !l.card.joker) });
     opts.push({ label: "サイクリング(無色1): このカードを捨てて1枚引く", value: "cycle", disabled: !canPayC(p, 1) });
     opts.push({ label: "キャンセル", value: null });
-    const v = await choose(JT_NAME[jt] || "JOKER", opts, c, "0マナのアーティファクト。使わないときはサイクリングで引きに変えられる");
+    const v = await choose(JT_NAME[jt] || "JOKER", opts, c, "0マナのオブジェクト。使わないときはサイクリングで引きに変えられる");
     if (!uiMain) return;
     if (v === "cycle") {
       if (manualPay) {
@@ -5130,7 +5130,7 @@ async function onHandClickO(c) {
     }
     if (jt === "gash") {
       const cands = p.lands.filter(l => !l.card.joker).map(l => l.card);
-      const t3 = await chooseCard("ガッシュジョーカー: 手札に戻す土地を選ぶ", cands, "", "キャンセル");
+      const t3 = await chooseCard("ガッシュジョーカー: 手札に戻すシードを選ぶ", cands, "", "キャンセル");
       if (!t3) return;
       act({ k: mk, t: "jplay", jk: c.id, land: t3.id });
       return;
@@ -5150,7 +5150,7 @@ async function onHandClick(c) {
   const opts = [];
   if (c.joker) {
     const others = p.hand.filter(x => x.id !== c.id);
-    opts.push({ label: "モックスジョーカー: 4色マナが出る0マナアーティファクトとして置く(相手より土地が少ないときのみ・セット権不要)", value: "land",
+    opts.push({ label: "モックスジョーカー: 4色マナが出る0マナオブジェクトとして置く(相手よりシードが少ないときのみ・セット権不要)", value: "land",
                 disabled: !(p.lands.length < o.lands.length) });
     opts.push({ label: "♠スペードスピア: 自クリーチャー1体生贄 → 相手クリーチャー1体破壊", value: "spear",
                 disabled: !p.field.length || !o.field.length });
@@ -5158,10 +5158,10 @@ async function onHandClick(c) {
                 disabled: !p.deck.length });
     opts.push({ label: "♦ダイヤリコール: 手札の♦カード1枚捨てる → 3枚ドロー", value: "drecall",
                 disabled: !p.hand.some(x => !x.joker && x.suit === 2) });
-    opts.push({ label: "♣クローバーウィル: 自分の♣土地1枚を手札に戻す → 手札1枚をアンタップで土地にセット", value: "cwill",
+    opts.push({ label: "♣クローバーウィル: 自分の♣シード1枚を手札に戻す → 手札1枚をアンタップでシードにセット", value: "cwill",
                 disabled: !p.lands.some(l => !l.card.joker && l.card.suit === 3) });
   } else {
-    opts.push({ label: `土地に置く(${SUITS[c.suit]}マナ)`, value: "land", disabled: landSetUsed >= landSetMax });
+    opts.push({ label: `シードに置く(${SUITS[c.suit]}マナ)`, value: "land", disabled: landSetUsed >= landSetMax });
     opts.push({
       label: `召喚する — コスト${costOf(c)}(${SUITS[c.suit]}1+無指定${c.rank}) ${c.rank}/${c.rank}`,
       value: "summon", primary: true, disabled: !canPay(p, c.suit, costOf(c)),
@@ -5177,7 +5177,7 @@ async function onHandClick(c) {
     }
   }
   opts.push({ label: "キャンセル", value: null });
-  const note = landSetUsed >= landSetMax && !c.joker ? "土地はこのターンすでに置いた" : "";
+  const note = landSetUsed >= landSetMax && !c.joker ? "シードはこのターンすでに置いた" : "";
   const v = await choose(cardLabel(c), opts, c, note);
   if (!uiMain) return;   // 選んでいる間に状況が変わった場合
   if (v === "land") act({ k: "main", t: "land", card: c.id });
@@ -5215,10 +5215,10 @@ async function onHandClick(c) {
   }
   if (v === "cwill") {
     const clubLands = p.lands.filter(l => !l.card.joker && l.card.suit === 3);
-    const bl = await chooseCard("クローバーウィル: 手札に戻す自分の♣土地", clubLands.map(l => l.card), "", "キャンセル");
+    const bl = await chooseCard("クローバーウィル: 手札に戻す自分の♣シード", clubLands.map(l => l.card), "", "キャンセル");
     if (!bl) return;
     const cand = p.hand.filter(x => !x.joker && x.id !== c.id).concat([bl]);
-    const sc = await chooseCard("クローバーウィル: アンタップで土地にセットするカード", cand, "戻した♣も選べる", "キャンセル");
+    const sc = await chooseCard("クローバーウィル: アンタップでシードにセットするカード", cand, "戻した♣も選べる", "キャンセル");
     if (!sc) return;
     act({ k: "main", t: "cwill", jk: c.id, land: bl.id, set: sc.id });
   }
@@ -5281,7 +5281,7 @@ document.getElementById("btn-paymode").addEventListener("click", () => {
   try { localStorage.setItem("duema-manualpay", manualPay ? "1" : "0"); } catch (e) {}
   render();
 });
-/* 手動支払い中は土地と決定・キャンセル以外のクリックを遮断する */
+/* 手動支払い中はシードと決定・キャンセル以外のクリックを遮断する */
 document.getElementById("app").addEventListener("click", e => {
   if (!paySel) return;
   if (e.target.closest("#m-lands") || e.target.closest("#m-field") || e.target.closest("#btn-end") || e.target.closest("#btn-paycancel")) return;
@@ -5493,7 +5493,7 @@ function chooseCard(title, cards, bodyHtml, cancelLabel) {
 }
 
 /* ================= 描画 ================= */
-/* ---- カードイラスト(img/cards/)。アーティファクト版は __ART_DATA から読む ---- */
+/* ---- カードイラスト(img/cards/)。オブジェクト版は __ART_DATA から読む ---- */
 const ART_BASE = "img/cards/";
 function artName(c) {
   if (!c) return null;
@@ -5514,7 +5514,7 @@ function artUrl(c) {
 }
 
 /* ---- 入場エフェクト: renderで新規参入カードにアニメクラスを付ける ---- */
-const fxGrowIds = new Set();   // 土地・アーティファクトとして置かれたカードid
+const fxGrowIds = new Set();   // シード・オブジェクトとして置かれたカードid
 const fxDropIds = new Set();   // 場に出たクリーチャーのカードid
 
 /* 召喚演出: カードにマナが注ぎ込まれて降臨する(コスト分のマナ玉が飛び込む) */
@@ -5644,17 +5644,17 @@ function cardRulesText(c, alice) {
   if (c.joker) {
     const cyc = "<br><br><b>サイクリング(無色1)</b>: このカードを捨てて、カードを1枚引く";
     const JT_TEXT = {
-      mox: "<b>モックスジョーカー</b> — 0マナ アーティファクト<br><br>相手の場より土地の枚数が少ないときのみプレイできる(土地ではない)<br><br><b>T</b>: 無色マナ1点を加える" + cyc,
-      lotus: "<b>ロータスジョーカー</b> — 0マナ アーティファクト<br><br>相手の場より土地の枚数が少ないときのみプレイできる(土地ではない)<br><br><b>T</b>: 望む単色マナ3点を加える<br><br>ターン終了時、生贄に捧げる" + cyc,
-      steel: "<b>スティールジョーカー</b> — 0マナ アーティファクト<br><br>プレイしたとき、対象のクリーチャーはターン終了時まで<b>破壊不能</b>を得る<br><br>ターン終了時、生贄に捧げる" + cyc,
-      router: "<b>ルータージョーカー</b> — 0マナ アーティファクト<br><br>追加コスト: 手札から♥・♠・♦・♣のカードを1枚ずつ捨てる<br><br>カードを7枚引く<br><br>ターン終了時、生贄に捧げる" + cyc,
-      gash: "<b>ガッシュジョーカー</b> — 0マナ アーティファクト<br><br>追加コスト: 自分の土地を1枚手札に戻す<br><br><b>T</b>: 好きなスートのマナ1点を加える" + cyc,
+      mox: "<b>モックスジョーカー</b> — 0マナ オブジェクト<br><br>相手の場よりシードの枚数が少ないときのみプレイできる(シードではない)<br><br><b>T</b>: 無色マナ1点を加える" + cyc,
+      lotus: "<b>ロータスジョーカー</b> — 0マナ オブジェクト<br><br>相手の場よりシードの枚数が少ないときのみプレイできる(シードではない)<br><br><b>T</b>: 望む単色マナ3点を加える<br><br>ターン終了時、生贄に捧げる" + cyc,
+      steel: "<b>スティールジョーカー</b> — 0マナ オブジェクト<br><br>プレイしたとき、対象のクリーチャーはターン終了時まで<b>破壊不能</b>を得る<br><br>ターン終了時、生贄に捧げる" + cyc,
+      router: "<b>ルータージョーカー</b> — 0マナ オブジェクト<br><br>追加コスト: 手札から♥・♠・♦・♣のカードを1枚ずつ捨てる<br><br>カードを7枚引く<br><br>ターン終了時、生贄に捧げる" + cyc,
+      gash: "<b>ガッシュジョーカー</b> — 0マナ オブジェクト<br><br>追加コスト: 自分のシードを1枚手札に戻す<br><br><b>T</b>: 好きなスートのマナ1点を加える" + cyc,
     };
     return JT_TEXT[c.jt] || ("<b>JOKER</b>" + cyc);
   }
   if (c.rank === 1) {
     const flash1 = c.suit === 1 ? "<br><br><b>瞬速</b>: 相手のブロックフェイズにも唱えられる" : "";
-    return `<b>${cardLabel(c)} — ソーサリー</b><br>コスト: ${SUITS[c.suit]}1+無色X(Xは唱えるときに選ぶ)${flash1}<br><br>自分の墓地にある${SUITS[c.suit]}のクリーチャーを、数字の合計がX以下になるように望む数だけ場に出す(蘇生されたクリーチャーの「場に出たとき」は誘発しない)。このカードは場に残らず、墓地に置かれる<br><br>土地として置くこともできる(${SUITS[c.suit]}マナ1点)`;
+    return `<b>${cardLabel(c)} — スペル</b><br>コスト: ${SUITS[c.suit]}1+無色X(Xは唱えるときに選ぶ)${flash1}<br><br>自分の墓地にある${SUITS[c.suit]}のクリーチャーを、数字の合計がX以下になるように望む数だけ場に出す(蘇生されたクリーチャーの「場に出たとき」は誘発しない)。このカードは場に残らず、墓地に置かれる<br><br>シードとして置くこともできる(${SUITS[c.suit]}マナ1点)`;
   }
   const kw = {
     0: "<b>挑戦</b>: 攻撃時、アンタップの相手クリーチャー最大1体を対象に取り、強制的にそのブロックへ参加させる(複数ブロック時は挑戦対象へ最優先でダメージ)",
@@ -5677,7 +5677,7 @@ function cardRulesText(c, alice) {
           "<b>場に出たとき</b>: 対象のクリーチャー1体は+X/+0の修整を受ける(X=このクリーチャーのパワー)"],
       3: ["<b>T: ♣マナ1点を加える</b>(召喚酔い中は起動できない)",
           "<b>威迫</b>: 2体以上のクリーチャーにしかブロックされない",
-          "<b>場に出たとき</b>: 対象の数字X以下の土地をそのオーナーのクリーチャーにする(X=このクリーチャーのパワー)"],
+          "<b>場に出たとき</b>: 対象の数字X以下のシードをそのオーナーのクリーチャーにする(X=このクリーチャーのパワー)"],
       2: ["<b>絆魂</b>: 与えた戦闘ダメージぶん、墓地の上から山札の下に戻す(墓地の枚数が上限)",
           "<b>反撃</b>: タップ状態でもパワーが0にならない",
           "<b>場に出たとき</b>: すべてのクリーチャーはターン終了時まで-X/-Xの修整を受ける(X=このクリーチャーのパワー)"],
@@ -5685,7 +5685,7 @@ function cardRulesText(c, alice) {
   } else if (c.rank >= 11) {
     lines.push("<b>生贄召喚</b>: 召喚時、同スートの味方を望む数だけ生贄にして、その数字の合計分コスト軽減できる");
   }
-  lines.push(`土地として置くこともできる(${SUITS[c.suit]}マナ1点)`);
+  lines.push(`シードとして置くこともできる(${SUITS[c.suit]}マナ1点)`);
   return lines.join("<br><br>");
 }
 function showCardText(c, alice) {
@@ -5749,7 +5749,7 @@ function render() {
     `ターン${turnNo} — ${players[turnP].name}の番` +
     ((original || yugi || poke) && oPhase ? `【${PHASE_NAME[oPhase.phase] || ""}】` : "");
 
-  // シールド行はマジックルールでは非表示。遊戯王=罠ゾーン、ポケカ=サイド
+  // シールド行はMルールでは非表示。遊戯王=罠ゾーン、ポケカ=サイド
   for (const id of ["e-sh-label", "e-shields", "m-sh-label", "m-shields"]) {
     document.getElementById(id).style.display = original ? "none" : "";
   }
@@ -5759,8 +5759,8 @@ function render() {
   for (const id of ["e-ld-label", "e-lands", "m-ld-label", "m-lands"]) {
     document.getElementById(id).style.display = yugi ? "none" : "";
   }
-  document.getElementById("e-ld-label").textContent = poke ? "ベンチ" : "マナゾーン(土地)";
-  document.getElementById("m-ld-label").textContent = poke ? "ベンチ" : "マナゾーン(土地)";
+  document.getElementById("e-ld-label").textContent = poke ? "ベンチ" : "マナゾーン(シード)";
+  document.getElementById("m-ld-label").textContent = poke ? "ベンチ" : "マナゾーン(シード)";
   document.getElementById("e-f-label").textContent = poke ? "バトル場" : "バトルゾーン";
   document.getElementById("m-f-label").textContent = poke ? "バトル場" : "バトルゾーン";
 
@@ -5844,7 +5844,7 @@ function render() {
     }
   }
 
-  // ポケカ: ベンチ(土地ゾーンを流用)
+  // ポケカ: ベンチ(シードゾーンを流用)
   if (poke) {
     for (const [id, pl] of [["e-lands", en], ["m-lands", me]]) {
       const z = document.getElementById(id); z.innerHTML = "";
@@ -5858,7 +5858,7 @@ function render() {
     }
   }
 
-  // 土地(手動支払い中は自分のアンタップ土地をクリックで選ぶ)+ A(エンチャント)
+  // シード(手動支払い中は自分のアンタップシードをクリックで選ぶ)+ A(エンチャント)
   if (!poke) for (const [id, p] of [["e-lands", en], ["m-lands", me]]) {
     const z = document.getElementById(id); z.innerHTML = "";
     p.lands.forEach(l => {
@@ -6700,7 +6700,7 @@ const tgBlockTgt = (bs, br, as2, ar, hint) => ({ hint, glow: () => [tutEnFieldEl
   done: () => pendingBlocks.some(b => b.blocker === tutF(myIdx, bs, br)) });
 const tpSet = (s, r, hint, say) => ({ k: "oattacks", say, stages: [
   { hint, glow: () => [tutHandEl(s, r)], done: tutModalOpen },
-  { hint: "【「土地に置く」を選んでください】", glow: () => [tutModalBtn("land")] },
+  { hint: "【「シードに置く」を選んでください】", glow: () => [tutModalBtn("land")] },
 ]});
 const tpSummon = (s, r, hint, say, kind) => ({ k: kind || "oattacks", say, stages: [
   { hint, glow: () => [tutHandEl(s, r)], done: tutModalOpen },
@@ -6735,7 +6735,7 @@ const TUT_P = [
     ["あなたの♠2の召喚には、♠のマナ1つと、いずれかのマナ2つ — 合計3マナが要ります。",
      "まだ足りませんね。あなたにできることはありません。"]),
   tpBtn("omain", "【ターンを終了してください】"),
-  // ── ターン2(ウサギ): 土地を置くだけ ──
+  // ── ターン2(ウサギ): シードを置くだけ ──
   tpBtn("oblocks", "【フェイズを終了してください】", ["フェイズを終了してください。"]),
   // ── ターン3(あなた) ──
   tpSet(1, 8, "【カードをセットしてください】"),
@@ -6868,7 +6868,7 @@ const TUT_C = [
     ], a: () => ({ k: "omain", t: "done" }) },
   // T2(あなた)のブロックフェイズ
   { k: "oblocks", a: () => ({ k: "oblocks", t: "blocks", list: [] }) },
-  // ── ターン2(ウサギ): 2つ目の土地を置くだけ ──
+  // ── ターン2(ウサギ): 2つ目のシードを置くだけ ──
   { k: "oattacks", a: () => ({ k: "oattacks", t: "land", card: tutH(1 - myIdx, 2, 10) }) },
   { k: "oattacks", say: ["まだ、私に出せる駒はありません。"],
     a: () => ({ k: "oattacks", t: "attacks", list: [] }) },
@@ -6917,7 +6917,7 @@ const TUT_C = [
       list: [{ cre: tutF(1 - myIdx, 0, 4), tt: "player", prov: tutF(myIdx, 2, 3) }] }) },
   { k: "omain", say: ["そして、まだ終わりません。"],
     a: () => ({ k: "omain", t: "jplay", jk: tutHJ(1 - myIdx, "mox") }) },
-  { k: "omain", say: ["土地の枚数が不利なときにのみ、このジョーカーをマナとして使うことが出来ます。"],
+  { k: "omain", say: ["シードの枚数が不利なときにのみ、このジョーカーをマナとして使うことが出来ます。"],
     a: () => ({ k: "omain", t: "land", card: tutH(1 - myIdx, 3, 7) }) },
   { k: "omain", a: () => ({ k: "omain", t: "summon", card: tutH(1 - myIdx, 0, 11), sacs: [tutF(1 - myIdx, 0, 4)] }) },
   { k: "omain", say: ["J、Q、Kの能力は現出、同じスートのクリーチャーを生贄にし、召喚コストを軽減することが出来ます。"],
@@ -6926,7 +6926,7 @@ const TUT_C = [
   { k: "oattacks", a: () => ({ k: "oattacks", t: "acecast", card: tutH(1 - myIdx, 3, 1), x: 4,
       revive: [tutG(1 - myIdx, 3, 4)] }) },
   { k: "oattacks", say: [
-      "エースはソーサリー呪文。追加でXマナ支払うことで、墓地から同じスートのクリーチャーを戻すことができます。",
+      "エースはスペル呪文。追加でXマナ支払うことで、墓地から同じスートのクリーチャーを戻すことができます。",
       "エース自身は場には残らず、墓地へ。",
     ],
     a: () => ({ k: "oattacks", t: "attacks", list: [
@@ -7141,7 +7141,7 @@ function showScreen(id) {
   for (const sid of SCREENS) document.getElementById(sid).classList.toggle("show", sid === id);
 }
 let curRuleSel = "duema";
-const RULE_LABEL = { duema: "Dモード", original: "マジックルール", yugi: "Yモード", poke: "Pモード" };
+const RULE_LABEL = { duema: "Dルール", original: "Mルール", yugi: "Yルール", poke: "Pルール" };
 
 function showHome() {
   document.getElementById("acct-name").textContent =
@@ -7384,7 +7384,7 @@ document.getElementById("btn-deck-new").addEventListener("click", () => {
   renderDeckEditor();
 });
 
-/* ================= デッキエディタ(マジックルール) ================= */
+/* ================= デッキエディタ(Mルール) ================= */
 let deckSel = null;      // エディタ中の採用カード(コードのSet)
 let deckAfter = null;    // 「この構築で開始」後に実行する処理
 
@@ -7519,7 +7519,7 @@ try {
 document.getElementById("btn-export-rec").addEventListener("click", async () => {
   let arr = [];
   try { arr = JSON.parse(localStorage.getItem("duema-records") || "[]"); } catch (e) {}
-  if (!arr.length) { alert("棋譜がまだありません(マジックのCPU対戦を遊ぶと記録されます)"); return; }
+  if (!arr.length) { alert("棋譜がまだありません(MルールのCPU対戦を遊ぶと記録されます)"); return; }
   try {
     await navigator.clipboard.writeText(JSON.stringify(arr));
     alert(`棋譜 ${arr.length} 局ぶんをクリップボードにコピーしました`);
