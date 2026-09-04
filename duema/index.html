@@ -28,6 +28,26 @@
   #app { max-width: 880px; margin: 0 auto; padding: 8px 10px 20px; position: relative; }
   #arrows { position: absolute; inset: 0; pointer-events: none; z-index: 6; overflow: visible; }
 
+  /* 起動スプラッシュ: 白背景に社名がフェードイン/アウト(タップでスキップ) */
+  #splash {
+    position: fixed; inset: 0; z-index: 300; background: #fff;
+    display: flex; align-items: center; justify-content: center;
+    animation: splashBg .7s ease 2.8s forwards;
+  }
+  #splash .sp-txt {
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", Georgia, serif;
+    font-size: clamp(20px, 4.2vw, 34px); letter-spacing: .42em; text-indent: .42em;
+    color: #1c1a17; opacity: 0; text-align: center;
+    animation: splashTxt 2.8s ease forwards;
+  }
+  @keyframes splashTxt {
+    0% { opacity: 0; }
+    32% { opacity: 1; }
+    68% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  @keyframes splashBg { to { opacity: 0; visibility: hidden; } }
+
   /* ゴシックホラー: ヴィネット(四隅の闇)+蝋燭の揺らめき。全UIの上に薄く被さる */
   body::after {
     content: ""; position: fixed; inset: 0; z-index: 200; pointer-events: none;
@@ -661,6 +681,7 @@
 </style>
 </head>
 <body>
+<div id="splash"><div class="sp-txt">LLC FROM SCRATCH</div></div>
 <div id="lifefx"></div>
 <div id="app">
   <header>
@@ -7082,6 +7103,15 @@ document.addEventListener("keydown", e => {
 });
 
 /* ================= 開始 ================= */
+/* 起動スプラッシュ(社名クレジット): アニメ終了後にDOMから除去。タップでスキップ */
+{
+  const sp = document.getElementById("splash");
+  const spKill = () => { if (sp && sp.parentNode) sp.remove(); };
+  sp.addEventListener("click", spKill);
+  setTimeout(spKill, 3700);
+  if (location.search.indexOf("test") >= 0) spKill();
+}
+
 /* ================= プロファイル(アカウント/ゲスト共通) ================= */
 const PROFILE_KEY = "duema-profile";
 let profile = null;
