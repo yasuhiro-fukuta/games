@@ -213,30 +213,21 @@
   }
   /* 山札カウンタのカウントダウン表示 */
   .stat b.tick-down { color: var(--rust); }
-  /* カードイラスト: 場・手札では顔部分のクローズアップを背景に敷く */
-  .card.art {
-    background-color: #e0d5bc;
-    background-size: 225% auto;
-    background-position: 50% 13%;
-    background-repeat: no-repeat;
+  /* フォイル: パックで入手したカードは、プレーンのデザインにホロ光沢が流れる */
+  .card.foil {
+    background: linear-gradient(115deg,
+      #ece0c6 0%, #d7e3cf 13%, #dcd2e6 28%, #ecdcc6 44%,
+      #cfdfe6 60%, #e6d5cb 76%, #dee3cc 90%, #ece0c6 100%);
+    background-size: 320% 320%;
+    animation: foilShift 5.5s ease-in-out infinite;
+    border-color: #b08b3e;
+    box-shadow: 0 2px 4px rgba(0,0,0,.35), inset 0 0 9px rgba(176,139,62,.42);
   }
-  .card.art .rk {
-    background: rgba(221,210,182,.9); border-radius: 3px;
-    padding: 2px 3px 1px; margin: 2px 0 0 2px; align-self: flex-start;
+  @keyframes foilShift {
+    0% { background-position: 0% 20%; }
+    50% { background-position: 100% 80%; }
+    100% { background-position: 0% 20%; }
   }
-  .card.art .st-s {
-    background: rgba(221,210,182,.9); border-radius: 3px;
-    padding: 1px 3px; margin: 1px 0 0 2px; align-self: flex-start;
-  }
-  .card.art .st-b { display: none; }
-  .card.sm.land.art .st-b {
-    display: block; margin: 4px auto 0; font-size: 20px; line-height: 26px;
-    background: rgba(221,210,182,.88); border-radius: 50%; width: 26px; height: 26px;
-    text-align: center; padding: 0;
-  }
-  .card.art.joker .jk { background: rgba(221,210,182,.88); border-radius: 3px; padding: 5px 1px; }
-  .card.art .jtl { background: rgba(221,210,182,.85); border-radius: 3px; margin: 0 3px; color: #6b5410; }
-  .ctp-art { width: min(46vw, 190px); border-radius: 10px; display: block; box-shadow: 0 6px 24px rgba(0,0,0,.5); }
   /* カードテキストのポップアップ(右クリック) */
   #cardtext-pop {
     display: none; position: fixed; inset: 0; z-index: 90;
@@ -288,8 +279,8 @@
     60% { transform: rotateY(0deg) scale(1.08); opacity: 1; }
     100% { transform: none; opacity: 1; }
   }
-  #pack-cards .pcard { position: relative; animation: packReveal .5s ease both; }
-  #pack-cards .pcard img { width: 72px; border-radius: 6px; box-shadow: 0 4px 14px rgba(0,0,0,.5); display: block; }
+  #pack-cards .pcard { position: relative; animation: packReveal .5s ease both; padding: 8px 12px; }
+  #pack-cards .pcard .card { transform: scale(1.25); box-shadow: 0 4px 14px rgba(0,0,0,.5); }
   #pack-cards .pcard .newb {
     position: absolute; top: -7px; right: -7px; background: var(--rust); color: #fff;
     font-size: 9px; font-weight: 800; padding: 2px 5px; border-radius: 8px;
@@ -899,7 +890,7 @@
       <b>攻撃</b>: タップ中の敵クリーチャーか、プレイヤー本体。どちらも複数のクリーチャーで攻撃できる。本体に通ると数字ぶん相手の山札が墓地へ<br>
       <b>多重ブロック可</b>: 1体の攻撃を複数のクリーチャーでブロックできる。攻撃側のダメージは<b>数字の大きいブロッカーへ優先して致死分ずつ割り振られ</b>、余りは次へ(例: ♥Qを♠3と♦8でブロック→♦8に8点、♠3に4点)。ブロッカー全員のパワーが攻撃側に返る<br>
       <b>ダメージはそのターンのクリンナップ(ターン終了時)まで蓄積</b>(数字以上で破壊)。<b>召喚酔いあり</b>(出したターンは攻撃不可)。<b>タップ状態で戦闘フェイズを終えたクリーチャーはパワー0</b>(アンタップで回復)<br><br>
-      <b>A(エース)は蘇生のスペル呪文</b>(コスト=自スート1マナ+無色Xマナ。Xは唱えるときに選ぶ。シードにもできる):<br>
+      <b>A(エース)は蘇生スペル</b>(コスト=自スート1マナ+無色Xマナ。Xは唱えるときに選ぶ。シードにもできる):<br>
       ・<b>自分の墓地にある同スートのクリーチャーを、数字の合計がX以下になるように望む数だけ場に出す</b>(例: X=5なら♠2と♠3をまとめて。蘇生された側の「場に出たとき」は誘発しない)<br>
       ・A自身はクリーチャーではないので<b>場には残らず、墓地へ置かれる</b>(蘇生対象にもならない)。♥Aは瞬速で相手のブロックフェイズにも唱えられる<br><br>
       <b>スート能力</b>: ♠<b>挑戦</b>(攻撃時、アンタップの敵1体を強制的にブロックへ参加させる。複数ブロック時は挑戦対象へ最優先でダメージ)/ ♥<b>瞬速</b>(相手のブロックフェイズに召喚できる)/ ♦<b>警戒</b>(各戦闘フェイズ後にアンタップ)/ ♣<b>速攻</b>(召喚酔いしない)<br>
@@ -1018,7 +1009,7 @@
   <div class="panel">
     <h2>パック開封</h2>
     <div class="body" style="text-align:center">未開封パック: <b id="packs-n">0</b><br>
-      <span class="deck-note">対戦を終えるとパックがもらえる(勝利で2つ)。中身は絵違いカード5枚</span></div>
+      <span class="deck-note">対戦を終えるとパックがもらえる(勝利で2つ)。中身はフォイル(光沢)カード5枚</span></div>
     <div id="pack-cards" class="cardrow" style="min-height:80px;display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin:12px 0"></div>
     <div class="body" style="text-align:center;font-size:12px" id="col-progress"></div>
     <div class="deck-btns">
@@ -1759,7 +1750,6 @@ async function runGame(seed) {
   aliceSide = aliceVariant ? [true, true]
     : sAlice ? (myIdx === 0 ? [false, true] : [true, false])
     : [false, false];                                         // ストーリーのアリスは通常マジックカードを使う
-  artFullForce = false;   // (旧にせアリスのフル絵柄演出は廃止)
   // 棋譜記録: 人間対CPUのマジック対戦を学習データとして残す(台本チュートリアル・訓練ハーネスは除外)
   gameRecord = (ruleMode === "original" && mode === "cpu" && !trainSides && !TEST_AUTO && !tutActive)
     ? { v: 2, when: Date.now(), myIdx, cpuLevel, midDepth, alice: aliceSide[0] || aliceSide[1], story: story.active ? story.room : 0, pos: [] }
@@ -3026,7 +3016,7 @@ async function applyMainO(pi, a) {
       return;
     }
     case "summon": await applySummonO(pi, a); return;
-    // A(エース): スート1+Xマナのスペル呪文。墓地の同スートのクリーチャーを数字の合計X以下になるよう何体でも場に出し、A自身は墓地へ
+    // A(エース): スート1+Xマナのスペル。墓地の同スートのクリーチャーを数字の合計X以下になるよう何体でも場に出し、A自身は墓地へ
     case "acecast": {
       const c = handById(pi, a.card);
       if (!c || c.joker || c.rank !== 1) return;
@@ -5047,7 +5037,7 @@ async function onHandClickO(c) {
   if (oPhase && (oPhase.phase === "attack" || oPhase.phase === "main2") && oPhase.actor === myIdx) {
     const mk = oPhase.phase === "attack" ? "oattacks" : "omain";
     if (!c.joker && c.rank === 1) {
-      // A: クリーチャーではなくスペル呪文(蘇生してA自身は墓地へ)
+      // A: クリーチャーではなくスペル(蘇生してA自身は墓地へ)
       const graveN = p.grave.filter(g => !g.joker && g.suit === c.suit && g.rank !== 1).length;
       const v = await choose(`${cardLabel(c)}(スペル・蘇生)`, [
         { label: `シードに置く(${SUITS[c.suit]}マナ)`, value: "land", disabled: landSetUsed >= landSetMax },
@@ -5518,9 +5508,8 @@ function chooseCard(title, cards, bodyHtml, cancelLabel) {
 }
 
 /* ================= 描画 ================= */
-/* ---- カードイラスト(img/cards/)。オブジェクト版は __ART_DATA から読む ---- */
-const ART_BASE = "img/cards/";
-function artName(c) {
+/* ---- フォイル(光沢)カード: パックで入手した札はプレーン+ホロ光沢で表示される ---- */
+function artName(c) {   // コレクションのキー(旧絵違いと互換: 既存の所持データはそのままフォイルになる)
   if (!c) return null;
   if (c.joker) {
     const jtIdx = { mox: 0, lotus: 1, steel: 0, router: 1, gash: 0 }[c.jt];
@@ -5529,13 +5518,9 @@ function artName(c) {
   if (c.suit < 0 || c.suit > 3 || c.rank < 1 || c.rank > 13) return null;
   return `c${c.suit}_${c.rank}`;
 }
-function artUrl(c) {
+function isFoil(c) {
   const n = artName(c);
-  if (!n) return null;
-  // 絵違いはパックで入手したものだけ表示(未所持はプレーン)。部屋4のアリスの札(id≧200)は常にフル絵柄
-  if (!ownsArt(n) && !(artFullForce && c.id >= 200)) return null;
-  if (window.__ART_DATA) return window.__ART_DATA[n] || null;
-  return ART_BASE + n + ".jpg";
+  return !!n && ownsArt(n);
 }
 
 /* ---- 入場エフェクト: renderで新規参入カードにアニメクラスを付ける ---- */
@@ -5549,14 +5534,7 @@ async function summonFx(c, cost) {
   const box = document.getElementById("summon-fx");
   const wrap = box.firstElementChild;
   wrap.innerHTML = "";
-  const au = artUrl(c);
-  if (au) {
-    const img = document.createElement("img");
-    img.src = au;
-    wrap.appendChild(img);
-  } else {
-    wrap.appendChild(cardEl(c, { pt: !c.joker }));
-  }
+  wrap.appendChild(cardEl(c, { pt: !c.joker }));
   const n = Math.max(1, Math.min(12, cost | 0));
   for (let i = 0; i < n; i++) {
     const orb = document.createElement("div");
@@ -5609,11 +5587,7 @@ function cardEl(c, opts = {}) {
     if (aliceCard) el.classList.add("alice");
     el.innerHTML = `<span class="rk">${RANK_LABEL[c.rank]}</span><span class="st-s">${SUITS[c.suit]}</span><span class="st-b">${SUITS[c.suit]}</span>`;
   }
-  const au = c && !opts.back && (c.joker || !aliceCard) ? artUrl(c) : null;
-  if (au) {
-    el.classList.add("art");
-    el.style.backgroundImage = `url("${au}")`;
-  }
+  if (c && !opts.back && (c.joker || !aliceCard) && isFoil(c)) el.classList.add("foil");
   if (c && !opts.back) {
     el.addEventListener("contextmenu", e => {
       e.preventDefault();
@@ -5717,15 +5691,10 @@ function showCardText(c, alice) {
   const pop = document.getElementById("cardtext-pop");
   const cc = document.getElementById("ctp-card");
   cc.innerHTML = "";
-  const au = artUrl(c);
-  if (au) {
-    const img = document.createElement("img");
-    img.className = "ctp-art";
-    img.src = au;
-    cc.appendChild(img);
-  } else {
-    cc.appendChild(cardEl(c, { alice }));
-  }
+  const big = cardEl(c, { alice });
+  big.style.transform = "scale(2)";
+  big.style.margin = "36px 30px";
+  cc.appendChild(big);
   document.getElementById("ctp-text").innerHTML =
     ruleMode === "original" ? cardRulesText(c, alice) : `<b>${c.joker ? "JOKER" : cardLabel(c)}</b>`;
   pop.style.display = "flex";
@@ -6246,7 +6215,6 @@ window.addEventListener("resize", () => requestAnimationFrame(drawArrows));
 /* ================= ストーリーモード(アリス・イン・アンダーランド) ================= */
 const story = { active: false, name: "", room: 1, state: "idle", px: 7, py: 8, rabbitDead: false, deckList: null };
 let deckStoryMode = false;   // ウサギ3戦前のデッキ調整画面(ストーリー用エディタ)
-let artFullForce = false;    // 部屋4のアリス: 手持ちに関係なく敵カード(id≧200)をフル絵柄表示
 let secretAlice = false;     // マジックCPU対戦: 百回に一回のアリスとの遭遇(白黒反転のアリスカード使用)
 const ST = { T: 16, W: 15, H: 11, RX: 7, RY: 4, DX: 7 };   // タイル・部屋サイズ・ウサギ/ドア位置
 
@@ -6566,7 +6534,6 @@ function storyQuit() {
   story.active = false;
   story.state = "idle";
   story.deckList = null;
-  artFullForce = false;
   if (deckStoryMode) { storyRestoreDeckUi(); document.getElementById("deck-overlay").classList.remove("show"); }
   document.getElementById("story-overlay").classList.remove("glitch");
   clearInterval(stTyping); stTyping = null; stDq = []; stCb = null;
@@ -6951,7 +6918,7 @@ const TUT_C = [
   { k: "oattacks", a: () => ({ k: "oattacks", t: "acecast", card: tutH(1 - myIdx, 3, 1), x: 4,
       revive: [tutG(1 - myIdx, 3, 4)] }) },
   { k: "oattacks", say: [
-      "エースはスペル呪文。追加でXマナ支払うことで、墓地から同じスートのクリーチャーを戻すことができます。",
+      "エースはスペル。追加でXマナ支払うことで、墓地から同じスートのクリーチャーを戻すことができます。",
       "エース自身は場には残らず、墓地へ。",
     ],
     a: () => ({ k: "oattacks", t: "attacks", list: [
@@ -7153,6 +7120,16 @@ function profileCreate() {
   profileSave();
 }
 function ownsArt(name) { return !!(profile && profile.col && profile.col[name] > 0); }
+/* コレクション名("c2_10"/"joker0"等)から表示用のカードを作る(パック開封演出用) */
+function packCardOf(n) {
+  if (n.indexOf("joker") === 0) {
+    const c = mkCard(-90200, -1, 0, true);
+    c.jt = n === "joker1" ? "lotus" : "mox";
+    return c;
+  }
+  const m = /^c(\d)_(\d+)$/.exec(n);
+  return mkCard(-90200, +m[1], +m[2], false);
+}
 function regularDeckList() {
   const d = profile && profile.regular && profile.decks[profile.regular];
   return d && Array.isArray(d.list) && d.list.length >= 10 ? d.list.slice() : [...FULL_DECK_LIST];
@@ -7357,9 +7334,9 @@ document.getElementById("btn-open-pack").addEventListener("click", async () => {
     const d = document.createElement("div");
     d.className = "pcard";
     d.style.animationDelay = (i * 0.28) + "s";
-    const img = document.createElement("img");
-    img.src = window.__ART_DATA ? (window.__ART_DATA[n] || "") : (ART_BASE + n + ".jpg");
-    d.appendChild(img);
+    const cel = cardEl(packCardOf(n));
+    cel.classList.add("foil");
+    d.appendChild(cel);
     const b = document.createElement("span");
     b.className = isNew ? "newb" : "dupb";
     b.textContent = isNew ? "NEW!" : "×" + profile.col[n];
