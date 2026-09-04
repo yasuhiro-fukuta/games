@@ -748,9 +748,9 @@
     <div class="story-sub">— ルールを選択 —</div>
     <div class="story-btns">
       <button id="story-rule-magic">マジックルール</button>
-      <button class="dim" disabled>デュエマルール(準備中)</button>
-      <button class="dim" disabled>遊戯王ルール(準備中)</button>
-      <button class="dim" disabled>ポケカルール(準備中)</button>
+      <button class="dim" disabled>Dモード(準備中)</button>
+      <button class="dim" disabled>Yモード(準備中)</button>
+      <button class="dim" disabled>Pモード(準備中)</button>
       <button id="story-back">タイトルへ戻る</button>
     </div>
   </div>
@@ -826,10 +826,10 @@
   <div class="panel">
     <h2>トランプデュエル</h2>
     <div class="rulesel">
-      <button id="rule-duema" class="on">デュエマルール</button>
+      <button id="rule-duema" class="on">Dモード</button>
       <button id="rule-original">マジックルール</button>
-      <button id="rule-yugi">遊戯王ルール</button>
-      <button id="rule-poke">ポケカルール</button>
+      <button id="rule-yugi">Yモード</button>
+      <button id="rule-poke">Pモード</button>
       <button id="rule-alice">マジック(アリス)</button>
     </div>
     <div class="body" id="rules-alice" style="display:none">
@@ -934,11 +934,13 @@
     <div class="acct-row"><span id="acct-name"></span><button id="btn-auth-toggle">ログアウト</button></div>
     <div class="opts">
       <button class="home-rule home-main" data-rule="original">マジックルール</button>
-      <div class="home-extra-head">─ おまけ ─</div>
-      <div class="home-extras">
-        <button class="home-rule" data-rule="duema">デュエマ</button>
-        <button class="home-rule" data-rule="yugi">遊戯王</button>
-        <button class="home-rule" data-rule="poke">ポケカ</button>
+      <div id="home-extras-wrap" hidden>
+        <div class="home-extra-head">─ 隠しモード ─</div>
+        <div class="home-extras">
+          <button class="home-rule" data-rule="duema">Dモード</button>
+          <button class="home-rule" data-rule="yugi">Yモード</button>
+          <button class="home-rule" data-rule="poke">Pモード</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1623,9 +1625,18 @@ function win(pi, reason) {
   winner = pi;
   render();
   const got = grantPacks(pi === myIdx);
+  // 隠しモード解放: アリス(百分の一の遭遇)に勝つと D・Y・P モードがホームに現れる
+  let unlocked = false;
+  if (pi === myIdx && mode === "cpu" && ruleMode === "original" && aliceSide[1 - myIdx] &&
+      !story.active && profile && !profile.secret) {
+    profile.secret = true;
+    profileSave();
+    unlocked = true;
+  }
   document.getElementById("result-title").textContent = pi === myIdx ? "勝利!" : "敗北…";
   document.getElementById("result-body").innerHTML = `${reason}<br>${players[pi].name} の勝ち!` +
-    (got ? `<br><b style="color:var(--gold)">パック×${got} 獲得!</b><span class="menu-sub">(未開封 ${profile.packs})</span>` : "");
+    (got ? `<br><b style="color:var(--gold)">パック×${got} 獲得!</b><span class="menu-sub">(未開封 ${profile.packs})</span>` : "") +
+    (unlocked ? `<br><b style="color:#b05252">……アリスを退けた。ホームに隠しモード(D・Y・P)が現れた。</b>` : "");
   const rh = document.getElementById("result-hand");
   rh.innerHTML = "";
   revealHand(rh, 1 - pi);   // 敗者の手札は公開される
@@ -7130,12 +7141,14 @@ function showScreen(id) {
   for (const sid of SCREENS) document.getElementById(sid).classList.toggle("show", sid === id);
 }
 let curRuleSel = "duema";
-const RULE_LABEL = { duema: "デュエマルール", original: "マジックルール", yugi: "遊戯王ルール", poke: "ポケカルール" };
+const RULE_LABEL = { duema: "Dモード", original: "マジックルール", yugi: "Yモード", poke: "Pモード" };
 
 function showHome() {
   document.getElementById("acct-name").textContent =
     fbUser ? (fbUser.displayName || fbUser.email || "アカウント") : "ゲスト(この端末に保存)";
   document.getElementById("btn-auth-toggle").textContent = fbUser ? "ログアウト" : "ログイン";
+  // 隠しモード(D・Y・P)はアリスに勝つまでホームに出ない
+  document.getElementById("home-extras-wrap").hidden = !(profile && profile.secret);
   showScreen("home-overlay");
 }
 function showModeMenu(rule) {
@@ -7194,6 +7207,7 @@ function bootScreens() {
               cloud.stats = cloud.stats || { games: 0, wins: 0 };
               cloud.stats.games = Math.max(cloud.stats.games || 0, profile.stats.games || 0);
               cloud.stats.wins = Math.max(cloud.stats.wins || 0, profile.stats.wins || 0);
+              cloud.secret = cloud.secret || profile.secret || false;   // 隠しモード解放はアカウントに引き継ぐ
             }
             cloud.decks = cloud.decks || {};
             cloud.col = cloud.col || {};
