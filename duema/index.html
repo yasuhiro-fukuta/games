@@ -3851,7 +3851,23 @@ function midSearchBlocks(st, me, depth, attacks, alpha, beta, tail, narrow) {
       if (alpha >= beta || midNodes > midBudget()) return best;
     }
   }
-  if (narrow) {   // 内側の半ターン: {強制のみ, 貪欲防御, 瞬速}で打ち切り(全割り当てDFSはルート近傍のみ)
+  if (narrow) {   // 内側の半ターン: {強制のみ, 貪欲防御, チャンプの壁, 瞬速}で打ち切り(全割り当てDFSはルート近傍のみ)
+    // チャンプの壁: 大きい攻撃から順に、最小の空きブロッカーを何でも当てて通さない。
+    // これが無いと「大型の攻撃合計>山札」が全て幻の即死に見え、劣勢側が絶望モードで固まる
+    {
+      const wall = [...forced];
+      const free = blockers.slice().sort((a, b) => midRank(a) - midRank(b));
+      for (const at of [...live].sort((a, b) => midRank(b.cre) - midRank(a.cre))) {
+        if (!free.length) break;
+        wall.push({ attacker: at.cre, blocker: free.shift() });
+      }
+      if (wall.length > greedy.length) {
+        const vw = midTurnLeaf(st, me, depth, attacks, wall, alpha, beta, tail);
+        if (defMax) { best = Math.max(best, vw); alpha = Math.max(alpha, best); }
+        else { best = Math.min(best, vw); beta = Math.min(beta, best); }
+        if (alpha >= beta || midNodes > midBudget()) return best;
+      }
+    }
     const v0 = midTurnLeaf(st, me, depth, attacks, forced, alpha, beta, tail);
     return defMax ? Math.max(best, v0) : Math.min(best, v0);
   }
@@ -4001,9 +4017,10 @@ function midEnumAttackSets(st, me, cap) {
   const untY = oppUnt.reduce((s2, c) => s2 + midRank(c), 0);
   const readyPow = ready.reduce((s2, c) => s2 + midRank(c), 0);
   const lethalish = readyPow >= st.deck[1 - me].length - 1;   // 全軍が通れば山札1以下=返しのドローで死 → 格上挑戦(道空け)も読む
+  const behind = st.deck[me].length < st.deck[1 - me].length; // ライフをリードされている: 膠着のままでは負けるので、♠囮の格上挑戦(打開)も候補に載せる
   const provFor = X => {
     const base = X > untY ? oppUnt.filter(c => midRank(c) < X) : oppUnt.filter(c => midRank(c) === X);
-    return lethalish ? [...new Set([...base, ...oppUnt.filter(c => midRank(c) > X)])] : base;
+    return (lethalish || behind) ? [...new Set([...base, ...oppUnt.filter(c => midRank(c) > X)])] : base;
   };
   const sets = [];
   const cur = [];
@@ -4030,6 +4047,30 @@ function midEnumAttackSets(st, me, cap) {
   rec(0);
   return sets;
 }
+/* 打開プラン(人間的なコツ): ライフをリードされた膠着では、♠で相手の大型に囮の格上挑戦を仕掛けて
+   ブロッカーを縛り、残りの全軍(♦警戒含む)で本体を狙う。相手は小型のチャンプブロックを強いられ、
+   ♦が残れば返しを受けて第二波で詰む。スクリーニング(1手読み)では素材損にしか見えず落ちるため、
+   ルートの本評価に必ず1本残す(採否は他候補と同じ公平評価で決まる=ルールでは決めない) */
+function midBreakoutSet(st, me) {
+  const ready = st.field[me].filter(f => !f.tapped && !f.sick).map(f => f.code);
+  const oppUnt = st.field[1 - me].filter(f => !f.tapped).map(f => f.code)
+    .sort((a, b) => midRank(b) - midRank(a));
+  if (ready.length < 2 || !oppUnt.length) return null;
+  const spades = [], rest = [];
+  for (const c of ready) (midSuit(c) === 0 ? spades : rest).push(c);
+  if (!spades.length) return null;
+  spades.sort((a, b) => midRank(a) - midRank(b));   // 小さい♠から囮に使う
+  const set = [];
+  const used = [];
+  for (const sp of spades) {
+    const tgt = oppUnt.find(c => !used.includes(c) && midRank(c) > midRank(sp));   // 格上を優先して縛る
+    if (tgt !== undefined) { used.push(tgt); set.push({ cre: sp, tt: "player", prov: tgt }); }
+    else set.push({ cre: sp, tt: "player" });
+  }
+  for (const c of rest) set.push({ cre: c, tt: "player" });
+  return used.length ? set : null;   // 囮が成立しないなら通常の全軍案と同じなので出さない
+}
+
 /* 軽量スクリーニング: 相手の応手を「貪欲防御」と「全スルー」の2通りだけ見て悪い方を採る1手読み */
 function midScreenAttacks(st, me, attacks) {
   const D = 1 - me;
@@ -4048,9 +4089,18 @@ function midScreenAttacks(st, me, attacks) {
     const cand = free.filter(bl => midRank(bl) >= midRank(at.cre)).sort((a, b) => midRank(a) - midRank(b))[0];
     if (cand !== undefined) { greedy.push({ attacker: at.cre, blocker: cand }); free.splice(free.indexOf(cand), 1); }
   }
+  const wall = [...forced];
+  {
+    const free = blockers.slice().sort((a, b) => midRank(a) - midRank(b));
+    for (const at of [...attacks].sort((a, b) => midRank(b.cre) - midRank(a.cre))) {
+      if (!free.length) break;
+      wall.push({ attacker: at.cre, blocker: free.shift() });
+    }
+  }
   const v1 = midTurnLeaf(st, me, 1, attacks, greedy, -Infinity, Infinity, false);
   const v2 = midTurnLeaf(st, me, 1, attacks, forced, -Infinity, Infinity, false);
-  return Math.min(v1, v2);
+  const v3 = wall.length > greedy.length ? midTurnLeaf(st, me, 1, attacks, wall, -Infinity, Infinity, false) : Infinity;
+  return Math.min(v1, v2, v3);
 }
 
 /* ---- 実盤面の意思決定 ---- */
@@ -4081,6 +4131,10 @@ function midSearchTurn(me) {
     const scored = sets.map(s => ({ s, v: midScreenAttacks(st0, me, s) }));
     scored.sort((a, b) => b.v - a.v);
     const picked = scored.slice(0, 4).map(x => x.s);
+    if (st0.deck[me].length < st0.deck[1 - me].length) {   // リードされている: 打開プランを本評価に必ず載せる
+      const bo = midBreakoutSet(st0, me);
+      if (bo && !picked.some(s => JSON.stringify(s) === JSON.stringify(bo))) picked.push(bo);
+    }
     if (!picked.some(s => !s.length)) picked.push([]);   // 「攻撃なし」は常に本評価に残す
     for (const s of picked) {
       const key = JSON.stringify([mv.line, s]);
@@ -4088,7 +4142,7 @@ function midSearchTurn(me) {
     }
   }
   let best = null, bestV = -Infinity;
-  for (const p of plans.slice(0, 10)) {   // フル読みで本評価するプラン数の上限
+  for (const p of plans.slice(0, 12)) {   // フル読みで本評価するプラン数の上限
     let sum = 0;
     for (const w of worlds) {
       midNodes = 0;
