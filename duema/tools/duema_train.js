@@ -5,17 +5,19 @@
 const { chromium } = require('playwright');
 const fs = require('fs');
 
-async function collect(games, outPath, lv0, lv1, depth, budget, samples, wfile) {
+async function collect(games, outPath, lv0, lv1, depth, budget, samples, wfile, seed0, swfile) {
   const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
   const page = await b.newPage();
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
   await page.goto('file:///home/user/duema/index.html');
   const W = wfile ? JSON.parse(fs.readFileSync(wfile)) : null;
-  await page.evaluate(([depth, budget, samples, W]) => {
+  const SW = swfile ? JSON.parse(fs.readFileSync(swfile)) : null;
+  await page.evaluate(([depth, budget, samples, W, SW]) => {
     TEST_AUTO = true; CPU_DELAY = 0;
     profile = null;
     if (W) MID2_W = W;
+    if (SW) STRONG_W = SW;
     midDepth = depth; MID2_BUDGET = budget; MID2_SAMPLES = samples;
     window.__game = async (seed, lv0, lv1) => {
       trainSides = [lv0, lv1];
@@ -31,24 +33,24 @@ async function collect(games, outPath, lv0, lv1, depth, budget, samples, wfile) 
         await new Promise(r => setTimeout(r, 25));
       }
       const w = winner;
-      const data = trainCollect.map(x => ({ t: x.turn, f: x.f }));
+      const data = trainCollect.map(x => ({ t: x.turn, f: x.f, g: x.g }));
       trainCollect = null;
       gameToken++;
       return { w, data, tn: turnNo };
     };
-  }, [depth, budget, samples, W]);
+  }, [depth, budget, samples, W, SW]);
 
   const samplesOut = [];
   let w0 = 0, w1 = 0, dr = 0;
   const t0 = Date.now();
   for (let g = 0; g < games; g++) {
     const r = await page.evaluate(async ([seed, lv0, lv1]) => window.__game(seed, lv0, lv1),
-      [20000 + g * 104729, lv0, lv1]);
+      [(seed0 || 20000) + g * 104729, lv0, lv1]);
     if (r.w === 0) w0++; else if (r.w === 1) w1++; else dr++;
     if (r.w === 0 || r.w === 1) {
       for (const pos of r.data) {
         if (pos.t < 2) continue;   // 初手周辺は情報が薄い
-        samplesOut.push({ f: pos.f, y: r.w === 0 ? 1 : 0 });
+        samplesOut.push({ f: pos.f, g: pos.g, y: r.w === 0 ? 1 : 0 });
       }
     }
     if ((g + 1) % 20 === 0) {
@@ -122,7 +124,7 @@ function fit(paths) {
     await collect(parseInt(process.argv[3], 10), process.argv[4],
       process.argv[5] || 'weak', process.argv[6] || 'weak',
       parseInt(process.argv[7] || '2', 10), parseInt(process.argv[8] || '15000', 10), parseInt(process.argv[9] || '2', 10),
-      process.argv[10] || null);
+      process.argv[10] && process.argv[10] !== '-' ? process.argv[10] : null, parseInt(process.argv[11] || '20000', 10), process.argv[12] || null);
   } else if (cmd === 'fit') {
     fit(process.argv.slice(3));
   } else if (cmd === 'convert') {
