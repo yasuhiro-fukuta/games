@@ -4075,7 +4075,17 @@ function midLandPick(st, pi) {
       const r = midRank(c);
       return r === 1 ? midCanPay(st, pi, midSuit(c), 2) : midCanPay(st, pi, midSuit(c), r + 1);
     }) || (!st.blankUsed && hasBlank && midSrcs(st, pi).reduce((s2, x) => s2 + x.val, 0) >= 2);
-    if (summonable) return null;
+    // 例外: 全マナを注いでも唱えられない大物を抱えて手札が太っているなら、シードを置き続ける。
+    // これが無いと「小物が召喚できる」だけでシードが止まり、J/Q/Kを永遠に唱えられず手札を溜め込む
+    const cap2 = st.lands[pi].filter(l => !l.steel && !l.router).reduce((s2, l) => s2 + (l.lotus ? 3 : 1), 0);
+    const stuckBig = st.hand[pi].length >= 6 && hand.some(c => {
+      const r = midRank(c);
+      return (r === 1 ? 2 : r + 1) > cap2;
+    });
+    if (summonable && !stuckBig) return null;
+    if (summonable && stuckBig) {   // 唱えるための伸ばしシード: 大物は温存し、一番小さい札を置く
+      return [...hand].sort((a, b) => midRank(a) - midRank(b))[0];
+    }
   }
   if (!hand.length) return hasBlank ? BLANK : null;
   const key = c => { const i = prio.indexOf(midRank(c)); return i < 0 ? prio.length : i; };
