@@ -20,18 +20,18 @@ def load(paths):
     return np.array(G, dtype=np.float64), np.array(LIN, dtype=np.float64), np.array(Y, dtype=np.float64)
 
 def mirror(G, LIN, Y):
-    # 視点対称化: 側ブロック(29次元×2)を入れ替え、手番・デッキ差・線形評価を反転、勝敗を反転
+    # 視点対称化: 側ブロック(37次元×2)を入れ替え、手番・デッキ差・線形評価を反転、勝敗を反転
     M = G.copy()
-    M[:, 0:29], M[:, 29:58] = G[:, 29:58], G[:, 0:29].copy()
-    M[:, 58] = 1 - G[:, 58]
-    M[:, 61] = -G[:, 61]
+    M[:, 0:37], M[:, 37:74] = G[:, 37:74], G[:, 0:37].copy()
+    M[:, 74] = 1 - G[:, 74]
+    M[:, 77] = -G[:, 77]
     return np.concatenate([G, M]), np.concatenate([LIN, -LIN]), np.concatenate([Y, 1 - Y])
 
 def main():
     out_path, paths = sys.argv[1], sys.argv[2:]
     G, LIN, Y = load(paths)
     n = G.shape[1]
-    assert n == 62, f"expected 62 features, got {n}"
+    assert n == 78, f"expected 78 features, got {n}"
     # ゲーム相関を考慮した分割: 40サンプル程度のブロック単位でホールドアウト
     nblk = len(G) // 40 + 1
     blk = (np.arange(len(G)) // 40)

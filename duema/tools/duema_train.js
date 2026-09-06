@@ -5,7 +5,7 @@
 const { chromium } = require('playwright');
 const fs = require('fs');
 
-async function collect(games, outPath, lv0, lv1, depth, budget, samples, wfile, seed0, swfile) {
+async function collect(games, outPath, lv0, lv1, depth, budget, samples, wfile, seed0, swfile, advice) {
   const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
   const page = await b.newPage();
   const errors = [];
@@ -13,11 +13,12 @@ async function collect(games, outPath, lv0, lv1, depth, budget, samples, wfile, 
   await page.goto('file:///home/user/duema/index.html');
   const W = wfile ? JSON.parse(fs.readFileSync(wfile)) : null;
   const SW = swfile ? JSON.parse(fs.readFileSync(swfile)) : null;
-  await page.evaluate(([depth, budget, samples, W, SW]) => {
+  await page.evaluate(([depth, budget, samples, W, SW, advice]) => {
     TEST_AUTO = true; CPU_DELAY = 0;
     profile = null;
     if (W) MID2_W = W;
     if (SW) STRONG_W = SW;
+    trainAdvice = advice === 'on';
     midDepth = depth; MID2_BUDGET = budget; MID2_SAMPLES = samples;
     window.__game = async (seed, lv0, lv1) => {
       trainSides = [lv0, lv1];
@@ -38,7 +39,7 @@ async function collect(games, outPath, lv0, lv1, depth, budget, samples, wfile, 
       gameToken++;
       return { w, data, tn: turnNo };
     };
-  }, [depth, budget, samples, W, SW]);
+  }, [depth, budget, samples, W, SW, advice]);
 
   const samplesOut = [];
   let w0 = 0, w1 = 0, dr = 0;
@@ -124,7 +125,7 @@ function fit(paths) {
     await collect(parseInt(process.argv[3], 10), process.argv[4],
       process.argv[5] || 'weak', process.argv[6] || 'weak',
       parseInt(process.argv[7] || '2', 10), parseInt(process.argv[8] || '15000', 10), parseInt(process.argv[9] || '2', 10),
-      process.argv[10] && process.argv[10] !== '-' ? process.argv[10] : null, parseInt(process.argv[11] || '20000', 10), process.argv[12] || null);
+      process.argv[10] && process.argv[10] !== '-' ? process.argv[10] : null, parseInt(process.argv[11] || '20000', 10), process.argv[12] && process.argv[12] !== '-' ? process.argv[12] : null, process.argv[13] || 'off');
   } else if (cmd === 'fit') {
     fit(process.argv.slice(3));
   } else if (cmd === 'convert') {
