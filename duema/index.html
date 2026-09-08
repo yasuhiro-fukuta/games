@@ -3391,6 +3391,48 @@ function midClone(st) {
   };
 }
 
+/* ---- 探索工事①: 局面の正準ハッシュと置換表 ----
+   評価関数・行動生成はすべてゾーン集約(順序非依存)なので、ゾーン内は可換ハッシュ
+   (ミックス値の加算+回転XOR)で安全に正準化できる。評価が読む turn/tn/landSetUsed も含める。
+   置換表はαβの窓で得た値を上限/下限バウンドとして保存し、同型局面の再探索を丸ごと省く */
+const midMix32 = x => {
+  x = Math.imul(x ^ (x >>> 16), 0x45d9f3b);
+  x = Math.imul(x ^ (x >>> 16), 0x45d9f3b);
+  return (x ^ (x >>> 16)) >>> 0;
+};
+function midStateKey(st) {
+  let s1 = 0, x1 = 0;
+  const add = v => { const m = midMix32(v | 0); s1 = (s1 + m) | 0; x1 = (x1 ^ Math.imul(m, 0x9e3779b1)) | 0; };
+  for (const pi of [0, 1]) {
+    const B = pi * 524287;
+    for (const c of st.hand[pi]) add(1000003 + B + c);
+    add(2000003 + B + st.deck[pi].length);
+    for (const c of st.grave[pi]) add(3000017 + B + c * 3);
+    for (const l of st.lands[pi]) add(4000037 + B + l.code * 16 + (l.tapped ? 1 : 0) + (l.lotus ? 2 : 0) + (l.steel ? 4 : 0) + (l.router ? 8 : 0));
+    for (const f of st.field[pi]) add(5000011 + B + f.code * 1024 + (f.tapped ? 1 : 0) + (f.sick ? 2 : 0) + (f.pz ? 4 : 0) + (f.indest ? 8 : 0) + Math.min(31, f.dmg || 0) * 16);
+  }
+  add(6000011 + st.turn + st.landSetUsed * 2 + (st.blankUsed || 0) * 8 + Math.round((st.tn || 0) * 2) * 16);
+  return (s1 >>> 0) * 4294967296 + (x1 >>> 0);
+}
+let midTT = new Map();          // 置換表: key → {lo, hi}(lo===hiで厳密値)
+let midEvalCache = new Map();   // リーフ評価キャッシュ: 戦闘後の同型局面は評価1回
+function midCacheReset() { midTT.clear(); midEvalCache.clear(); }
+function midTTProbe(key, alpha, beta) {
+  const e = midTT.get(key);
+  if (!e) return undefined;
+  if (e.lo === e.hi) return e.lo;
+  if (e.lo >= beta) return e.lo;
+  if (e.hi <= alpha) return e.hi;
+  return undefined;
+}
+function midTTStore(key, v, alpha, beta) {
+  let lo = -Infinity, hi = Infinity;
+  if (v <= alpha) hi = v; else if (v >= beta) lo = v; else { lo = v; hi = v; }
+  const e = midTT.get(key);
+  if (e) { lo = Math.max(lo, e.lo); hi = Math.min(hi, e.hi); }
+  if (lo <= hi) midTT.set(key, { lo, hi });
+}
+
 /* ---- 評価関数: 特徴量×重み(重みは自己対戦で学習) ---- */
 const MID2_FEATS = 54;   // 基礎16特徴×フェーズ3 + 死にジョーカー枚数×3 + 手札♥枚数×3
 let MID2_W = [0.3884, 0.7868, 1.1748, 0.4382, 0.0233, 0.1146, 0.0718, 0.4587, 0.1105, 0.8457, 0.4181, 0.4382, -0.1114, 0.9662, 0.6592, 0.3457,
@@ -3854,6 +3896,18 @@ function midCleanup(st) {
    先頭の「何もしない」が選ばれて投了モード化する事故の防止。±10000を跨がない範囲) */
 const midResist = (st, side) => Math.min(300, st.field[side].reduce((s, f) => s + 10 + midRank(f.code), 0));
 function midTurnLeaf(st, me, depth, attacks, blocks, alpha, beta, tail) {
+  // 置換表: 局面+宣言セットで丸ごとメモ化。depth<=1は窓を使わない=常に厳密値
+  let key = midStateKey(st) + ":" + depth + (tail ? "t" : "") + me;
+  for (const a of attacks) key += "|" + a.cre + "." + (a.tt === "cre" ? a.tv : "p") + "." + (a.prov ?? "");
+  for (const b of blocks) key += "/" + b.attacker + "-" + b.blocker;
+  const hit = midTTProbe(key, alpha, beta);
+  if (hit !== undefined) return hit;
+  const v = midTurnLeafRaw(st, me, depth, attacks, blocks, alpha, beta, tail);
+  if (depth <= 1) midTTStore(key, v, -Infinity, Infinity);
+  else if (midNodes <= midBudget()) midTTStore(key, v, alpha, beta);
+  return v;
+}
+function midTurnLeafRaw(st, me, depth, attacks, blocks, alpha, beta, tail) {
   const st2 = midClone(st);
   const S = st2.turn;
   const loser = midResolveBattle(st2, S, attacks, blocks);
@@ -3888,12 +3942,22 @@ function midTurnLeaf(st, me, depth, attacks, blocks, alpha, beta, tail) {
     }
     // クリンナップ相当(ダメージ消去)+タップは一時状態なので両者起こして評価
     for (const pi of [0, 1]) for (const f of st2.field[pi]) { f.dmg = 0; f.tapped = false; f.pz = false; }
-    return midEvalW(st2, me);
+    // 評価キャッシュ: 異なる宣言の組合せでも戦闘後に同型へ収束することが多い(評価は状態のみの関数)
+    const ek = midStateKey(st2) + ":" + me;
+    let ev = midEvalCache.get(ek);
+    if (ev === undefined) { ev = midEvalW(st2, me); midEvalCache.set(ek, ev); }
+    return ev;
   }
   const loser2 = midCleanup(st2);
   if (loser2 !== false) return loser2 === me ? -10000 - depth + midResist(st2, me) : 10000 + depth - midResist(st2, 1 - me);
   midGreedyTail(st2, st2.turn);   // ルート以外の半ターン: メインは貪欲近似・戦闘も絞った候補のみ
-  return midSearchAttacks(st2, me, depth - 1, alpha, beta, true);
+  // 置換表(真の同型合流点): 戦闘解決・貪欲仕上げ後の局面から先のサブツリーを丸ごとメモ化
+  const sk = "s" + midStateKey(st2) + ":" + depth + me;
+  const sh = midTTProbe(sk, alpha, beta);
+  if (sh !== undefined) return sh;
+  const sv = midSearchAttacks(st2, me, depth - 1, alpha, beta, true);
+  if (midNodes <= midBudget()) midTTStore(sk, sv, alpha, beta);
+  return sv;
 }
 function midSearchBlocks(st, me, depth, attacks, alpha, beta, tail, narrow) {
   const S = st.turn, D = 1 - S;
@@ -3957,12 +4021,15 @@ function midSearchBlocks(st, me, depth, attacks, alpha, beta, tail, narrow) {
     return defMax ? Math.max(best, v0) : Math.min(best, v0);
   }
   const assign = [];
+  // 探索工事③: ムーブオーダリング。「大きい攻撃をブロックする」手から先に読むと
+  // αβの枝刈りが早く効く(値は変わらず、読む量だけ減る)。「しない」は最後
+  const opts = [...live].sort((a, b) => midRank(b.cre) - midRank(a.cre));
+  opts.push(null);
   const rec = (i, a2, b2) => {
     if (midNodes > midBudget() || i === blockers.length) {
       return midTurnLeaf(st, me, depth, attacks, [...forced, ...assign], a2, b2, tail);
     }
     let bv = defMax ? -Infinity : Infinity;
-    const opts = [null, ...live];
     for (const o of opts) {
       if (o) assign.push({ attacker: o.cre, blocker: blockers[i] });
       const v = rec(i + 1, a2, b2);
@@ -4007,12 +4074,15 @@ function midSearchAttacks(st, me, depth, alpha, beta, narrow) {
     return best;
   }
   const attacks = [];
+  // ムーブオーダリング: 「本体攻撃」→「大きいタップ敵を討つ」→「攻撃しない」の順に読む
+  const opts = [{ tt: "player" },
+                ...[...targets].sort((a, b) => midRank(b) - midRank(a)).map(t => ({ tt: "cre", tv: t })),
+                null];
   const rec = (i, a2, b2) => {
     if (midNodes > midBudget() || i === ready.length) {
       return midSearchBlocks(st, me, depth, attacks, a2, b2, true);
     }
     let bv = maxing ? -Infinity : Infinity;
-    const opts = [null, { tt: "player" }, ...targets.map(t => ({ tt: "cre", tv: t }))];
     for (const o of opts) {
       if (o) attacks.push({ cre: ready[i], tt: o.tt, tv: o.tv });
       const v = rec(i + 1, a2, b2);
@@ -4058,13 +4128,15 @@ function midPlanMains(st, me, minCode, actDepth) {
   }
   return { v: best, line: bestLine };
 }
-/* プランを固定して、ある世界での価値を測る(相手のブロックは世界内で最適応答) */
-function midPlanValue(world, me, mains, attacks) {
+/* プランを固定して、ある世界での価値を測る(相手のブロックは世界内で最適応答)。
+   探索工事②: alpha=「現在の最善プラン値」を渡すと、これより悪いと判明した瞬間に打ち切れる
+   (返り値がalpha以下なら上限値の証明なので、プランの採否=argmaxは厳密に保存される) */
+function midPlanValue(world, me, mains, attacks, alpha = -Infinity) {
   const st = midClone(world);
   for (const a of mains) midApplyMain(st, me, a);
   const live = attacks.filter(at =>
     st.field[me].some(f => f.code === at.cre) && (at.tt !== "cre" || st.field[1 - me].some(f => f.code === at.tv)));
-  return midSearchBlocks(st, me, midDepth, live, -Infinity, Infinity, true);
+  return midSearchBlocks(st, me, midDepth, live, alpha, Infinity, true);
 }
 
 /* シードセットポリシー(人間的なコツをルール実装):
@@ -4241,7 +4313,7 @@ function midSearchTurn(me) {
     let sum = 0;
     for (const w of worlds) {
       midNodes = 0;
-      sum += midPlanValue(w, me, p.mains, p.attacks);
+      sum += midPlanValue(w, me, p.mains, p.attacks, worlds.length === 1 ? bestV : -Infinity);
     }
     const v = sum / worlds.length;
     if (v > bestV) { bestV = v; best = p; }
@@ -4315,6 +4387,7 @@ function midMainValid(pi, a) {   // 実盤面での妥当性チェック(ズレ�
 /* 中CPU: アタックフェイズ(計画を立てて逐次実行) */
 function midDecideAttacks(pi) {
   midBudgetScale = strongSeat(pi) ? 2 : 1;
+  midCacheReset();   // 置換表・評価キャッシュは意思決定単位(局面が実際に動くまで有効)
   if (landSetUsed < 1) {   // シードはポリシーで即決(序盤・中盤は毎ターン、終盤は条件付き)
     const lp = midLandPick(midWorld(pi), pi);
     if (lp != null && lp !== BLANK) {
@@ -4351,6 +4424,7 @@ function midDecideAttacks(pi) {
 /* 中CPU: 第2メイン(1手ずつ再探索) */
 function midDecideMain2(pi) {
   midBudgetScale = strongSeat(pi) ? 2 : 1;
+  midCacheReset();   // 置換表・評価キャッシュは意思決定単位(局面が実際に動くまで有効)
   const worlds = midSampleWorlds(pi);
   const lines = [];
   for (const w of worlds) {
@@ -4367,7 +4441,7 @@ function midDecideMain2(pi) {
       midNodes = 0;
       const st = midClone(w);
       for (const a of l.line) midApplyMain(st, pi, a);
-      sum += midTurnLeaf(st, pi, midDepth, [], [], -Infinity, Infinity, false);
+      sum += midTurnLeaf(st, pi, midDepth, [], [], worlds.length === 1 ? bestV : -Infinity, Infinity, false);
     }
     const v = sum / worlds.length;
     if (v > bestV) { bestV = v; best = l; }
@@ -4399,6 +4473,7 @@ function midMain2Line(st, me, minCode, actDepth) {   // 第2メイン: 行動列
 /* 中CPU: ブロック(自分が防御側)。挑戦の強制ブロックを織り込んで全割り当てを評価 */
 function midDecideBlocks(pi) {
   midBudgetScale = strongSeat(pi) ? 2 : 1;
+  midCacheReset();   // 置換表・評価キャッシュは意思決定単位(局面が実際に動くまで有効)
   const opAtk = 1 - pi;
   const attacks = declaredAttacks
     .map(at => {
@@ -4473,7 +4548,7 @@ function midDecideBlocks(pi) {
       midNodes = 0;
       const st = midClone(w);
       if (cand.fo) midApplyMain(st, pi, cand.fo);
-      sum += midTurnLeaf(st, pi, midDepth, attacks, full, -Infinity, Infinity, true);
+      sum += midTurnLeaf(st, pi, midDepth, attacks, full, worlds.length === 1 ? bestV : -Infinity, Infinity, true);
     }
     const v = sum / worlds.length;
     if (v > bestV) { bestV = v; best = cand.asg; bestFlash = cand.fo; }
@@ -4504,6 +4579,9 @@ function aiDecide(pi, kind, ctx) {
       return { k: "mull", v: players[pi].hand.every(c => c.joker || c.rank >= 5) };
     }
   }
+  if (kind === "mull" && senseiSeat(pi) && SENSEI_FLAGS.mull && ruleMode === "original") {   // 師範: 中CPUと同じマリガン基準
+    return { k: "mull", v: players[pi].hand.every(c => c.joker || c.rank >= 5) };
+  }
   if (kind === "mull") return { k: "mull", v: wantsMulligan(players[pi].hand) };
   if (kind === "trigger") return { k: "trigger", v: "summon" };
   if (kind === "block") {
@@ -4521,7 +4599,7 @@ function aiDecide(pi, kind, ctx) {
   if (kind === "oattacks") {
     const m = aiOMain(pi);   // アタックフェイズはメインを兼ねる: シード・呪文・召喚を先に
     if (m.t !== "done") return { k: "oattacks", ...m };
-    return { k: "oattacks", t: "attacks", list: aiOAttacks(pi) };
+    return { k: "oattacks", t: "attacks", list: senseiSeat(pi) && SENSEI_FLAGS.atk ? aiOAttacksSensei(pi) : aiOAttacks(pi) };
   }
   if (kind === "oblocks") {
     const p = players[pi];
@@ -4705,8 +4783,35 @@ function oneSidedByBlocker(pi, atkCre) {   // 相手のアンタップに一方�
 function aiOMain(pi) {   // 相手ターン中のメイン: シード→呪文→召喚→done
   const p = players[pi], o = players[1 - pi];
   if (landSetUsed < landSetMax) {
-    const c = aiPickLand(pi);
-    if (c && !c.joker) return { t: "land", card: c.id };   // マジックではJOKERをシードにできない
+    if (senseiSeat(pi) && SENSEI_FLAGS.land) {
+      // 師範: 序盤(〜T4)=定石どおり4スート揃え、終盤(T8〜)=置き止め/伸ばしの定石(中CPUと共用)。
+      // 中盤の札選びだけは「召喚主戦力の8/9/10を埋めない」よう遠コスト優先(手なり)にする —
+      // 定石の[10,9,8...]をそのまま使うと「デカいのから召喚」方針と食い合い、実測で大きく負け越す
+      // 序盤(〜T4): 定石どおり4スート揃え(中CPUの定石ポリシーを共用)。
+      // 中盤(T5〜7): 手なり(いちばん唱えにくい札をシードへ)。
+      // 終盤(T8〜): 手札が全部唱えられるなら置かない(定石)。ただし現在のマナで唱えられない
+      // 大物が腐っているならシードを伸ばし続ける(マナ7で止まってK/Q/Jが永遠に腐る事故の防止)
+      if (turnNo <= 4) {
+        const lp = midLandPick(midWorld(pi), pi);
+        if (lp != null && lp !== BLANK) {
+          const cid = midCardId(pi, lp, "hand");
+          if (cid != null) return { t: "land", card: cid };
+        }
+      } else if (turnNo <= 7) {
+        const c = aiPickLand(pi);
+        if (c && !c.joker) return { t: "land", card: c.id };
+      } else {
+        const cap = p.lands.filter(l => !l.steel && !l.router).reduce((s, l) => s + (l.lotus ? 3 : 1), 0);
+        const stuck = p.hand.some(c => !c.joker && (c.rank === 1 ? 2 : c.rank + 1) > cap);
+        if (stuck) {
+          const c = aiPickLand(pi);
+          if (c && !c.joker) return { t: "land", card: c.id };
+        }
+      }
+    } else {
+      const c = aiPickLand(pi);
+      if (c && !c.joker) return { t: "land", card: c.id };   // マジックではJOKERをシードにできない
+    }
   }
   // JOKER(新ジョーカー): モックス=マナ加速 / ロータス=召喚ブースト / ルーター=手札交換 / 余りはサイクリング
   for (const jk of p.hand.filter(c => c.joker)) {
@@ -4727,6 +4832,14 @@ function aiOMain(pi) {   // 相手ターン中のメイン: シード→呪文�
         dis.push(g2);
       }
       return { t: "jplay", jk: jk.id, discards: dis.map(x => x.id) };
+    }
+    // (師範) 余りマナのジョーカーサイクリング: 腐っているジョーカーは早めにドローへ変える
+    if (senseiSeat(pi) && SENSEI_FLAGS.cyc && p.deck.length >= 10 && canPayC(p, 1)) {
+      const dead = (jk.jt === "mox" || jk.jt === "lotus") ? !behind :
+                   jk.jt === "router" ? ![1, 0, 2, 3].every(s2 => p.hand.some(h => !h.joker && h.suit === s2)) :
+                   jk.jt === "steel" ? !p.field.length :
+                   jk.jt === "gash" ? !p.lands.some(l => !l.card.joker) : false;
+      if (dead) return { t: "jcycle", jk: jk.id };
     }
     // 出せない/出す価値のないジョーカーは、手札が細ったらサイクリング
     if (p.hand.length <= 2 && p.deck.length >= 8 && canPayC(p, 1) &&
@@ -4754,7 +4867,9 @@ function aiOMain(pi) {   // 相手ターン中のメイン: シード→呪文�
   // 召喚(出せる限り最強から)。通常カードの♥は瞬速のため温存(アリスに瞬速はない)。Aはエンチャント
   const okSummon = c => c.suit !== 1 &&
     !(aliceSide[pi] && c.suit === 2 && c.rank >= 11 && o.field.length - p.field.length < 2);   // アリス♦絵札は全体-X/-X: 劣勢時のみ
-  const s = p.hand.filter(c => !c.joker && c.rank !== 1 && okSummon(c) && canPay(p, c.suit, costOf(c))).sort((a, b) => b.rank - a.rank)[0];
+  // (師範) スートの居場所: 場で価値があるのは♦♠ → 同格なら♦♠を先に展開し、♣は奇襲(速攻)用に僅かに遅らせる
+  const sKey = c => c.rank + (senseiSeat(pi) && SENSEI_FLAGS.sum && (c.suit === 2 || c.suit === 0) ? 1.5 : 0);
+  const s = p.hand.filter(c => !c.joker && c.rank !== 1 && okSummon(c) && canPay(p, c.suit, costOf(c))).sort((a, b) => sKey(b) - sKey(a))[0];
   if (s) return { t: "summon", card: s.id, etb: aiEtbFor(pi, s) };
   for (const c of p.hand.filter(c => !c.joker && c.rank !== 1 && okSummon(c) && c.rank >= 11).sort((a, b) => b.rank - a.rank)) {
     const sameSuit = p.field.filter(f => f.card.suit === c.suit).sort((a, b) => a.card.rank - b.card.rank);
@@ -4903,6 +5018,117 @@ function aiOBlocks(pi) {
       const chump = free().sort((x, y) => x.card.rank - y.card.rank)[0];
       if (chump) { used.add(chump.card.id); list.push({ attacker: at.cre, blocker: chump.card.id }); }
     }
+  }
+  // (師範) 死なないことが最優先: ここまでの割り当てで素通りする本体攻撃の合計が山札に届くなら、
+  // 大きい攻撃から順に残りのブロッカーを何でも当てて通さない(チャンプの壁。損得は死んだら意味がない)
+  if (senseiSeat(pi) && SENSEI_FLAGS.wall) {
+    const blockedSet = new Set(list.map(b => b.attacker));
+    const through = alive.filter(at => at.tt === "player" && !blockedSet.has(at.cre))
+      .map(at => fieldById(atkPi, at.cre)).filter(Boolean);
+    const thruSum = through.reduce((s, f) => s + f.card.rank, 0);
+    if (thruSum >= p.deck.length - 1) {
+      const free2 = p.field.filter(f => !f.tapped && !used.has(f.card.id))
+        .sort((a, b) => a.card.rank - b.card.rank);
+      for (const atk of [...through].sort((a, b) => b.card.rank - a.card.rank)) {
+        const b = free2.shift();
+        if (!b) break;
+        used.add(b.card.id);
+        const at = alive.find(a2 => a2.cre === atk.card.id);
+        if (at) list.push({ attacker: at.cre, blocker: b.card.id });
+      }
+    }
+  }
+  return list;
+}
+
+/* ================= 師範CPU: ユーザーの定石(コツ)をルール実装した強化ルールベース =================
+   弱CPUと同じ「探索なし」だが、人間の定石で意思決定する:
+   ・姿勢 — ライフ(山札)をリードされたら攻勢(♠囮の格上挑戦+全軍本体)、リード中は並べて立てておく
+   ・♠挑戦の選択則 — X(自分)対Y(敵アンタップ合計): X>Yなら格下を巻き込み、X<=Yなら同格と相打ち
+   ・♦の保険 — ♦(警戒)2体以上ならリーサルに僅かに届かなくてもフルアタック(返しは♦が受けて第二波で詰む)
+   ・シード優先順位/マリガン基準 — 中CPUに実装済みの定石ポリシーを共用
+   ・スートの居場所 — 場の価値は♦♠(先に展開)、手札の価値は♥(瞬速温存)♣(奇襲の速攻)
+   ・余りマナのジョーカーサイクリング / 死なない壁(aiOBlocks内) */
+let SENSEI_FLAGS = { mull: 1, land: 1, cyc: 1, sum: 1, wall: 1, atk: 1 };   // アブレーション用(全ON=師範)
+function senseiSeat(pi) {
+  if (trainSides) return trainSides[pi] === "sensei";
+  return cpuLevel === "sensei" && mode === "cpu" && pi === 1 - myIdx;
+}
+function aiOAttacksSensei(pi) {
+  const p = players[pi], o = players[1 - pi];
+  const all = p.field.filter(f => !f.tapped && !f.sick);
+  if (!all.length) return [];
+  const oppUnt = o.field.filter(f => !f.tapped);
+  const untY = oppUnt.reduce((s, f) => s + f.card.rank, 0);
+  // 超終盤の特攻ジャッジ: 必ず通るx体の合計で山札が尽きるなら全軍(弱と同じ)
+  const x = all.length - oppUnt.length;
+  if (x > 0 && o.deck.length > 0) {
+    const asc = [...all].sort((a, b) => a.card.rank - b.card.rank);
+    const sum = asc.slice(0, x).reduce((s, f) => s + f.card.rank, 0);
+    if (sum >= o.deck.length - 1) return all.map(f => ({ cre: f.card.id, tt: "player" }));
+  }
+  const behind = p.deck.length < o.deck.length;
+  // 全軍で仕掛ける2条件(ユーザーの定石):
+  //  ♦の保険 — ♦(警戒)2体以上で総パワーがリーサル圏なら、僅かに届かなくてもフルアタック
+  //  強制打開 — リードされたまま山札が細ったら、座して自然減で死ぬ前に仕掛ける
+  const dias = all.filter(f => f.card.suit === 2).length;
+  const totalPow = all.reduce((s, f) => s + f.card.rank, 0);
+  const fullAtk = dias >= 2 && totalPow >= o.deck.length - 6;
+  const desperate = behind && p.deck.length <= 12 && all.length >= 2 &&
+    all.length + 1 >= oppUnt.length;   // 打開の波が薄すぎる全滅特攻はしない(次の波を待つ)
+  if (fullAtk || desperate) {
+    // ♠は囮の格上挑戦で大型ブロッカーを縛り、残り全軍で本体へ(相手はチャンプを強いられる)
+    const provUsed = new Set();
+    const bigs = [...oppUnt].sort((a, b) => b.card.rank - a.card.rank);
+    return all.map(f => {
+      const a2 = { cre: f.card.id, tt: "player" };
+      if (f.card.suit === 0) {
+        const pv = bigs.find(t => !provUsed.has(t.card.id) && t.card.rank > f.card.rank);
+        if (pv) { a2.prov = pv.card.id; provUsed.add(pv.card.id); }
+      }
+      return a2;
+    });
+  }
+  // 以下は弱CPUと同じ攻撃量(実績ある基準)。差分は♠挑戦の選択則のみ
+  const list = [];
+  const avail = all.filter(f => !oneSidedByBlocker(pi, f));
+  const used = new Set();
+  for (const t of [...o.field].filter(t => t.tapped).sort((a, b) => b.card.rank - a.card.rank)) {
+    const need = t.card.rank - (t.dmg || 0);
+    const cand = avail.filter(f => !used.has(f.card.id) && !battleNumbers(f, t).aDies);
+    const solo = [...cand].sort((a, b) => a.card.rank - b.card.rank)
+      .find(f => battleNumbers(f, t).ap >= need);
+    let combo = solo ? [solo] : [];
+    if (!combo.length) {
+      let sum = 0;
+      for (const f of [...cand].sort((a, b) => b.card.rank - a.card.rank)) {
+        combo.push(f); sum += battleNumbers(f, t).ap;
+        if (sum >= need) break;
+      }
+      if (combo.reduce((s, f) => s + battleNumbers(f, t).ap, 0) < need) combo = [];
+    }
+    for (const f of combo) {
+      used.add(f.card.id);
+      list.push({ cre: f.card.id, tt: "cre", tv: t.card.id });
+    }
+  }
+  const provUsed = new Set();
+  const bigs = [...oppUnt].sort((a, b) => b.card.rank - a.card.rank);
+  for (const f of avail) if (!used.has(f.card.id)) {
+    const a2 = { cre: f.card.id, tt: "player" };
+    if (f.card.suit === 0) {
+      const X = f.card.rank;
+      // 挑戦は「一方的に討てる相手」のみ(弱と同じ)。X対Yの挑戦は囮打開(全軍時)専用 —
+      // 常時ポリシーにすると「相手がブロックしない攻撃」を強制トレードに変えてしまい損
+      let pv = o.field.find(t => {
+        if (t.tapped || provUsed.has(t.card.id)) return false;
+        const n = battleNumbers(f, t);
+        return n.bDies && !n.aDies;
+      });
+      if (!pv && X > untY && untY > 0) pv = bigs.find(t => !provUsed.has(t.card.id) && t.card.rank < X);
+      if (pv) { a2.prov = pv.card.id; provUsed.add(pv.card.id); }
+    }
+    list.push(a2);
   }
   return list;
 }
