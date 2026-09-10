@@ -3940,8 +3940,13 @@ function midTurnLeafRaw(st, me, depth, attacks, blocks, alpha, beta, tail) {
         }
       }
     }
-    // クリンナップ相当(ダメージ消去)+タップは一時状態なので両者起こして評価
-    for (const pi of [0, 1]) for (const f of st2.field[pi]) { f.dmg = 0; f.tapped = false; f.pz = false; }
+    // クリンナップ相当(ダメージ消去)。タップは実ルールどおり「次に手番が来る側だけ」起こす —
+    // 全員起こすと「攻撃でタップした駒が相手ターン中ずっと晒される」事実と
+    // 「処刑しに来た相手のタップ駒を討ち返せる」事実の両方が評価から消え、
+    // 読みの地平線で損だけ数えて得を数えない(=殴らない病)の原因になる
+    const NX = 1 - S;
+    for (const pi of [0, 1]) for (const f of st2.field[pi]) f.dmg = 0;
+    for (const f of st2.field[NX]) { f.tapped = false; f.sick = false; f.pz = false; }
     // 評価キャッシュ: 異なる宣言の組合せでも戦闘後に同型へ収束することが多い(評価は状態のみの関数)
     const ek = midStateKey(st2) + ":" + me;
     let ev = midEvalCache.get(ek);
@@ -4318,6 +4323,16 @@ function midSearchTurn(me) {
     const v = sum / worlds.length;
     if (v > bestV) { bestV = v; best = p; }
   }
+  // 敗勢確定圏(全プランが準負け評価)では、評価の差がノイズ化して単騎の無意味な攻撃などが
+  // 最善に紛れ込む。ここでは「全軍+♠囮の格上挑戦」(打開の形)に置き換える —
+  // どうせ受けなしなら、相手のブロックミスを誘う最大圧力と第二波だけが残された勝ち筋
+  if (best && bestV <= -7600) {
+    const st0 = midClone(worlds[0]);
+    for (const a of best.mains) midApplyMain(st0, me, a);
+    const bo = midBreakoutSet(st0, me);
+    const allIn = bo || st0.field[me].filter(f => !f.tapped && !f.sick).map(f => ({ cre: f.code, tt: "player" }));
+    if (allIn.length) best = { ...best, attacks: allIn };
+  }
   return { mains: best ? best.mains.slice() : [], attacks: best ? best.attacks.slice() : [] };
 }
 
@@ -4484,7 +4499,45 @@ function midDecideBlocks(pi) {
                prov: at.prov && fieldById(pi, at.prov) ? midCode(fieldById(pi, at.prov).card) : null };
     })
     .filter(at => at && (at.tt !== "cre" || at.tv != null));
-  if (!attacks.length) return { k: "oblocks", t: "blocks", list: [] };
+  if (!attacks.length) {
+    // 空のブロックフェイズでも♥瞬速の窓は開いている。相手が殴って来なくても、
+    // 待ち伏せ価値(手札♥の学習特徴)より横並びの盤面価値が上なら出す — 採否は評価で決める。
+    // 自分のターンのメイン召喚は生成しない(未使用マナは相手ターン中も残るため、瞬速が常に上位互換)
+    const worlds0 = midSampleWorlds(pi).map(w => { w.turn = opAtk; return w; });
+    const st0 = worlds0[0];
+    const opts = [];
+    const hearts = st0.hand[pi].filter(c => c < 52 && midSuit(c) === 1 && midRank(c) !== 1 &&
+      midCanPay(st0, pi, 1, midRank(c) + 1)).sort((a, b) => midRank(b) - midRank(a));
+    if (hearts.length) opts.push({ t: "summon", code: hearts[0] });
+    if (st0.hand[pi].includes(13)) {   // ♥A
+      const pack = midAcePack(st0, pi, 13);
+      if (pack && pack.x >= 1 && pack.revive.length) opts.push({ t: "acecast", code: 13, x: pack.x, revive: pack.revive });
+    }
+    if (!opts.length) return { k: "oblocks", t: "blocks", list: [] };
+    let bestV = -Infinity, bestFo = null;
+    for (const fo of [null, ...opts]) {
+      let sum = 0;
+      for (const w of worlds0) {
+        midNodes = 0;
+        const st = midClone(w);
+        if (fo) midApplyMain(st, pi, fo);
+        sum += midTurnLeaf(st, pi, midDepth, [], [], worlds0.length === 1 ? bestV : -Infinity, Infinity, true);
+      }
+      const v = sum / worlds0.length;
+      if (v > bestV) { bestV = v; bestFo = fo; }
+    }
+    if (bestFo) {
+      const cardId = midCardId(pi, bestFo.code, "hand");
+      if (cardId != null) {
+        if (bestFo.t === "acecast") {
+          return { k: "oblocks", t: "acecast", card: cardId, x: bestFo.x,
+                   revive: bestFo.revive.map(c => midCardId(pi, c, "grave")).filter(x => x != null) };
+        }
+        return { k: "oblocks", t: "summon", card: cardId };
+      }
+    }
+    return { k: "oblocks", t: "blocks", list: [] };
+  }
   const worlds = midSampleWorlds(pi).map(w => { w.turn = opAtk; return w; });
   // 挑戦: 対象は強制的にそのブロックへ(自由に選べるのは残りのブロッカー)
   const forced = [];
@@ -4618,6 +4671,13 @@ function aiDecide(pi, kind, ctx) {
     }
     // ♥瞬速召喚: 攻撃が来ていれば、出せる♥を強い順に出して待ち伏せる(Aは除外)
     if (attackers2.length) {
+      const flash = p.hand.filter(c => !c.joker && c.rank !== 1 && c.suit === 1 && canPay(p, c.suit, costOf(c)))
+        .sort((a, b) => b.rank - a.rank)[0];
+      if (flash) return { k: "oblocks", t: "summon", card: flash.id };
+    }
+    // (師範) 空のブロックフェイズの♥瞬速: 相手が殴って来ないターンは待ち伏せ価値が低い。
+    // 握り続けて腐らせず、インスタント速度で横に並べる(メイン召喚より常に良いタイミング)
+    if (senseiSeat(pi) && !attackers2.length) {
       const flash = p.hand.filter(c => !c.joker && c.rank !== 1 && c.suit === 1 && canPay(p, c.suit, costOf(c)))
         .sort((a, b) => b.rank - a.rank)[0];
       if (flash) return { k: "oblocks", t: "summon", card: flash.id };
