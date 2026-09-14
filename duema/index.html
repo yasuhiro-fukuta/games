@@ -855,7 +855,7 @@
       <b>♠スペード</b>: 2〜6=<b>接死</b>(1点以上の戦闘ダメージを与えた相手を破壊)/ 7〜10=<b>トランプル</b> / J〜K=<b>ETB: 対象に+X/+0</b>(X=このパワー)<br>
       <b>♣クローバー</b>: 2〜6=<b>「T: ♣マナ1点」</b>(マナクリーチャー・召喚酔い中は不可)/ 7〜10=<b>威迫</b>(2体以上にしかブロックされない)/ J〜K=<b>ETB: 数字X以下のシードをそのオーナーのクリーチャー化</b>(X=このパワー)<br>
       <b>♦ダイヤ</b>: 2〜6=<b>絆魂</b>(与えた戦闘ダメージぶん墓地を山札の下へ・墓地枚数まで)/ 7〜10=<b>反撃</b>(タップ状態でもパワー0にならない)/ J〜K=<b>ETB: 全クリーチャーに-X/-X</b>(X=このパワー・ターン終了時まで)<br><br>
-      アリスカードも<b>基本スート能力(♠挑戦/♥瞬速/♦警戒/♣速攻)を持つ</b>(通常の絵札能力だけが帯能力に置き換わる)。A(蘇生スペル)とJOKERは共通。アリスカードは黒地(黒スート=白字・赤スート=赤字)で表示される。カードは<b>右クリックでテキスト参照</b>できる(Mルール・アリス共通)。
+      アリスカードも<b>基本スート能力(♠挑戦/♥瞬速/♦警戒/♣速攻)と絵札(J/Q/K)の貫通を持つ</b>(通常の絵札能力=生贄召喚だけが帯能力に置き換わる)。A(蘇生スペル)とJOKERは共通。アリスカードは黒地(黒スート=白字・赤スート=赤字)で表示される。カードは<b>右クリックでテキスト参照</b>できる(Mルール・アリス共通)。
     </div>
     <div class="body" id="rules-poke" style="display:none">
       54枚フルデッキ(4色×13+JOKER2枚)同士の1対1。<b>初手5枚・マナなし・サイド6枚</b>。手札にたねが無ければ強制引き直し(そのたび相手が1枚ドロー)。先攻後攻はランダム、<b>先攻の1ターン目はワザを使えない</b>。敗者の手札は公開される。<br><br>
@@ -894,6 +894,7 @@
       ・<b>自分の墓地にある同スートのクリーチャーを、数字の合計がX以下になるように望む数だけ場に出す</b>(例: X=5なら♠2と♠3をまとめて。蘇生された側の「場に出たとき」は誘発しない)<br>
       ・A自身はクリーチャーではないので<b>場には残らず、墓地へ置かれる</b>(蘇生対象にもならない)。♥Aは瞬速で相手のブロックフェイズにも唱えられる<br><br>
       <b>スート能力</b>: ♠<b>挑戦</b>(攻撃時、アンタップの敵1体を強制的にブロックへ参加させる。複数ブロック時は挑戦対象へ最優先でダメージ)/ ♥<b>瞬速</b>(相手のブロックフェイズに召喚できる)/ ♦<b>警戒</b>(各戦闘フェイズ後にアンタップ)/ ♣<b>速攻</b>(召喚酔いしない)<br>
+      <b>絵札(J/Q/K)</b>: 召喚時に同スートの味方を望む数だけ生贄にして数字の合計分コスト軽減(生贄召喚)。さらに<b>貫通</b> — ブロックされても、各ブロッカーへの致死分を超えた余剰ダメージは当初の攻撃対象へ通る<br>
       <b>挑戦の操作</b>: ♠アタッカーを選ぶ → アンタップの敵をクリックで挑戦対象を指定 → 本体かタップ中の敵をクリックで攻撃先を確定(挑戦を使わないなら直接攻撃先をクリック)<br>
       <b>デッキ構築</b>: 開始時にデッキ編集画面が開く。52枚+5種のジョーカーのプールから、<b>54枚以下・同じカード1枚まで・ジョーカーは合計2枚まで(同じ能力を2枚入れてもよい)</b>で自由に構築(保存・ロード3枠)。初期デッキは52枚+モックス×2<br><br>
       <b>JOKER</b>(5種・すべて0マナのオブジェクト、<b>サイクリング(無色1)</b>=捨てて1枚引く、を共通で持つ・アリスルール共通):<br>
@@ -1323,7 +1324,7 @@ const aAbil = (cre, suit, band) => isAliceCre(cre) && cre.card.suit === suit && 
 
 const hasChototsu = f => false;                    // (廃止)旧♣絵札 猪突
 const hasMenace = f => aAbil(f, 3, 1);                                       // アリス♣7-10 威迫: 2体以上にしかブロックされない
-const hasTrample = f => aAbil(f, 0, 1);            // トランプル(アリス♠7-10のみ。通常絵札の貫通は廃止)
+const hasTrample = f => (!f.card.joker && f.card.rank >= 11) || aAbil(f, 0, 1);   // 貫通: 全絵札(J/Q/K)+アリス♠7-10
 const canFly = f => aAbil(f, 1, 0);                // 飛行(アリス♥2-6のみ。通常絵札の飛行は廃止)
 const hasDeathtouch = f => aAbil(f, 0, 0);                                   // アリス♠2-6 接死
 const pzZero = cre => cre.pz && !aAbil(cre, 2, 1);                           // アリス♦7-10 反撃: タップでもパワー0にならない
@@ -3725,10 +3726,11 @@ function midResolveBattle(st, atkPi, attacks, blocks) {
       bls.forEach(f => { f.tapped = true; });
       const pv = at.prov;   // 挑戦対象へ最優先、残りは数字の大きい順
       const sorted = [...bls].sort((a, b) => ((b.code === pv) - (a.code === pv)) || (midRank(b.code) - midRank(a.code)));
+      const tr = atk.code < 52 && midRank(atk.code) >= 11;   // 貫通(絵札): 各ブロッカーへ致死分のみ、余剰は当初の対象へ(ブランクは対象外)
       let pool = midPow(atk);
       sorted.forEach((f, i) => {
         const lethal = Math.max(0, midRank(f.code) - f.dmg);
-        const assign = i === sorted.length - 1 ? pool : Math.min(pool, lethal);
+        const assign = (i === sorted.length - 1 && !tr) ? pool : Math.min(pool, lethal);
         f.dmg += assign; pool -= assign;
       });
       atk.dmg += bls.reduce((s, f) => s + midPow(f), 0);
@@ -3741,6 +3743,21 @@ function midResolveBattle(st, atkPi, attacks, blocks) {
       if (atk.dmg >= midRank(atk.code) && !atk.indest) {
         st.field[atkPi].splice(st.field[atkPi].indexOf(atk), 1);
         st.grave[atkPi].push(atk.code);
+      }
+      if (tr && pool > 0) {   // 貫通の余剰を当初の対象へ(本体ならミル、クリーチャーなら追撃)
+        if (at.tt === "player") {
+          for (let i = 0; i < pool && st.deck[defPi].length; i++) st.grave[defPi].push(st.deck[defPi].pop());
+          if (!st.deck[defPi].length) return defPi;
+        } else {
+          const t2 = st.field[defPi].find(f => f.code === at.tv);
+          if (t2) {
+            t2.dmg += pool;
+            if (t2.dmg >= midRank(t2.code) && !t2.indest) {
+              st.field[defPi].splice(st.field[defPi].indexOf(t2), 1);
+              st.grave[defPi].push(t2.code);
+            }
+          }
+        }
       }
     } else if (at.tt === "player") {
       const n = midPow(atk);
@@ -6130,6 +6147,7 @@ function cardRulesText(c, alice) {
   } else if (c.rank >= 11) {
     lines.push("<b>生贄召喚</b>: 召喚時、同スートの味方を望む数だけ生贄にして、その数字の合計分コスト軽減できる");
   }
+  if (c.rank >= 11) lines.push("<b>貫通</b>: ブロックされても、各ブロッカーへの致死分を超えた余剰戦闘ダメージは当初の攻撃対象に与えられる");
   lines.push(`シードとして置くこともできる(${SUITS[c.suit]}マナ1点)`);
   return lines.join("<br><br>");
 }
@@ -7366,7 +7384,7 @@ const TUT_C = [
   { k: "omain", say: ["シードの枚数が不利なときにのみ、このジョーカーをマナとして使うことが出来ます。"],
     a: () => ({ k: "omain", t: "land", card: tutH(1 - myIdx, 3, 7) }) },
   { k: "omain", a: () => ({ k: "omain", t: "summon", card: tutH(1 - myIdx, 0, 11), sacs: [tutF(1 - myIdx, 0, 4)] }) },
-  { k: "omain", say: ["J、Q、Kの能力は現出、同じスートのクリーチャーを生贄にし、召喚コストを軽減することが出来ます。"],
+  { k: "omain", say: ["J、Q、Kの能力は現出、同じスートのクリーチャーを生贄にし、召喚コストを軽減することが出来ます。", "また絵札は貫通を持ちます — ブロックされても、致死分を超えた余剰ダメージは対象へ通ります。"],
     a: () => ({ k: "omain", t: "done" }) },
   // ── ターン8(ウサギ): ♣A(X=4)で♣4を蘇生→♠Jの挑戦+♣4で総攻撃 ──(T8あなたにウサギの判断なし)
   { k: "oattacks", a: () => ({ k: "oattacks", t: "acecast", card: tutH(1 - myIdx, 3, 1), x: 4,
