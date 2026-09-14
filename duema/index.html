@@ -5215,7 +5215,15 @@ function humanPrompt(pi, kind, ctx) {
     return;
   }
   if (kind === "oblocks") {
-    uiMain = true; pendingBlocks = []; selTargetAtt = null;
+    uiMain = true; selTargetAtt = null;
+    // ♠挑戦の強制ブロックは最初から割り当て済みとして表示する(解除・付け替え不可)。
+    // 以前は自由に見えて確定時にエンジン側で上書きされており、表示と結果がズレていた
+    pendingBlocks = [];
+    for (const at of declaredAttacks) {
+      if (!at.prov) continue;
+      const pc = fieldById(pi, at.prov);
+      if (pc && !pc.tapped && fieldById(1 - pi, at.cre)) pendingBlocks.push({ attacker: at.cre, blocker: at.prov });
+    }
     setHint("ブロックフェイズ: ブロックさせる自分のクリーチャー→相手の⚔の順にクリック(1体の攻撃に複数ブロック可)。♥の瞬速召喚(♥A含む)も使える");
     render();
     return;
@@ -6495,7 +6503,15 @@ function render() {
       }
       // ブロックフェイズ: まず自分のブロッカーを選ぶ(選択中は金色パルス)
       if (uiMain && oPhase && oPhase.phase === "block") {
-        if (blockerSet.has(f.card.id)) {
+        const provAt = !f.tapped && declaredAttacks.find(a2 => a2.prov === f.card.id && fieldById(1 - myIdx, a2.cre));
+        if (provAt) {
+          // 挑戦の強制ブロック: 解除も付け替えもできない(クリックで理由を表示)
+          el.classList.add("assigned");
+          el.addEventListener("click", () => {
+            const atkCre = fieldById(1 - myIdx, provAt.cre);
+            setHint(`${cardLabel(f.card)} は挑戦されている — ${atkCre ? cardLabel(atkCre.card) : "その攻撃"} をブロックしなければならない(解除不可)`);
+          });
+        } else if (blockerSet.has(f.card.id)) {
           el.classList.add("assigned");
           el.addEventListener("click", () => {
             pendingBlocks = pendingBlocks.filter(b => b.blocker !== f.card.id);
