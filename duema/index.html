@@ -4231,6 +4231,14 @@ function midEnumAttackSets(st, me, cap) {
       cur.push({ cre: ready[i], tt: "cre", tv: t });
       rec(i + 1);
       cur.pop();
+      // ♠挑戦しながらタップ中の敵を攻撃(アンタップのBを縛りつつAを討つ。貫通絵札なら余剰がAへ通る)
+      if (midSuit(ready[i]) === 0) {
+        for (const pv of provFor(midRank(ready[i]))) {
+          cur.push({ cre: ready[i], tt: "cre", tv: t, prov: pv });
+          rec(i + 1);
+          cur.pop();
+        }
+      }
     }
   };
   rec(0);
